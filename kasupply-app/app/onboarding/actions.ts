@@ -51,6 +51,7 @@ export async function completeOnboarding(formData: FormData) {
   const region = String(formData.get("region") || "").trim();
   const about = String(formData.get("about") || "").trim();
   const contact_number = String(formData.get("contact_number") || "").trim();
+  const contact_name = String(formData.get("contact_name") || "").trim();
 
   if (
     !business_name ||
@@ -58,7 +59,8 @@ export async function completeOnboarding(formData: FormData) {
     !business_location ||
     !city ||
     !province ||
-    !region
+    !region ||
+    !contact_name
   ) {
     throw new Error("Please fill in all required fields.");
   }
@@ -76,6 +78,7 @@ export async function completeOnboarding(formData: FormData) {
       region,
       about: about || null,
       contact_number: contact_number || null,
+      contact_name,
     })
     .select("profile_id")
     .single();
@@ -102,7 +105,6 @@ export async function completeOnboarding(formData: FormData) {
     const { error: buyerProfileError } = await supabase
       .from("buyer_profiles")
       .insert({
-        user_id: appUser.user_id,
         profile_id: newBusinessProfile.profile_id,
       });
 
@@ -112,7 +114,7 @@ export async function completeOnboarding(formData: FormData) {
       );
     }
 
-    redirect("/dashboard");
+    redirect("/onboarding/buyer-documents");
   }
 
   if (role.role_name.toLowerCase() === "supplier") {

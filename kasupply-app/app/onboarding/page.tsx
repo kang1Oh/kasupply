@@ -106,6 +106,19 @@ export default async function OnboardingPage() {
           />
         </div>
 
+        <div className="space-y-2">
+          <label htmlFor="contact_name" className="text-sm font-medium">
+            Contact Name
+          </label>
+          <input
+            id="contact_name"
+            name="contact_name"
+            type="text"
+            required
+            className="w-full rounded-md border px-3 py-2"
+          />
+        </div>
+
         <button
           type="submit"
           className="bg-black text-white px-4 py-2 rounded"

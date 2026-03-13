@@ -1,6 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentAppUser } from "@/lib/auth/get-current-app-user";
 
+type BuyerProfileRow = {
+  buyer_id: number;
+  profile_id: number;
+};
+
 type SupplierProfileRow = {
   supplier_id: number;
   profile_id: number;
@@ -20,6 +25,7 @@ type BusinessProfileRow = {
   region: string;
   about: string | null;
   contact_number: string | null;
+  contact_name: string | null;
 };
 
 export async function getUserOnboardingStatus() {
@@ -34,8 +40,12 @@ export async function getUserOnboardingStatus() {
       businessProfile: null,
       appUser: null,
       role: null,
+      hasBuyerProfile: false,
+      hasSupplierProfile: false,
+      hasSubmittedBuyerDocuments: false,
       hasSubmittedSupplierDocuments: false,
       isSupplierVerified: false,
+      onboardingCompleted: false,
       debug: null,
     };
   }
@@ -44,15 +54,55 @@ export async function getUserOnboardingStatus() {
 
   const { data: businessProfile, error: businessProfileError } = await supabase
     .from("business_profiles")
-    .select("*")
+    .select(`
+      profile_id,
+      user_id,
+      business_name,
+      business_type,
+      business_location,
+      city,
+      province,
+      region,
+      about,
+      contact_number,
+      contact_name
+    `)
     .eq("user_id", user.user_id)
     .maybeSingle<BusinessProfileRow>();
 
+  let hasBuyerProfile = false;
+  let hasSupplierProfile = false;
+  let hasSubmittedBuyerDocuments = false;
   let hasSubmittedSupplierDocuments = false;
   let isSupplierVerified = false;
+
+  let buyerProfile: BuyerProfileRow | null = null;
   let supplierProfile: SupplierProfileRow | null = null;
+
+  let buyerDocumentsCount = 0;
   let supplierDocumentsCount = 0;
+  let buyerDocumentsErrorMessage: string | null = null;
   let supplierDocumentsErrorMessage: string | null = null;
+
+  if (role === "buyer" && businessProfile) {
+    const { data: buyerProfileData } = await supabase
+      .from("buyer_profiles")
+      .select("buyer_id, profile_id")
+      .eq("profile_id", businessProfile.profile_id)
+      .maybeSingle<BuyerProfileRow>();
+
+    buyerProfile = buyerProfileData ?? null;
+    hasBuyerProfile = !!buyerProfile;
+
+    const { count, error: buyerDocumentsError } = await supabase
+      .from("business_documents")
+      .select("doc_id", { count: "exact", head: true })
+      .eq("profile_id", businessProfile.profile_id);
+
+    buyerDocumentsCount = count ?? 0;
+    hasSubmittedBuyerDocuments = buyerDocumentsCount > 0;
+    buyerDocumentsErrorMessage = buyerDocumentsError?.message ?? null;
+  }
 
   if (role === "supplier" && businessProfile) {
     const { data: supplierProfileData } = await supabase
@@ -62,6 +112,7 @@ export async function getUserOnboardingStatus() {
       .maybeSingle<SupplierProfileRow>();
 
     supplierProfile = supplierProfileData ?? null;
+    hasSupplierProfile = !!supplierProfile;
     isSupplierVerified = supplierProfile?.verified ?? false;
 
     const { count, error: supplierDocumentsError } = await supabase
@@ -74,21 +125,35 @@ export async function getUserOnboardingStatus() {
     supplierDocumentsErrorMessage = supplierDocumentsError?.message ?? null;
   }
 
+  const onboardingCompleted =
+    role === "buyer"
+      ? !!businessProfile && hasBuyerProfile && hasSubmittedBuyerDocuments
+      : role === "supplier"
+        ? !!businessProfile && hasSupplierProfile && hasSubmittedSupplierDocuments
+        : false;
+
   return {
     authenticated: true,
     hasBusinessProfile: !!businessProfile,
     businessProfile: businessProfile ?? null,
     appUser: user,
     role,
+    hasBuyerProfile,
+    hasSupplierProfile,
+    hasSubmittedBuyerDocuments,
     hasSubmittedSupplierDocuments,
     isSupplierVerified,
+    onboardingCompleted,
     debug: {
       user_id: user.user_id,
       role,
       businessProfileError: businessProfileError?.message ?? null,
       businessProfileId: businessProfile?.profile_id ?? null,
+      buyerProfileId: buyerProfile?.profile_id ?? null,
       supplierProfileId: supplierProfile?.profile_id ?? null,
+      buyerDocumentsCount,
       supplierDocumentsCount,
+      buyerDocumentsErrorMessage,
       supplierDocumentsErrorMessage,
     },
   };
