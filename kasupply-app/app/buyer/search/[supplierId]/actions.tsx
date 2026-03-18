@@ -1,0 +1,233 @@
+"use server";
+
+import { createClient } from "@/lib/supabase/server";
+
+export type SupplierProfileDetails = {
+  supplierId: number;
+  profileId: number;
+  businessName: string;
+  businessType: string;
+  businessLocation: string;
+  city: string;
+  province: string;
+  region: string;
+  about: string | null;
+  contactName: string | null;
+  contactNumber: string | null;
+  verified: boolean;
+  verifiedBadge: boolean;
+  products: {
+    productId: number;
+    productName: string;
+    description: string | null;
+    categoryName: string;
+    unit: string;
+    pricePerUnit: number;
+    moq: number;
+    maxCapacity: number | null;
+    leadTime: string | null;
+    stockAvailable: number | null;
+  }[];
+  certifications: {
+    certificationId: number;
+    certTypeId: number;
+    certificationTypeName: string;
+    fileUrl: string;
+    documentUrl: string | null;
+    fileName: string;
+    isImageFile: boolean;
+    isPdfFile: boolean;
+    status: string;
+    issuedAt: string | null;
+    expiresAt: string | null;
+    verifiedAt: string | null;
+  }[];
+};
+
+function getFileNameFromPath(path: string) {
+  const parts = path.split("/");
+  return parts[parts.length - 1] || "document";
+}
+
+function isImagePath(path: string) {
+  const lower = path.toLowerCase();
+  return (
+    lower.endsWith(".jpg") ||
+    lower.endsWith(".jpeg") ||
+    lower.endsWith(".png") ||
+    lower.endsWith(".webp") ||
+    lower.endsWith(".gif")
+  );
+}
+
+function isPdfPath(path: string) {
+  return path.toLowerCase().endsWith(".pdf");
+}
+
+export async function getSupplierProfileDetails(
+  supplierId: number
+): Promise<SupplierProfileDetails | null> {
+  const supabase = await createClient();
+
+  const { data: supplierRow, error: supplierError } = await supabase
+    .from("supplier_profiles")
+    .select(
+      `
+      supplier_id,
+      profile_id,
+      verified,
+      verified_badge,
+      business_profiles (
+        profile_id,
+        business_name,
+        business_type,
+        business_location,
+        city,
+        province,
+        region,
+        about,
+        contact_name,
+        contact_number
+      )
+    `
+    )
+    .eq("supplier_id", supplierId)
+    .maybeSingle();
+
+  if (supplierError) {
+    console.error("Error fetching supplier profile:", supplierError);
+    throw new Error("Failed to fetch supplier profile.");
+  }
+
+  if (!supplierRow) {
+    return null;
+  }
+
+  const profile = Array.isArray(supplierRow.business_profiles)
+    ? supplierRow.business_profiles[0]
+    : supplierRow.business_profiles;
+
+  if (!profile) {
+    return null;
+  }
+
+  const { data: productRows, error: productError } = await supabase
+    .from("products")
+    .select(
+      `
+      product_id,
+      supplier_id,
+      product_name,
+      description,
+      unit,
+      price_per_unit,
+      moq,
+      max_capacity,
+      lead_time,
+      stock_available,
+      is_published,
+      product_categories (
+        category_name
+      )
+    `
+    )
+    .eq("supplier_id", supplierId)
+    .eq("is_published", true)
+    .order("updated_at", { ascending: false });
+
+  if (productError) {
+    console.error("Error fetching supplier products:", productError);
+    throw new Error("Failed to fetch supplier products.");
+  }
+
+  const { data: certificationRows, error: certificationError } = await supabase
+    .from("supplier_certifications")
+    .select(
+      `
+      certification_id,
+      cert_type_id,
+      file_url,
+      status,
+      issued_at,
+      expires_at,
+      verified_at,
+      certification_types (
+        certification_type_name
+      )
+    `
+    )
+    .eq("supplier_id", supplierId)
+    .eq("status", "approved")
+    .order("certification_id", { ascending: false });
+
+  if (certificationError) {
+    console.error("Error fetching supplier certifications:", certificationError);
+    throw new Error("Failed to fetch supplier certifications.");
+  }
+
+  const certifications = await Promise.all(
+    (certificationRows ?? []).map(async (row) => {
+      const filePath = row.file_url;
+      const fileName = getFileNameFromPath(filePath);
+      const isImageFile = isImagePath(filePath);
+      const isPdfFile = isPdfPath(filePath);
+
+      const { data: signedUrlData } = await supabase.storage
+        .from("business-documents")
+        .createSignedUrl(filePath, 60 * 60);
+
+      return {
+        certificationId: row.certification_id,
+        certTypeId: row.cert_type_id,
+        certificationTypeName:
+          Array.isArray(row.certification_types)
+            ? row.certification_types[0]?.certification_type_name ?? "Unknown"
+            : (row.certification_types as
+                | { certification_type_name?: string }
+                | null)?.certification_type_name ?? "Unknown",
+        fileUrl: filePath,
+        documentUrl: signedUrlData?.signedUrl ?? null,
+        fileName,
+        isImageFile,
+        isPdfFile,
+        status: row.status,
+        issuedAt: row.issued_at,
+        expiresAt: row.expires_at,
+        verifiedAt: row.verified_at,
+      };
+    })
+  );
+
+  return {
+    supplierId: supplierRow.supplier_id,
+    profileId: profile.profile_id,
+    businessName: profile.business_name,
+    businessType: profile.business_type,
+    businessLocation: profile.business_location,
+    city: profile.city,
+    province: profile.province,
+    region: profile.region,
+    about: profile.about,
+    contactName: profile.contact_name,
+    contactNumber: profile.contact_number,
+    verified: supplierRow.verified,
+    verifiedBadge: supplierRow.verified_badge,
+    products: (productRows ?? []).map((row) => ({
+      productId: row.product_id,
+      productName: row.product_name,
+      description: row.description,
+      categoryName:
+        Array.isArray(row.product_categories)
+          ? row.product_categories[0]?.category_name ?? "Uncategorized"
+          : (row.product_categories as { category_name?: string } | null)
+              ?.category_name ?? "Uncategorized",
+      unit: row.unit,
+      pricePerUnit: Number(row.price_per_unit),
+      moq: row.moq,
+      maxCapacity: row.max_capacity,
+      leadTime: row.lead_time,
+      stockAvailable: row.stock_available,
+    })),
+    certifications,
+  };
+}

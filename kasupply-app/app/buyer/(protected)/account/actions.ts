@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentAppUser } from "@/lib/auth/get-current-app-user";
 
@@ -90,32 +91,44 @@ export async function updateBuyerAccount(formData: FormData) {
 
   if (documentId) {
     const { error: documentUpdateError } = await supabase
-        .from("business_documents")
-        .update({
+      .from("business_documents")
+      .update({
         is_visible_to_others: isVisibleToOthers,
-        })
-        .eq("doc_id", documentId);
+      })
+      .eq("doc_id", documentId);
 
     if (documentUpdateError) {
-            throw new Error(
-            documentUpdateError.message || "Failed to update document visibility."
-            );
-        }
+      throw new Error(
+        documentUpdateError.message || "Failed to update document visibility."
+      );
+    }
 
-    const { data: verifyDocument, error: verifyDocumentError } = await supabase
-        .from("business_documents")
-        .select("doc_id, is_visible_to_others")
-        .eq("doc_id", documentId)
-        .maybeSingle();
+    const { error: verifyDocumentError } = await supabase
+      .from("business_documents")
+      .select("doc_id, is_visible_to_others")
+      .eq("doc_id", documentId)
+      .maybeSingle();
 
     if (verifyDocumentError) {
-        throw new Error(
+      throw new Error(
         verifyDocumentError.message || "Failed to verify document visibility update."
-        );
+      );
     }
   }
 
   revalidatePath("/buyer/account");
 
   return { success: true };
+}
+
+export async function logoutBuyerAccount() {
+  const supabase = await createClient();
+
+  const { error } = await supabase.auth.signOut();
+
+  if (error) {
+    throw new Error(error.message || "Failed to log out.");
+  }
+
+  redirect("/buyer");
 }

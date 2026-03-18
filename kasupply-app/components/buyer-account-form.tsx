@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { updateBuyerAccount } from "@/app/buyer/account/actions";
+import { updateBuyerAccount } from "@/app/buyer/(protected)/account/actions";
 
 type BuyerAccountFormProps = {
   user: {

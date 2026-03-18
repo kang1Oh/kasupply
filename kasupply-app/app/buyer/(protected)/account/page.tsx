@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentAppUser } from "@/lib/auth/get-current-app-user";
 import { BuyerAccountForm } from "@/components/buyer-account-form";
+import { logoutBuyerAccount } from "./actions";
 
 function BuyerAccountPageFallback() {
   return <div className="p-6">Loading buyer account...</div>;
@@ -132,12 +133,23 @@ async function BuyerAccountPageContent({ searchParams }: BuyerAccountPageProps) 
           </p>
         </div>
 
-        <Link
-          href="/buyer/account?edit=1"
-          className="rounded-md bg-gray-200 px-4 py-2 text-black hover:bg-black hover:text-white hover:border-white border transition"
-        >
-          Edit Account
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/buyer/account?edit=1"
+            className="rounded-md border bg-gray-200 px-4 py-2 text-black transition hover:bg-black hover:text-white hover:border-white"
+          >
+            Edit Account
+          </Link>
+
+          <form action={logoutBuyerAccount}>
+            <button
+              type="submit"
+              className="rounded-md border border-red-500 px-4 py-2 text-red-500 transition hover:bg-red-500 hover:text-white"
+            >
+              Log Out
+            </button>
+          </form>
+        </div>
       </div>
 
       <section className="rounded-xl border bg-black p-5 shadow-sm space-y-4">
