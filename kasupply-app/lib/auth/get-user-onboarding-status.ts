@@ -28,6 +28,34 @@ type BusinessProfileRow = {
   contact_name: string | null;
 };
 
+type BusinessDocumentRow = {
+  doc_id: number;
+  doc_type_id: number;
+  status: string | null;
+  document_types: {
+    document_type_name: string;
+  } | null;
+};
+
+type SiteShowcaseVideoRow = {
+  video_id: number;
+  profile_id: number;
+  file_url: string;
+  status: string;
+  uploaded_at: string;
+  verified_at: string | null;
+};
+
+const REQUIRED_SUPPLIER_DOCUMENTS = [
+  "DTI Business Registration Certificate",
+  "Mayor's Permit",
+  "FDA Certificate",
+];
+
+function normalizeDocumentName(value: string) {
+  return value.trim().toLowerCase();
+}
+
 export async function getUserOnboardingStatus() {
   const supabase = await createClient();
 
@@ -44,8 +72,16 @@ export async function getUserOnboardingStatus() {
       hasSupplierProfile: false,
       hasSubmittedBuyerDocuments: false,
       hasSubmittedSupplierDocuments: false,
+      hasSubmittedRequiredSupplierDocuments: false,
+      hasSubmittedSiteVideo: false,
       isSupplierVerified: false,
-      onboardingCompleted: false,
+      supplierVerificationStatus: "not_started" as
+        | "not_started"
+        | "incomplete"
+        | "pending"
+        | "verified",
+      requiredDocumentsChecklist: [],
+      siteVideo: null,
       debug: null,
     };
   }
@@ -74,15 +110,24 @@ export async function getUserOnboardingStatus() {
   let hasSupplierProfile = false;
   let hasSubmittedBuyerDocuments = false;
   let hasSubmittedSupplierDocuments = false;
+  let hasSubmittedRequiredSupplierDocuments = false;
+  let hasSubmittedSiteVideo = false;
   let isSupplierVerified = false;
 
   let buyerProfile: BuyerProfileRow | null = null;
   let supplierProfile: SupplierProfileRow | null = null;
-
-  let buyerDocumentsCount = 0;
-  let supplierDocumentsCount = 0;
-  let buyerDocumentsErrorMessage: string | null = null;
+  let siteVideo: SiteShowcaseVideoRow | null = null;
   let supplierDocumentsErrorMessage: string | null = null;
+
+  let requiredDocumentsChecklist: Array<{
+    name: string;
+    uploaded: boolean;
+    status: string | null;
+  }> = REQUIRED_SUPPLIER_DOCUMENTS.map((name) => ({
+    name,
+    uploaded: false,
+    status: null,
+  }));
 
   if (role === "buyer" && businessProfile) {
     const { data: buyerProfileData } = await supabase
@@ -93,15 +138,7 @@ export async function getUserOnboardingStatus() {
 
     buyerProfile = buyerProfileData ?? null;
     hasBuyerProfile = !!buyerProfile;
-
-    const { count, error: buyerDocumentsError } = await supabase
-      .from("business_documents")
-      .select("doc_id", { count: "exact", head: true })
-      .eq("profile_id", businessProfile.profile_id);
-
-    buyerDocumentsCount = count ?? 0;
-    hasSubmittedBuyerDocuments = buyerDocumentsCount > 0;
-    buyerDocumentsErrorMessage = buyerDocumentsError?.message ?? null;
+    hasSubmittedBuyerDocuments = !!buyerProfile;
   }
 
   if (role === "supplier" && businessProfile) {
@@ -115,22 +152,79 @@ export async function getUserOnboardingStatus() {
     hasSupplierProfile = !!supplierProfile;
     isSupplierVerified = supplierProfile?.verified ?? false;
 
-    const { count, error: supplierDocumentsError } = await supabase
-      .from("business_documents")
-      .select("doc_id", { count: "exact", head: true })
-      .eq("profile_id", businessProfile.profile_id);
+    const { data: supplierDocuments, error: supplierDocumentsError } =
+      await supabase
+        .from("business_documents")
+        .select(`
+          doc_id,
+          doc_type_id,
+          status,
+          document_types!business_documents_doc_type_id_fkey (
+            document_type_name
+          )
+        `)
+        .eq("profile_id", businessProfile.profile_id);
 
-    supplierDocumentsCount = count ?? 0;
-    hasSubmittedSupplierDocuments = supplierDocumentsCount > 0;
     supplierDocumentsErrorMessage = supplierDocumentsError?.message ?? null;
+
+    const safeDocuments = (supplierDocuments as BusinessDocumentRow[] | null) ?? [];
+    hasSubmittedSupplierDocuments = safeDocuments.length > 0;
+
+    const uploadedDocumentNames = new Map<
+      string,
+      { uploaded: boolean; status: string | null }
+    >();
+
+    for (const doc of safeDocuments) {
+      const rawName = doc.document_types?.document_type_name ?? "";
+      const normalizedName = normalizeDocumentName(rawName);
+
+      if (!uploadedDocumentNames.has(normalizedName)) {
+        uploadedDocumentNames.set(normalizedName, {
+          uploaded: true,
+          status: doc.status ?? null,
+        });
+      }
+    }
+
+    requiredDocumentsChecklist = REQUIRED_SUPPLIER_DOCUMENTS.map((name) => {
+      const existing = uploadedDocumentNames.get(normalizeDocumentName(name));
+      return {
+        name,
+        uploaded: existing?.uploaded ?? false,
+        status: existing?.status ?? null,
+      };
+    });
+
+    hasSubmittedRequiredSupplierDocuments = requiredDocumentsChecklist.every(
+      (doc) => doc.uploaded
+    );
+
+    const { data: siteVideoData } = await supabase
+      .from("site_showcase_videos")
+      .select("video_id, profile_id, file_url, status, uploaded_at, verified_at")
+      .eq("profile_id", businessProfile.profile_id)
+      .maybeSingle<SiteShowcaseVideoRow>();
+
+    siteVideo = siteVideoData ?? null;
+    hasSubmittedSiteVideo = !!siteVideo;
   }
 
-  const onboardingCompleted =
-    role === "buyer"
-      ? !!businessProfile && hasBuyerProfile && hasSubmittedBuyerDocuments
-      : role === "supplier"
-        ? !!businessProfile && hasSupplierProfile && hasSubmittedSupplierDocuments
-        : false;
+  let supplierVerificationStatus: "not_started" | "incomplete" | "pending" | "verified" =
+    "not_started";
+
+  if (role === "supplier" && businessProfile) {
+    if (isSupplierVerified) {
+      supplierVerificationStatus = "verified";
+    } else if (
+      hasSubmittedRequiredSupplierDocuments &&
+      hasSubmittedSiteVideo
+    ) {
+      supplierVerificationStatus = "pending";
+    } else {
+      supplierVerificationStatus = "incomplete";
+    }
+  }
 
   return {
     authenticated: true,
@@ -142,8 +236,12 @@ export async function getUserOnboardingStatus() {
     hasSupplierProfile,
     hasSubmittedBuyerDocuments,
     hasSubmittedSupplierDocuments,
+    hasSubmittedRequiredSupplierDocuments,
+    hasSubmittedSiteVideo,
     isSupplierVerified,
-    onboardingCompleted,
+    supplierVerificationStatus,
+    requiredDocumentsChecklist,
+    siteVideo,
     debug: {
       user_id: user.user_id,
       role,
@@ -151,9 +249,6 @@ export async function getUserOnboardingStatus() {
       businessProfileId: businessProfile?.profile_id ?? null,
       buyerProfileId: buyerProfile?.profile_id ?? null,
       supplierProfileId: supplierProfile?.profile_id ?? null,
-      buyerDocumentsCount,
-      supplierDocumentsCount,
-      buyerDocumentsErrorMessage,
       supplierDocumentsErrorMessage,
     },
   };

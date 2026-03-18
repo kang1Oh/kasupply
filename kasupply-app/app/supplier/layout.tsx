@@ -2,35 +2,24 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getUserOnboardingStatus } from "@/lib/auth/get-user-onboarding-status";
+import { LogoutButton } from "@/components/logout-button";
 
-function getNavItems(role: string | null) {
-  if (role === "supplier") {
-    return {
-      top: [
-        { href: "/dashboard", label: "Dashboard" },
-        { href: "/dashboard/supplier/inventory", label: "Inventory" },
-        { href: "/dashboard/supplier/rfq", label: "RFQ" },
-        { href: "/dashboard/supplier/orders", label: "Orders" },
-        { href: "/dashboard/supplier/invoices", label: "Invoices" },
-        { href: "/dashboard/supplier/messages", label: "Messages" },
-        { href: "/dashboard/supplier/bulletin-board", label: "Bulletin Board" },
-      ],
-      bottom: [
-        {
-          href: "/dashboard/supplier/account-settings",
-          label: "Account Settings",
-        },
-      ],
-    };
-  }
-
+function getSupplierNavItems() {
   return {
-    top: [{ href: "/dashboard", label: "Dashboard" }],
-    bottom: [],
+    top: [
+      { href: "/supplier/dashboard", label: "Dashboard" },
+      { href: "/supplier/inventory", label: "Inventory" },
+      { href: "/supplier/rfq", label: "RFQ" },
+      { href: "/supplier/purchase-orders", label: "Purchase Orders" },
+      { href: "/supplier/messages", label: "Messages" },
+    ],
+    bottom: [
+      { href: "/supplier/account-settings", label: "Account Settings" },
+    ],
   };
 }
 
-function DashboardLayoutFallback() {
+function SupplierLayoutFallback() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="grid min-h-screen md:grid-cols-[260px_1fr]">
@@ -38,13 +27,13 @@ function DashboardLayoutFallback() {
           <h2 className="text-xl font-bold">KaSupply</h2>
           <p className="text-sm text-gray-500">Loading...</p>
         </aside>
-        <main className="p-6">Loading dashboard...</main>
+        <main className="p-6">Loading supplier panel...</main>
       </div>
     </div>
   );
 }
 
-async function DashboardLayoutContent({
+async function SupplierLayoutContent({
   children,
 }: {
   children: React.ReactNode;
@@ -55,18 +44,23 @@ async function DashboardLayoutContent({
     redirect("/auth/login");
   }
 
+  if (status.role !== "supplier") {
+    redirect("/auth/login");
+  }
+
   if (!status.hasBusinessProfile) {
     redirect("/onboarding");
   }
 
-  if (
-    status.role === "supplier" &&
-    !status.hasSubmittedSupplierDocuments
-  ) {
+  if (!status.hasSubmittedRequiredSupplierDocuments) {
     redirect("/onboarding/supplier-documents");
   }
 
-  const navItems = getNavItems(status.role);
+  if (!status.hasSubmittedSiteVideo) {
+    redirect("/onboarding/supplier-site-video");
+  }
+
+  const navItems = getSupplierNavItems();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -74,9 +68,7 @@ async function DashboardLayoutContent({
         <aside className="flex h-screen flex-col border-r bg-white p-4">
           <div>
             <h2 className="text-xl font-bold">KaSupply</h2>
-            <p className="text-sm text-gray-500 capitalize">
-              {status.role} panel
-            </p>
+            <p className="text-sm text-gray-500 capitalize">supplier panel</p>
           </div>
 
           <nav className="mt-8 space-y-2">
@@ -101,6 +93,10 @@ async function DashboardLayoutContent({
                 {item.label}
               </Link>
             ))}
+
+            <div className="mt-3 px-3">
+              <LogoutButton />
+            </div>
           </div>
         </aside>
 
@@ -110,14 +106,14 @@ async function DashboardLayoutContent({
   );
 }
 
-export default function DashboardLayout({
+export default function SupplierLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <Suspense fallback={<DashboardLayoutFallback />}>
-      <DashboardLayoutContent>{children}</DashboardLayoutContent>
+    <Suspense fallback={<SupplierLayoutFallback />}>
+      <SupplierLayoutContent>{children}</SupplierLayoutContent>
     </Suspense>
   );
 }

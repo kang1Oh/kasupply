@@ -2,6 +2,26 @@ import { redirect } from "next/navigation";
 import { getUserOnboardingStatus } from "@/lib/auth/get-user-onboarding-status";
 import { completeOnboarding } from "./actions";
 
+const PHILIPPINE_REGIONS = [
+  "NCR - National Capital Region",
+  "CAR - Cordillera Administrative Region",
+  "Region I - Ilocos Region",
+  "Region II - Cagayan Valley",
+  "Region III - Central Luzon",
+  "Region IV-A - CALABARZON",
+  "Region IV-B - MIMAROPA",
+  "Region V - Bicol Region",
+  "Region VI - Western Visayas",
+  "Region VII - Central Visayas",
+  "Region VIII - Eastern Visayas",
+  "Region IX - Zamboanga Peninsula",
+  "Region X - Northern Mindanao",
+  "Region XI - Davao Region",
+  "Region XII - SOCCSKSARGEN",
+  "Region XIII - Caraga",
+  "BARMM - Bangsamoro Autonomous Region in Muslim Mindanao",
+];
+
 export default async function OnboardingPage() {
   const status = await getUserOnboardingStatus();
 
@@ -80,12 +100,21 @@ export default async function OnboardingPage() {
 
         <div>
           <label className="block mb-1 font-medium">Region</label>
-          <input
+          <select
             name="region"
-            type="text"
             required
             className="w-full border rounded px-3 py-2"
-          />
+            defaultValue=""
+          >
+            <option value="" disabled>
+              Select region
+            </option>
+            {PHILIPPINE_REGIONS.map((region) => (
+              <option key={region} value={region}>
+                {region}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div>
