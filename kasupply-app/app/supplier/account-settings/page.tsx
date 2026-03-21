@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -9,6 +10,15 @@ import {
 type SupplierProfileRow = {
   supplier_id: number;
   profile_id: number;
+  verified: boolean;
+  verified_at: string | null;
+};
+
+type AppUserRow = {
+  user_id: string;
+  name: string | null;
+  email: string | null;
+  avatar_url: string | null;
 };
 
 type BusinessProfileRow = {
@@ -21,6 +31,7 @@ type BusinessProfileRow = {
   region: string;
   about: string | null;
   contact_number: string | null;
+  contact_name: string | null;
 };
 
 type CertificationTypeRow = {
@@ -39,6 +50,26 @@ type SupplierCertificationRow = {
   verified_at: string | null;
 };
 
+const PHILIPPINE_REGIONS = [
+  "NCR - National Capital Region",
+  "CAR - Cordillera Administrative Region",
+  "Region I - Ilocos Region",
+  "Region II - Cagayan Valley",
+  "Region III - Central Luzon",
+  "Region IV-A - CALABARZON",
+  "Region IV-B - MIMAROPA",
+  "Region V - Bicol Region",
+  "Region VI - Western Visayas",
+  "Region VII - Central Visayas",
+  "Region VIII - Eastern Visayas",
+  "Region IX - Zamboanga Peninsula",
+  "Region X - Northern Mindanao",
+  "Region XI - Davao Region",
+  "Region XII - SOCCSKSARGEN",
+  "Region XIII - Caraga",
+  "BARMM - Bangsamoro Autonomous Region",
+];
+
 function formatDate(value: string | null) {
   if (!value) return "—";
 
@@ -52,7 +83,53 @@ function formatDate(value: string | null) {
   }).format(parsed);
 }
 
-export default async function SupplierAccountSettingsPage() {
+function getAvatarFallback(name: string | null, businessName: string) {
+  const source = (name || businessName).trim();
+  return source ? source.charAt(0).toUpperCase() : "S";
+}
+
+function InfoField({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div>
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+        {label}
+      </p>
+      <p className="mt-2 text-[1.05rem] text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+function ModalField({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <label className="mb-1.5 block text-sm font-medium text-slate-700">{label}</label>
+      {children}
+    </div>
+  );
+}
+
+export default async function SupplierAccountSettingsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{
+    edit?: string;
+  }>;
+}) {
+  const resolvedSearchParams = (await searchParams) ?? {};
+  const isEditModalOpen = resolvedSearchParams.edit === "profile";
+
   const supabase = await createClient();
 
   const {
@@ -66,9 +143,9 @@ export default async function SupplierAccountSettingsPage() {
 
   const { data: appUser, error: appUserError } = await supabase
     .from("users")
-    .select("user_id, name")
+    .select("user_id, name, email, avatar_url")
     .eq("auth_user_id", authUser.id)
-    .single();
+    .single<AppUserRow>();
 
   if (appUserError || !appUser) {
     throw new Error("User record not found.");
@@ -85,7 +162,8 @@ export default async function SupplierAccountSettingsPage() {
       province,
       region,
       about,
-      contact_number
+      contact_number,
+      contact_name
     `)
     .eq("user_id", appUser.user_id)
     .single<BusinessProfileRow>();
@@ -96,7 +174,7 @@ export default async function SupplierAccountSettingsPage() {
 
   const { data: supplierProfile, error: supplierProfileError } = await supabase
     .from("supplier_profiles")
-    .select("supplier_id, profile_id")
+    .select("supplier_id, profile_id, verified, verified_at")
     .eq("profile_id", businessProfile.profile_id)
     .single<SupplierProfileRow>();
 
@@ -111,7 +189,7 @@ export default async function SupplierAccountSettingsPage() {
 
   if (certificationTypesError) {
     throw new Error(
-      certificationTypesError.message || "Failed to load certification types."
+      certificationTypesError.message || "Failed to load certification types.",
     );
   }
 
@@ -143,124 +221,81 @@ export default async function SupplierAccountSettingsPage() {
     certificationTypeMap.set(type.cert_type_id, type);
   }
 
+  const avatarFallback = getAvatarFallback(appUser.name, businessProfile.business_name);
+  const subtitleParts = [
+    businessProfile.business_type,
+    businessProfile.region,
+    supplierProfile.verified_at
+      ? `Verified since ${formatDate(supplierProfile.verified_at)}`
+      : supplierProfile.verified
+        ? "Verified supplier"
+        : "Verification pending",
+  ].filter(Boolean);
+
   return (
     <main className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Account Settings</h1>
         <p className="text-gray-600">
-          Update your supplier profile and manage additional certifications.
+          View your public supplier profile and manage your certifications.
         </p>
       </div>
 
-      <section className="rounded-xl border bg-white p-6 shadow-sm">
-        <div className="mb-4">
-          <h2 className="font-semibold">Business Profile</h2>
-          <p className="text-sm text-gray-500">
-            Keep your business details accurate for matching and buyer discovery.
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-slate-950">Business profile</h2>
+          <p className="text-sm text-slate-500">
+            Your business information as shown to buyers on the platform.
           </p>
         </div>
 
-        <form action={updateSupplierAccountSettings} className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-sm font-medium">Business Name</label>
-            <input
-              name="business_name"
-              type="text"
-              required
-              defaultValue={businessProfile.business_name}
-              className="w-full rounded border px-3 py-2"
-            />
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex items-center gap-5">
+            {appUser.avatar_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={appUser.avatar_url}
+                alt={`${businessProfile.business_name} profile`}
+                className="h-20 w-20 rounded-full border border-emerald-200 object-cover"
+              />
+            ) : (
+              <div className="flex h-20 w-20 items-center justify-center rounded-full border border-emerald-300 bg-emerald-50 text-3xl font-semibold text-[#0f766e]">
+                {avatarFallback}
+              </div>
+            )}
+
+            <div>
+              <h3 className="text-[1.85rem] font-semibold tracking-tight text-slate-950">
+                {businessProfile.business_name}
+              </h3>
+              <p className="mt-1 text-[1.02rem] text-slate-700">
+                {subtitleParts.join(" · ")}
+              </p>
+            </div>
           </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium">Business Type</label>
-            <input
-              name="business_type"
-              type="text"
-              required
-              defaultValue={businessProfile.business_type}
-              className="w-full rounded border px-3 py-2"
-              placeholder="e.g. Manufacturer, Distributor, Supplier"
-            />
-          </div>
+          <Link
+            href="/supplier/account-settings?edit=profile"
+            className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            <span aria-hidden="true">✎</span>
+            Edit profile
+          </Link>
+        </div>
 
+        <div className="mt-10 grid gap-x-14 gap-y-8 md:grid-cols-2">
+          <InfoField label="Business Name" value={businessProfile.business_name} />
+          <InfoField label="Business Type" value={businessProfile.business_type} />
+          <InfoField label="Business Location" value={businessProfile.business_location} />
+          <InfoField label="Province" value={businessProfile.province} />
+          <InfoField label="City / Municipality" value={businessProfile.city} />
+          <InfoField label="Contact Number" value={businessProfile.contact_number ?? "Not provided"} />
+          <InfoField label="Region" value={businessProfile.region} />
+          <InfoField label="Contact Person" value={businessProfile.contact_name ?? appUser.name ?? "Not provided"} />
           <div className="md:col-span-2">
-            <label className="mb-1 block text-sm font-medium">Business Location</label>
-            <input
-              name="business_location"
-              type="text"
-              required
-              defaultValue={businessProfile.business_location}
-              className="w-full rounded border px-3 py-2"
-              placeholder="Street / Barangay / Full address"
-            />
+            <InfoField label="About" value={businessProfile.about ?? "No business description added yet."} />
           </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium">City</label>
-            <input
-              name="city"
-              type="text"
-              required
-              defaultValue={businessProfile.city}
-              className="w-full rounded border px-3 py-2"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium">Province</label>
-            <input
-              name="province"
-              type="text"
-              required
-              defaultValue={businessProfile.province}
-              className="w-full rounded border px-3 py-2"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium">Region</label>
-            <input
-              name="region"
-              type="text"
-              required
-              defaultValue={businessProfile.region}
-              className="w-full rounded border px-3 py-2"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium">Contact Number</label>
-            <input
-              name="contact_number"
-              type="text"
-              required
-              defaultValue={businessProfile.contact_number ?? ""}
-              className="w-full rounded border px-3 py-2"
-              placeholder="e.g. 09123456789"
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="mb-1 block text-sm font-medium">About</label>
-            <textarea
-              name="about"
-              rows={5}
-              defaultValue={businessProfile.about ?? ""}
-              className="w-full rounded border px-3 py-2"
-              placeholder="Describe your business, products, capabilities, and operations."
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <button
-              type="submit"
-              className="rounded bg-black px-4 py-2 text-white"
-            >
-              Save Changes
-            </button>
-          </div>
-        </form>
+        </div>
       </section>
 
       <section className="rounded-xl border bg-white p-6 shadow-sm">
@@ -382,7 +417,7 @@ export default async function SupplierAccountSettingsPage() {
                       <td className="px-3 py-3">{formatDate(certification.verified_at)}</td>
 
                       <td className="px-3 py-3">
-                        <span className="text-xs text-gray-500 break-all">
+                        <span className="break-all text-xs text-gray-500">
                           {certification.file_url}
                         </span>
                       </td>
@@ -410,6 +445,176 @@ export default async function SupplierAccountSettingsPage() {
           </div>
         )}
       </section>
+
+      {isEditModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-8">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <div className="mb-6 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-semibold text-slate-950">Edit profile</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Update your public supplier profile and upload a profile picture.
+                </p>
+              </div>
+
+              <Link
+                href="/supplier/account-settings"
+                className="rounded-full border border-slate-200 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-50"
+              >
+                Close
+              </Link>
+            </div>
+
+            <form action={updateSupplierAccountSettings} className="grid gap-5">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                  {appUser.avatar_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={appUser.avatar_url}
+                      alt={`${businessProfile.business_name} avatar`}
+                      className="h-20 w-20 rounded-full border border-slate-200 object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-20 w-20 items-center justify-center rounded-full border border-emerald-300 bg-emerald-50 text-3xl font-semibold text-[#0f766e]">
+                      {avatarFallback}
+                    </div>
+                  )}
+
+                  <div className="flex-1">
+                    <ModalField label="Profile Picture">
+                      <input
+                        name="avatar_file"
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.webp"
+                        className="w-full rounded border border-slate-200 bg-white px-3 py-2"
+                      />
+                    </ModalField>
+                    <p className="mt-2 text-xs text-slate-500">
+                      Recommended: square image, up to 5 MB. This will update `users.avatar_url`.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <ModalField label="Contact Person">
+                  <input
+                    name="contact_name"
+                    type="text"
+                    required
+                    defaultValue={businessProfile.contact_name ?? appUser.name ?? ""}
+                    className="w-full rounded border border-slate-200 px-3 py-2"
+                  />
+                </ModalField>
+
+                <ModalField label="Contact Number">
+                  <input
+                    name="contact_number"
+                    type="text"
+                    required
+                    defaultValue={businessProfile.contact_number ?? ""}
+                    className="w-full rounded border border-slate-200 px-3 py-2"
+                  />
+                </ModalField>
+
+                <ModalField label="Business Name">
+                  <input
+                    name="business_name"
+                    type="text"
+                    required
+                    defaultValue={businessProfile.business_name}
+                    className="w-full rounded border border-slate-200 px-3 py-2"
+                  />
+                </ModalField>
+
+                <ModalField label="Business Type">
+                  <input
+                    name="business_type"
+                    type="text"
+                    required
+                    defaultValue={businessProfile.business_type}
+                    className="w-full rounded border border-slate-200 px-3 py-2"
+                  />
+                </ModalField>
+
+                <div className="md:col-span-2">
+                  <ModalField label="Business Location">
+                    <input
+                      name="business_location"
+                      type="text"
+                      required
+                      defaultValue={businessProfile.business_location}
+                      className="w-full rounded border border-slate-200 px-3 py-2"
+                    />
+                  </ModalField>
+                </div>
+
+                <ModalField label="City / Municipality">
+                  <input
+                    name="city"
+                    type="text"
+                    required
+                    defaultValue={businessProfile.city}
+                    className="w-full rounded border border-slate-200 px-3 py-2"
+                  />
+                </ModalField>
+
+                <ModalField label="Province">
+                  <input
+                    name="province"
+                    type="text"
+                    required
+                    defaultValue={businessProfile.province}
+                    className="w-full rounded border border-slate-200 px-3 py-2"
+                  />
+                </ModalField>
+
+                <ModalField label="Region">
+                  <select
+                    name="region"
+                    required
+                    defaultValue={businessProfile.region}
+                    className="w-full rounded border border-slate-200 px-3 py-2"
+                  >
+                    {PHILIPPINE_REGIONS.map((region) => (
+                      <option key={region} value={region}>
+                        {region}
+                      </option>
+                    ))}
+                  </select>
+                </ModalField>
+
+                <div className="md:col-span-2">
+                  <ModalField label="About">
+                    <textarea
+                      name="about"
+                      rows={5}
+                      defaultValue={businessProfile.about ?? ""}
+                      className="w-full rounded border border-slate-200 px-3 py-2"
+                    />
+                  </ModalField>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap justify-end gap-3 border-t border-slate-200 pt-5">
+                <Link
+                  href="/supplier/account-settings"
+                  className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  Cancel
+                </Link>
+                <button
+                  type="submit"
+                  className="rounded-2xl bg-[#243f68] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1e3658]"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

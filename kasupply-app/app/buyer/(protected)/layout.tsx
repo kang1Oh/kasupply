@@ -22,14 +22,6 @@ async function ProtectedBuyerLayoutContent({
     redirect("/dashboard");
   }
 
-  if (!status.hasBusinessProfile || !status.hasBuyerProfile) {
-    redirect("/onboarding");
-  }
-
-  if (!status.hasSubmittedBuyerDocuments) {
-    redirect("/onboarding/buyer-documents");
-  }
-
   return <>{children}</>;
 }
 

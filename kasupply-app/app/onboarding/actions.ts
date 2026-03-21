@@ -39,7 +39,19 @@ export async function completeOnboarding(formData: FormData) {
     .maybeSingle();
 
   if (existingBusinessProfile) {
-    redirect("/dashboard");
+    if (appUser.role_id) {
+      const { data: role } = await supabase
+        .from("roles")
+        .select("role_name")
+        .eq("role_id", appUser.role_id)
+        .maybeSingle<RoleRow>();
+
+      if (role?.role_name?.toLowerCase() === "supplier") {
+        redirect("/supplier/dashboard");
+      }
+    }
+
+    redirect("/buyer");
   }
 
   // 3. Get form values
@@ -102,19 +114,7 @@ export async function completeOnboarding(formData: FormData) {
 
   // 6. Create buyer or supplier profile
   if (role.role_name.toLowerCase() === "buyer") {
-    const { error: buyerProfileError } = await supabase
-      .from("buyer_profiles")
-      .insert({
-        profile_id: newBusinessProfile.profile_id,
-      });
-
-    if (buyerProfileError) {
-      throw new Error(
-        buyerProfileError.message || "Failed to create buyer profile."
-      );
-    }
-
-    redirect("/onboarding/buyer-documents");
+    redirect("/buyer");
   }
 
   if (role.role_name.toLowerCase() === "supplier") {

@@ -15,7 +15,6 @@ export async function updateBuyerAccount(formData: FormData) {
   }
 
   const name = String(formData.get("name") || "").trim();
-  const phone = String(formData.get("phone") || "").trim();
 
   const business_name = String(formData.get("business_name") || "").trim();
   const business_type = String(formData.get("business_type") || "").trim();
@@ -48,17 +47,16 @@ export async function updateBuyerAccount(formData: FormData) {
     .from("business_profiles")
     .select("profile_id")
     .eq("user_id", user.user_id)
-    .single();
+    .maybeSingle();
 
-  if (businessProfileError || !businessProfile) {
-    throw new Error("Business profile not found.");
+  if (businessProfileError) {
+    throw new Error("Failed to load business profile.");
   }
 
   const { error: userUpdateError } = await supabase
     .from("users")
     .update({
       name,
-      phone: phone || null,
       updated_at: new Date().toISOString(),
     })
     .eq("user_id", user.user_id);
@@ -67,26 +65,81 @@ export async function updateBuyerAccount(formData: FormData) {
     throw new Error(userUpdateError.message || "Failed to update user.");
   }
 
-  const { error: businessUpdateError } = await supabase
-    .from("business_profiles")
-    .update({
-      business_name,
-      business_type,
-      contact_name,
-      contact_number: contact_number || null,
-      business_location,
-      city,
-      province,
-      region,
-      about: about || null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("profile_id", businessProfile.profile_id);
+  let profileId = businessProfile?.profile_id ?? null;
 
-  if (businessUpdateError) {
-    throw new Error(
-      businessUpdateError.message || "Failed to update business profile."
-    );
+  if (!profileId) {
+    const { data: insertedProfile, error: businessInsertError } = await supabase
+      .from("business_profiles")
+      .insert({
+        user_id: user.user_id,
+        business_name,
+        business_type,
+        contact_name,
+        contact_number: contact_number || null,
+        business_location,
+        city,
+        province,
+        region,
+        about: about || null,
+      })
+      .select("profile_id")
+      .single();
+
+    if (businessInsertError || !insertedProfile) {
+      throw new Error(
+        businessInsertError?.message || "Failed to create business profile."
+      );
+    }
+
+    profileId = insertedProfile.profile_id;
+
+    const { data: existingBuyerProfile, error: buyerProfileLookupError } = await supabase
+      .from("buyer_profiles")
+      .select("buyer_id")
+      .eq("profile_id", profileId)
+      .maybeSingle();
+
+    if (buyerProfileLookupError) {
+      throw new Error(
+        buyerProfileLookupError.message || "Failed to verify buyer profile."
+      );
+    }
+
+    if (!existingBuyerProfile) {
+      const { error: buyerProfileInsertError } = await supabase
+        .from("buyer_profiles")
+        .insert({
+          profile_id: profileId,
+        });
+
+      if (buyerProfileInsertError) {
+        throw new Error(
+          buyerProfileInsertError.message || "Failed to create buyer profile."
+        );
+      }
+    }
+  } else {
+    const { error: businessUpdateError } = await supabase
+      .from("business_profiles")
+      .update({
+        business_name,
+        business_type,
+        contact_name,
+        contact_number: contact_number || null,
+        business_location,
+        city,
+        province,
+        region,
+        about: about || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("profile_id", profileId);
+
+    if (businessUpdateError) {
+      throw new Error(
+        businessUpdateError.message || "Failed to update business profile."
+      );
+    }
   }
 
   if (documentId) {

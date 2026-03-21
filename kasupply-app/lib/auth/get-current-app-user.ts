@@ -6,7 +6,6 @@ export type CurrentAppUser = {
   role_id: number;
   name: string;
   email: string;
-  phone: string | null;
   roles: {
     role_id: number;
     role_name: string;
@@ -36,7 +35,6 @@ export async function getCurrentAppUser(): Promise<{
       role_id,
       name,
       email,
-      phone,
       roles!users_role_id_fkey (
         role_id,
         role_name

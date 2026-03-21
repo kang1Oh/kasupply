@@ -9,7 +9,6 @@ type BuyerAccountFormProps = {
   user: {
     name: string;
     email: string;
-    phone: string | null;
   };
   businessProfile: {
     business_name: string;
@@ -87,18 +86,6 @@ export function BuyerAccountForm({
               defaultValue={user.email}
               disabled
               className="w-full rounded-md border bg-black px-3 py-2"
-            />
-          </div>
-
-          <div className="space-y-2 md:col-span-2">
-            <label htmlFor="phone" className="text-sm font-medium">
-              Phone Number
-            </label>
-            <input
-              id="phone"
-              name="phone"
-              defaultValue={user.phone || ""}
-              className="w-full rounded-md border px-3 py-2"
             />
           </div>
         </div>

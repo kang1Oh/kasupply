@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getUserOnboardingStatus } from "@/lib/auth/get-user-onboarding-status";
 
@@ -14,14 +13,6 @@ export default async function DashboardPage() {
   }
 
   if (status.role === "buyer") {
-    if (!status.hasBusinessProfile || !status.hasBuyerProfile) {
-      redirect("/onboarding");
-    }
-
-    if (!status.hasSubmittedBuyerDocuments) {
-      redirect("/onboarding/buyer-documents");
-    }
-
     redirect("/buyer");
   }
 

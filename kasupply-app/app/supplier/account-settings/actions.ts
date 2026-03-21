@@ -1,12 +1,31 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 type SupplierProfileRow = {
   supplier_id: number;
   profile_id: number;
 };
+
+type AppUserRow = {
+  user_id: string;
+  name: string | null;
+  avatar_url: string | null;
+};
+
+function isAvatarFromBucket(avatarUrl: string | null) {
+  return Boolean(avatarUrl && avatarUrl.includes("/storage/v1/object/public/avatars/"));
+}
+
+function extractAvatarPath(avatarUrl: string | null) {
+  if (!avatarUrl) return null;
+  const marker = "/storage/v1/object/public/avatars/";
+  const index = avatarUrl.indexOf(marker);
+  if (index === -1) return null;
+  return avatarUrl.slice(index + marker.length);
+}
 
 async function getCurrentSupplierContext() {
   const supabase = await createClient();
@@ -22,9 +41,9 @@ async function getCurrentSupplierContext() {
 
   const { data: appUser, error: appUserError } = await supabase
     .from("users")
-    .select("user_id")
+    .select("user_id, name, avatar_url")
     .eq("auth_user_id", authUser.id)
-    .single();
+    .single<AppUserRow>();
 
   if (appUserError || !appUser) {
     throw new Error("User record not found.");
@@ -71,8 +90,10 @@ async function getCurrentSupplierContext() {
 }
 
 export async function updateSupplierAccountSettings(formData: FormData) {
-  const { supabase, businessProfile } = await getCurrentSupplierContext();
+  const { supabase, authUser, appUser, businessProfile } =
+    await getCurrentSupplierContext();
 
+  const contact_name = String(formData.get("contact_name") || "").trim();
   const business_name = String(formData.get("business_name") || "").trim();
   const business_type = String(formData.get("business_type") || "").trim();
   const business_location = String(formData.get("business_location") || "").trim();
@@ -81,7 +102,9 @@ export async function updateSupplierAccountSettings(formData: FormData) {
   const region = String(formData.get("region") || "").trim();
   const about = String(formData.get("about") || "").trim();
   const contact_number = String(formData.get("contact_number") || "").trim();
+  const avatarFile = formData.get("avatar_file") as File | null;
 
+  if (!contact_name) throw new Error("Contact name is required.");
   if (!business_name) throw new Error("Business name is required.");
   if (!business_type) throw new Error("Business type is required.");
   if (!business_location) throw new Error("Business location is required.");
@@ -90,7 +113,52 @@ export async function updateSupplierAccountSettings(formData: FormData) {
   if (!region) throw new Error("Region is required.");
   if (!contact_number) throw new Error("Contact number is required.");
 
-  const { error } = await supabase
+  let nextAvatarUrl = appUser.avatar_url ?? null;
+  let uploadedAvatarPath: string | null = null;
+
+  if (avatarFile && avatarFile.size > 0) {
+    const maxSizeInBytes = 5 * 1024 * 1024;
+    if (avatarFile.size > maxSizeInBytes) {
+      throw new Error("Profile picture is too large. Maximum size is 5 MB.");
+    }
+
+    const fileExtension = avatarFile.name.split(".").pop() || "png";
+    const avatarPath = `${authUser.id}/avatar-${Date.now()}.${fileExtension}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(avatarPath, avatarFile, {
+        upsert: true,
+      });
+
+    if (uploadError) {
+      throw new Error(uploadError.message || "Failed to upload profile picture.");
+    }
+
+    uploadedAvatarPath = avatarPath;
+    const { data: publicUrlData } = supabase.storage
+      .from("avatars")
+      .getPublicUrl(avatarPath);
+
+    nextAvatarUrl = publicUrlData.publicUrl;
+  }
+
+  const { error: updateUserError } = await supabase
+    .from("users")
+    .update({
+      name: contact_name,
+      avatar_url: nextAvatarUrl,
+    })
+    .eq("user_id", appUser.user_id);
+
+  if (updateUserError) {
+    if (uploadedAvatarPath) {
+      await supabase.storage.from("avatars").remove([uploadedAvatarPath]);
+    }
+    throw new Error(updateUserError.message || "Failed to update account details.");
+  }
+
+  const { error: updateBusinessError } = await supabase
     .from("business_profiles")
     .update({
       business_name,
@@ -101,16 +169,24 @@ export async function updateSupplierAccountSettings(formData: FormData) {
       region,
       about: about || null,
       contact_number,
+      contact_name,
       updated_at: new Date().toISOString(),
     })
     .eq("profile_id", businessProfile.profile_id);
 
-  if (error) {
-    throw new Error(error.message || "Failed to update account settings.");
+  if (updateBusinessError) {
+    throw new Error(updateBusinessError.message || "Failed to update business profile.");
   }
 
-  revalidatePath("/dashboard/supplier/account-settings");
-  revalidatePath("/dashboard");
+  if (uploadedAvatarPath && isAvatarFromBucket(appUser.avatar_url)) {
+    const oldAvatarPath = extractAvatarPath(appUser.avatar_url);
+    if (oldAvatarPath && oldAvatarPath !== uploadedAvatarPath) {
+      await supabase.storage.from("avatars").remove([oldAvatarPath]);
+    }
+  }
+
+  revalidatePath("/supplier/account-settings");
+  redirect("/supplier/account-settings");
 }
 
 export async function uploadSupplierCertification(formData: FormData) {
@@ -129,7 +205,7 @@ export async function uploadSupplierCertification(formData: FormData) {
     throw new Error("Certification file is required.");
   }
 
-  const maxSizeInBytes = 10 * 1024 * 1024; // 10 MB
+  const maxSizeInBytes = 10 * 1024 * 1024;
   if (file.size > maxSizeInBytes) {
     throw new Error("Certification file is too large. Maximum size is 10 MB.");
   }
@@ -179,8 +255,7 @@ export async function uploadSupplierCertification(formData: FormData) {
     throw new Error(insertError.message || "Failed to save certification.");
   }
 
-  revalidatePath("/dashboard/supplier/account-settings");
-  revalidatePath("/dashboard");
+  revalidatePath("/supplier/account-settings");
 }
 
 export async function deleteSupplierCertification(formData: FormData) {
@@ -214,11 +289,8 @@ export async function deleteSupplierCertification(formData: FormData) {
   }
 
   if (certification.file_url) {
-    await supabase.storage
-      .from("supplier-certifications")
-      .remove([certification.file_url]);
+    await supabase.storage.from("supplier-certifications").remove([certification.file_url]);
   }
 
-  revalidatePath("/dashboard/supplier/account-settings");
-  revalidatePath("/dashboard");
+  revalidatePath("/supplier/account-settings");
 }

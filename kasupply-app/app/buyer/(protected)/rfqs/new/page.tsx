@@ -1,3 +1,7 @@
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { getCurrentAppUser } from "@/lib/auth/get-current-app-user";
+
 type NewRFQPageProps = {
   searchParams?: Promise<{
     supplierId?: string;
@@ -9,6 +13,23 @@ type NewRFQPageProps = {
 export default async function NewRFQPage({
   searchParams,
 }: NewRFQPageProps) {
+  const supabase = await createClient();
+  const { user, error } = await getCurrentAppUser();
+
+  if (error || !user) {
+    redirect("/auth/login");
+  }
+
+  const { data: businessProfile } = await supabase
+    .from("business_profiles")
+    .select("profile_id")
+    .eq("user_id", user.user_id)
+    .maybeSingle();
+
+  if (!businessProfile) {
+    redirect("/buyer/account?edit=1&required=rfq");
+  }
+
   const params = (await searchParams) ?? {};
 
   const supplierId = params.supplierId ?? "";

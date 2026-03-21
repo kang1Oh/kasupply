@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getUserOnboardingStatus } from "@/lib/auth/get-user-onboarding-status";
 import { completeOnboarding } from "./actions";
+import { OnboardingStepOneForm } from "./onboarding-step-one-form";
 
 const PHILIPPINE_REGIONS = [
   "NCR - National Capital Region",
@@ -22,139 +24,48 @@ const PHILIPPINE_REGIONS = [
   "BARMM - Bangsamoro Autonomous Region in Muslim Mindanao",
 ];
 
-export default async function OnboardingPage() {
+function OnboardingPageFallback() {
+  return (
+    <main className="min-h-screen bg-[#fafbfd] px-4 py-8 sm:px-6 lg:px-10">
+      <div className="mx-auto max-w-5xl rounded-[18px] border border-[#edf1f7] bg-white p-8 text-sm text-[#8a94a6] shadow-[0_10px_28px_rgba(15,23,42,0.04)]">
+        Loading onboarding...
+      </div>
+    </main>
+  );
+}
+
+async function OnboardingPageContent() {
   const status = await getUserOnboardingStatus();
 
   if (!status.authenticated) {
     redirect("/auth/login");
   }
 
+  if (status.role === "buyer") {
+    redirect("/buyer");
+  }
+
   if (status.hasBusinessProfile) {
-    redirect("/dashboard");
+    redirect("/supplier/dashboard");
   }
 
   return (
-    <main className="max-w-2xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-2">Complete Your Business Profile</h1>
-      <p className="mb-6 text-gray-600">
-        Please complete your profile before using the platform.
-      </p>
-
-      <form action={completeOnboarding} className="space-y-4">
-        <div>
-          <label className="block mb-1 font-medium">Business Name</label>
-          <input
-            name="business_name"
-            type="text"
-            required
-            className="w-full border rounded px-3 py-2"
-          />
-        </div>
-
-        <div>
-          <label className="block mb-1 font-medium">Business Type</label>
-          <select
-            name="business_type"
-            required
-            className="w-full border rounded px-3 py-2"
-          >
-            <option value="">Select business type</option>
-            <option value="manufacturer">Manufacturer</option>
-            <option value="distributor">Distributor</option>
-            <option value="trader">Trader</option>
-            <option value="retailer">Retailer</option>
-            <option value="processor">Processor</option>
-            <option value="wholesaler">Wholesaler</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="block mb-1 font-medium">Business Location</label>
-          <input
-            name="business_location"
-            type="text"
-            required
-            className="w-full border rounded px-3 py-2"
-          />
-        </div>
-
-        <div>
-          <label className="block mb-1 font-medium">City</label>
-          <input
-            name="city"
-            type="text"
-            required
-            className="w-full border rounded px-3 py-2"
-          />
-        </div>
-
-        <div>
-          <label className="block mb-1 font-medium">Province</label>
-          <input
-            name="province"
-            type="text"
-            required
-            className="w-full border rounded px-3 py-2"
-          />
-        </div>
-
-        <div>
-          <label className="block mb-1 font-medium">Region</label>
-          <select
-            name="region"
-            required
-            className="w-full border rounded px-3 py-2"
-            defaultValue=""
-          >
-            <option value="" disabled>
-              Select region
-            </option>
-            {PHILIPPINE_REGIONS.map((region) => (
-              <option key={region} value={region}>
-                {region}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block mb-1 font-medium">About</label>
-          <textarea
-            name="about"
-            rows={4}
-            className="w-full border rounded px-3 py-2"
-          />
-        </div>
-
-        <div>
-          <label className="block mb-1 font-medium">Contact Number</label>
-          <input
-            name="contact_number"
-            type="text"
-            className="w-full border rounded px-3 py-2"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="contact_name" className="text-sm font-medium">
-            Contact Name
-          </label>
-          <input
-            id="contact_name"
-            name="contact_name"
-            type="text"
-            required
-            className="w-full rounded-md border px-3 py-2"
-          />
-        </div>
-
-        <button
-          type="submit"
-          className="bg-black text-white px-4 py-2 rounded"
-        >
-          Save Profile
-        </button>
-      </form>
+    <main className="min-h-screen bg-[#fafbfd] px-4 py-8 sm:px-6 lg:px-10">
+      <div className="mx-auto max-w-5xl">
+        <OnboardingStepOneForm
+          action={completeOnboarding}
+          regions={PHILIPPINE_REGIONS}
+          defaultContactName={status.appUser?.name ?? ""}
+        />
+      </div>
     </main>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={<OnboardingPageFallback />}>
+      <OnboardingPageContent />
+    </Suspense>
   );
 }

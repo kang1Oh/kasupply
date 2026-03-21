@@ -1,31 +1,17 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { RoleSelectionForm } from "./role-selection-form";
 
 export default function Page() {
   return (
-    <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
-      <div className="w-full max-w-sm">
-        <div className="flex flex-col gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-2xl">
-                Thank you for signing up!
-              </CardTitle>
-              <CardDescription>Check your email to confirm</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                You&apos;ve successfully signed up. Please check your email to
-                confirm your account before signing in.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+    <div className="flex min-h-screen w-full items-center justify-center bg-white px-6 py-8">
+      <div className="w-full max-w-[860px] text-center">
+        <h1 className="text-[23px] font-semibold leading-none text-[#294773] lg:text-[29px]">
+          How will you use KaSupply?
+        </h1>
+        <p className="mt-3 text-[15px] text-[#8b92a0] lg:text-[19px]">
+          Select the option that best describes you
+        </p>
+
+        <RoleSelectionForm disabled={false} />
       </div>
     </div>
   );

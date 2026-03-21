@@ -12,6 +12,7 @@ function BuyerAccountPageFallback() {
 type BuyerAccountPageProps = {
   searchParams: Promise<{
     edit?: string;
+    required?: string;
   }>;
 };
 
@@ -19,6 +20,7 @@ async function BuyerAccountPageContent({ searchParams }: BuyerAccountPageProps) 
   const supabase = await createClient();
   const params = await searchParams;
   const isEditMode = params.edit === "1";
+  const requiredFlow = params.required ?? "";
 
   const { user, error } = await getCurrentAppUser();
 
@@ -43,25 +45,27 @@ async function BuyerAccountPageContent({ searchParams }: BuyerAccountPageProps) 
       updated_at
     `)
     .eq("user_id", user.user_id)
-    .single();
+    .maybeSingle();
 
-  if (businessProfileError || !businessProfile) {
+  if (businessProfileError) {
     throw new Error(
       businessProfileError.message || "Failed to load business profile."
     );
   }
 
-  const { data: businessDocument, error: businessDocumentError } = await supabase
-    .from("business_documents")
-    .select(`
-      doc_id,
-      file_url,
-      is_visible_to_others
-    `)
-    .eq("profile_id", businessProfile.profile_id)
-    .order("uploaded_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const { data: businessDocument, error: businessDocumentError } = businessProfile
+    ? await supabase
+        .from("business_documents")
+        .select(`
+          doc_id,
+          file_url,
+          is_visible_to_others
+        `)
+        .eq("profile_id", businessProfile.profile_id)
+        .order("uploaded_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : { data: null, error: null };
 
   if (businessDocumentError) {
     throw new Error(
@@ -93,9 +97,15 @@ async function BuyerAccountPageContent({ searchParams }: BuyerAccountPageProps) 
     return (
       <main className="p-6 space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">Edit Account</h1>
+          <h1 className="text-2xl font-bold">
+            {businessProfile ? "Edit Account" : "Set Up Buyer Business Details"}
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Update your buyer account and business profile details.
+            {requiredFlow === "rfq"
+              ? "Set up your buyer business details before creating an RFQ."
+              : businessProfile
+                ? "Update your buyer account and business profile details."
+                : "Add your buyer business details when you are ready to create RFQs or place orders."}
           </p>
         </div>
 
@@ -103,22 +113,61 @@ async function BuyerAccountPageContent({ searchParams }: BuyerAccountPageProps) 
           user={{
             name: user.name,
             email: user.email,
-            phone: user.phone,
           }}
           businessProfile={{
-            business_name: businessProfile.business_name,
-            business_type: businessProfile.business_type,
-            contact_name: businessProfile.contact_name,
-            contact_number: businessProfile.contact_number,
-            business_location: businessProfile.business_location,
-            city: businessProfile.city,
-            province: businessProfile.province,
-            region: businessProfile.region,
-            about: businessProfile.about,
+            business_name: businessProfile?.business_name ?? "",
+            business_type: businessProfile?.business_type ?? "",
+            contact_name: businessProfile?.contact_name ?? "",
+            contact_number: businessProfile?.contact_number ?? "",
+            business_location: businessProfile?.business_location ?? "",
+            city: businessProfile?.city ?? "",
+            province: businessProfile?.province ?? "",
+            region: businessProfile?.region ?? "",
+            about: businessProfile?.about ?? "",
           }}
-            documentId={businessDocument?.doc_id ?? null}
-            documentVisibility={businessDocument?.is_visible_to_others ?? false}
+          documentId={businessDocument?.doc_id ?? null}
+          documentVisibility={businessDocument?.is_visible_to_others ?? false}
         />
+      </main>
+    );
+  }
+
+  if (!businessProfile) {
+    return (
+      <main className="p-6 space-y-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">Account</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Add your buyer business details when you are ready to create an RFQ or place an order.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Link
+              href="/buyer/account?edit=1"
+              className="rounded-md border bg-gray-200 px-4 py-2 text-black transition hover:bg-black hover:text-white hover:border-white"
+            >
+              Set Up Business Details
+            </Link>
+
+            <form action={logoutBuyerAccount}>
+              <button
+                type="submit"
+                className="rounded-md border border-red-500 px-4 py-2 text-red-500 transition hover:bg-red-500 hover:text-white"
+              >
+                Log Out
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <section className="rounded-xl border bg-black p-6 shadow-sm">
+          <h2 className="text-lg font-semibold">Business Profile</h2>
+          <p className="mt-2 text-sm text-gray-400">
+            You can skip buyer business setup for now. We&apos;ll only ask for these details when you start an RFQ or need them for ordering.
+          </p>
+        </section>
       </main>
     );
   }
@@ -168,10 +217,6 @@ async function BuyerAccountPageContent({ searchParams }: BuyerAccountPageProps) 
             <p className="font-medium">{user.email}</p>
           </div>
 
-          <div>
-            <p className="text-sm text-gray-500">Phone Number</p>
-            <p className="font-medium">{user.phone || "-"}</p>
-          </div>
         </div>
       </section>
 
