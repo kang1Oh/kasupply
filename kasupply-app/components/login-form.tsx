@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 type LoginAppUserRow = {
   user_id: string;
   role_id: number;
+  status: string | null;
   roles: {
     role_name: string;
   } | null;
@@ -127,6 +128,7 @@ export function LoginForm() {
         .select(`
           user_id,
           role_id,
+          status,
           roles!users_role_id_fkey (
             role_name
           )
@@ -141,6 +143,11 @@ export function LoginForm() {
       }
 
       if (!appUser) {
+        router.push("/auth/sign-up-success");
+        return;
+      }
+
+      if ((appUser.status ?? "").toLowerCase() !== "active") {
         router.push("/auth/sign-up-success");
         return;
       }
@@ -166,10 +173,10 @@ export function LoginForm() {
   };
 
   return (
-    <div className="grid min-h-screen w-full bg-[#243f68] lg:grid-cols-[1.02fr_0.98fr]">
-      <div className="hidden bg-[#243f68] lg:block" />
+    <div className="grid min-h-screen w-full bg-[#294773] lg:grid-cols-[1.08fr_0.92fr]">
+      <div className="hidden bg-[#294773] lg:block" />
 
-      <div className="flex min-h-screen items-center justify-center rounded-l-[2rem] bg-white px-6 py-10 sm:px-10">
+      <div className="flex min-h-screen items-center justify-center rounded-l-[26px] bg-white px-8 py-12 sm:px-12">
         <div className="w-full max-w-[520px]">
           <div className="mx-auto flex h-44 w-44 items-center justify-center">
             <Image
@@ -183,20 +190,20 @@ export function LoginForm() {
           </div>
 
           <div className="mt-2 text-center">
-            <h1 className="text-[2.45rem] font-bold leading-none text-[#3d4659]">
+            <h1 className="text-[24px] font-semibold leading-none text-[#3d4659] sm:text-[33px]">
               Welcome back
             </h1>
-            <p className="mt-3 text-[1.25rem] font-medium text-[#ff6f06]">
+            <p className="mt-2 text-[26px] font-medium leading-none text-[#ff6f06]">
               Let&apos;s get you signed in
             </p>
           </div>
 
-          <form onSubmit={handleLogin} className="mt-10 space-y-6">
+          <form onSubmit={handleLogin} className="mt-12 flex flex-col items-center space-y-7">
             <Field
               id="email"
-              label="Username"
-              placeholder="Enter Username"
-              type="text"
+              label="Email Address"
+              placeholder="username@mail.com"
+              type="email"
               value={email}
               onChange={setEmail}
               autoComplete="email"
@@ -226,7 +233,7 @@ export function LoginForm() {
             />
 
             {error ? (
-              <div className="w-full max-w-[520px] rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[15px] text-red-600">
+              <div className="w-full max-w-[520px] rounded-2xl border border-red-200 bg-red-50 px-5 py-3 text-[15px] text-red-600">
                 {error}
               </div>
             ) : null}
@@ -234,13 +241,13 @@ export function LoginForm() {
             <button
               type="submit"
               disabled={isLoading}
-              className="mt-9 h-[3.8rem] w-full max-w-[520px] rounded-full bg-[#243f68] text-[1.45rem] font-semibold text-white transition hover:bg-[#1e3658] disabled:cursor-not-allowed disabled:opacity-70"
+              className="mt-7 h-[60px] w-full max-w-[520px] rounded-full bg-[#294773] text-[18px] font-semibold text-white transition hover:bg-[#233d63] disabled:cursor-not-allowed disabled:opacity-70"
             >
               {isLoading ? "Logging in..." : "Log In"}
             </button>
           </form>
 
-          <p className="mt-5 text-center text-[1.05rem] text-[#353535]">
+          <p className="mx-auto mt-8 max-w-[540px] text-center text-[16px] text-[#3d4659]">
             Don&apos;t have an account?{" "}
             <Link href="/auth/sign-up" className="font-semibold text-[#ff6f06]">
               Sign Up

@@ -15,7 +15,7 @@ async function ProtectedBuyerLayoutContent({
   const status = await getUserOnboardingStatus();
 
   if (!status.authenticated) {
-    redirect("/auth/login?source=buyer-protected-layout");
+    redirect("/login?source=buyer-protected-layout");
   }
 
   if (status.role !== "buyer") {

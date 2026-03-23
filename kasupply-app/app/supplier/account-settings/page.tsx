@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ModalField, ModalShell } from "@/components/modals";
 import { createClient } from "@/lib/supabase/server";
 import {
   updateSupplierAccountSettings,
@@ -101,21 +102,6 @@ function InfoField({
         {label}
       </p>
       <p className="mt-2 text-[1.05rem] text-slate-900">{value}</p>
-    </div>
-  );
-}
-
-function ModalField({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label className="mb-1.5 block text-sm font-medium text-slate-700">{label}</label>
-      {children}
     </div>
   );
 }
@@ -447,24 +433,14 @@ export default async function SupplierAccountSettingsPage({
       </section>
 
       {isEditModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-8">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
-            <div className="mb-6 flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-950">Edit profile</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Update your public supplier profile and upload a profile picture.
-                </p>
-              </div>
-
-              <Link
-                href="/supplier/account-settings"
-                className="rounded-full border border-slate-200 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-50"
-              >
-                Close
-              </Link>
-            </div>
-
+        <ModalShell
+          title="Edit profile"
+          description="Update your public supplier profile and upload a profile picture."
+          closeHref="/supplier/account-settings"
+          maxWidthClassName="max-w-3xl"
+          panelClassName="rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl"
+          overlayClassName="bg-slate-950/45 px-4 py-8"
+        >
             <form action={updateSupplierAccountSettings} className="grid gap-5">
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -612,8 +588,7 @@ export default async function SupplierAccountSettingsPage({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+        </ModalShell>
       ) : null}
     </main>
   );

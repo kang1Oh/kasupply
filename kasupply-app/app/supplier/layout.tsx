@@ -56,8 +56,8 @@ async function SupplierLayoutContent({
     redirect("/onboarding/supplier-documents");
   }
 
-  if (!status.hasSubmittedSiteVideo) {
-    redirect("/onboarding/supplier-site-video");
+  if (!status.hasSubmittedSiteImages) {
+    redirect("/onboarding/supplier-site-images");
   }
 
   const navItems = getSupplierNavItems();

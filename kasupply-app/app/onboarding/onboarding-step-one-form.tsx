@@ -12,7 +12,6 @@ const BUSINESS_TYPE_OPTIONS = [
 type OnboardingStepOneFormProps = {
   action: (formData: FormData) => void | Promise<void>;
   regions: string[];
-  defaultContactName: string;
 };
 
 function StepIndicator({
@@ -94,7 +93,6 @@ function InputField({
 export function OnboardingStepOneForm({
   action,
   regions,
-  defaultContactName,
 }: OnboardingStepOneFormProps) {
   return (
     <form action={action} className="space-y-6">
@@ -198,7 +196,6 @@ export function OnboardingStepOneForm({
                 name="contact_name"
                 required
                 placeholder="Enter Contact Name"
-                defaultValue={defaultContactName}
                 className="md:col-span-3"
               />
 

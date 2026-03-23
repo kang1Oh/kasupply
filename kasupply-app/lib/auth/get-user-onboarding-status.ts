@@ -28,6 +28,14 @@ type BusinessProfileRow = {
   contact_name: string | null;
 };
 
+type BusinessProfileCategoryRow = {
+  category_id: number;
+};
+
+type BusinessProfileCustomCategoryRow = {
+  category_name: string;
+};
+
 type BusinessDocumentRow = {
   doc_id: number;
   doc_type_id: number;
@@ -37,19 +45,26 @@ type BusinessDocumentRow = {
   } | null;
 };
 
-type SiteShowcaseVideoRow = {
-  video_id: number;
+type SiteShowcaseImageRow = {
+  image_id: number;
   profile_id: number;
-  file_url: string;
+  image_type: string;
+  image_url: string;
   status: string;
-  uploaded_at: string;
-  verified_at: string | null;
 };
+
+const REQUIRED_SITE_IMAGE_TYPES = [
+  "exterior",
+  "interior",
+  "signage",
+  "operational_setup",
+  "location_map",
+];
 
 const REQUIRED_SUPPLIER_DOCUMENTS = [
   "DTI Business Registration Certificate",
   "Mayor's Permit",
-  "FDA Certificate",
+  "BIR Certificate",
 ];
 
 function normalizeDocumentName(value: string) {
@@ -70,10 +85,11 @@ export async function getUserOnboardingStatus() {
       role: null,
       hasBuyerProfile: false,
       hasSupplierProfile: false,
+      hasCompletedCategorySelection: false,
       hasSubmittedBuyerDocuments: false,
       hasSubmittedSupplierDocuments: false,
       hasSubmittedRequiredSupplierDocuments: false,
-      hasSubmittedSiteVideo: false,
+      hasSubmittedSiteImages: false,
       isSupplierVerified: false,
       supplierVerificationStatus: "not_started" as
         | "not_started"
@@ -81,7 +97,7 @@ export async function getUserOnboardingStatus() {
         | "pending"
         | "verified",
       requiredDocumentsChecklist: [],
-      siteVideo: null,
+      siteImages: [],
       debug: null,
     };
   }
@@ -108,15 +124,16 @@ export async function getUserOnboardingStatus() {
 
   let hasBuyerProfile = false;
   let hasSupplierProfile = false;
+  let hasCompletedCategorySelection = false;
   let hasSubmittedBuyerDocuments = false;
   let hasSubmittedSupplierDocuments = false;
   let hasSubmittedRequiredSupplierDocuments = false;
-  let hasSubmittedSiteVideo = false;
+  let hasSubmittedSiteImages = false;
   let isSupplierVerified = false;
 
   let buyerProfile: BuyerProfileRow | null = null;
   let supplierProfile: SupplierProfileRow | null = null;
-  let siteVideo: SiteShowcaseVideoRow | null = null;
+  let siteImages: SiteShowcaseImageRow[] = [];
   let supplierDocumentsErrorMessage: string | null = null;
 
   let requiredDocumentsChecklist: Array<{
@@ -129,6 +146,27 @@ export async function getUserOnboardingStatus() {
     status: null,
   }));
 
+  if (businessProfile) {
+    const [{ data: savedCategories }, { data: customCategories }] = await Promise.all([
+      supabase
+        .from("business_profile_categories")
+        .select("category_id")
+        .eq("profile_id", businessProfile.profile_id),
+      supabase
+        .from("business_profile_custom_categories")
+        .select("category_name")
+        .eq("profile_id", businessProfile.profile_id),
+    ]);
+
+    const safeSavedCategories =
+      (savedCategories as BusinessProfileCategoryRow[] | null) ?? [];
+    const safeCustomCategories =
+      (customCategories as BusinessProfileCustomCategoryRow[] | null) ?? [];
+
+    hasCompletedCategorySelection =
+      safeSavedCategories.length > 0 || safeCustomCategories.length > 0;
+  }
+
   if (role === "buyer" && businessProfile) {
     const { data: buyerProfileData } = await supabase
       .from("buyer_profiles")
@@ -138,7 +176,24 @@ export async function getUserOnboardingStatus() {
 
     buyerProfile = buyerProfileData ?? null;
     hasBuyerProfile = !!buyerProfile;
-    hasSubmittedBuyerDocuments = !!buyerProfile;
+
+    const { data: buyerDocuments } = await supabase
+      .from("business_documents")
+      .select(`
+        doc_id,
+        doc_type_id,
+        status,
+        document_types!business_documents_doc_type_id_fkey (
+          document_type_name
+        )
+      `)
+      .eq("profile_id", businessProfile.profile_id);
+
+    const safeBuyerDocuments = (buyerDocuments as BusinessDocumentRow[] | null) ?? [];
+    hasSubmittedBuyerDocuments = safeBuyerDocuments.some((doc) =>
+      normalizeDocumentName(doc.document_types?.document_type_name ?? "") ===
+      normalizeDocumentName("DTI Business Registration Certificate")
+    );
   }
 
   if (role === "supplier" && businessProfile) {
@@ -200,14 +255,17 @@ export async function getUserOnboardingStatus() {
       (doc) => doc.uploaded
     );
 
-    const { data: siteVideoData } = await supabase
-      .from("site_showcase_videos")
-      .select("video_id, profile_id, file_url, status, uploaded_at, verified_at")
+    const { data: siteImageData } = await supabase
+      .from("site_showcase_images")
+      .select("image_id, profile_id, image_type, image_url, status")
       .eq("profile_id", businessProfile.profile_id)
-      .maybeSingle<SiteShowcaseVideoRow>();
+      .in("image_type", REQUIRED_SITE_IMAGE_TYPES);
 
-    siteVideo = siteVideoData ?? null;
-    hasSubmittedSiteVideo = !!siteVideo;
+    siteImages = (siteImageData as SiteShowcaseImageRow[] | null) ?? [];
+    const uploadedTypes = new Set(siteImages.map((image) => image.image_type));
+    hasSubmittedSiteImages = REQUIRED_SITE_IMAGE_TYPES.every((type) =>
+      uploadedTypes.has(type)
+    );
   }
 
   let supplierVerificationStatus: "not_started" | "incomplete" | "pending" | "verified" =
@@ -218,7 +276,7 @@ export async function getUserOnboardingStatus() {
       supplierVerificationStatus = "verified";
     } else if (
       hasSubmittedRequiredSupplierDocuments &&
-      hasSubmittedSiteVideo
+      hasSubmittedSiteImages
     ) {
       supplierVerificationStatus = "pending";
     } else {
@@ -234,14 +292,15 @@ export async function getUserOnboardingStatus() {
     role,
     hasBuyerProfile,
     hasSupplierProfile,
+    hasCompletedCategorySelection,
     hasSubmittedBuyerDocuments,
     hasSubmittedSupplierDocuments,
     hasSubmittedRequiredSupplierDocuments,
-    hasSubmittedSiteVideo,
+    hasSubmittedSiteImages,
     isSupplierVerified,
     supplierVerificationStatus,
     requiredDocumentsChecklist,
-    siteVideo,
+    siteImages,
     debug: {
       user_id: user.user_id,
       role,

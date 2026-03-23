@@ -45,6 +45,27 @@ async function OnboardingPageContent() {
     redirect("/buyer");
   }
 
+  if (status.hasBusinessProfile && !status.hasCompletedCategorySelection) {
+    redirect("/onboarding/categories");
+  }
+
+  if (
+    status.hasBusinessProfile &&
+    status.hasCompletedCategorySelection &&
+    !status.hasSubmittedRequiredSupplierDocuments
+  ) {
+    redirect("/onboarding/supplier-documents");
+  }
+
+  if (
+    status.hasBusinessProfile &&
+    status.hasCompletedCategorySelection &&
+    status.hasSubmittedRequiredSupplierDocuments &&
+    !status.hasSubmittedSiteImages
+  ) {
+    redirect("/onboarding/supplier-site-images");
+  }
+
   if (status.hasBusinessProfile) {
     redirect("/supplier/dashboard");
   }
@@ -55,7 +76,6 @@ async function OnboardingPageContent() {
         <OnboardingStepOneForm
           action={completeOnboarding}
           regions={PHILIPPINE_REGIONS}
-          defaultContactName={status.appUser?.name ?? ""}
         />
       </div>
     </main>

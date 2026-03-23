@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ModalShell } from "@/components/modals";
 import { createClient } from "@/lib/supabase/server";
 import {
   createInventoryItem,
@@ -252,25 +253,16 @@ function InventoryModal({
   children: React.ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-semibold">{title}</h2>
-            <p className="mt-1 text-sm text-gray-500">{description}</p>
-          </div>
-
-          <Link
-            href="/supplier/inventory"
-            className="rounded border px-3 py-2 text-sm"
-          >
-            Close
-          </Link>
-        </div>
-
-        {children}
-      </div>
-    </div>
+    <ModalShell
+      title={title}
+      description={description}
+      closeHref="/supplier/inventory"
+      maxWidthClassName="max-w-3xl"
+      panelClassName="rounded-2xl bg-white p-6 shadow-2xl"
+      overlayClassName="bg-black/50 p-4"
+    >
+      {children}
+    </ModalShell>
   );
 }
 

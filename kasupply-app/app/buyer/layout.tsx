@@ -1,37 +1,65 @@
 import { Suspense } from "react";
 import type { ReactNode } from "react";
+import { BuyerFooter } from "@/components/buyer-footer";
 import { BuyerHeader } from "@/components/buyer-header";
-import { getCurrentAppUser } from "@/lib/auth/get-current-app-user";
+import { getBuyerAccessRedirect } from "@/lib/auth/buyer-access";
+import { getUserOnboardingStatus } from "@/lib/auth/get-user-onboarding-status";
 
 function BuyerLayoutFallback() {
   return (
-    <div className="min-h-screen bg-black">
-      <header className="border-b bg-gray-500">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-8">
-            <div className="text-lg font-bold">KaSupply</div>
-            <nav className="flex items-center gap-5 text-sm text-white">
-              <span>Home</span>
-              <span>Search</span>
-            </nav>
-          </div>
-        </div>
-      </header>
-      <div className="mx-auto max-w-7xl px-6 py-6">Loading buyer area...</div>
+    <div className="flex min-h-screen flex-col bg-white">
+      <BuyerHeader isLoggedIn={false} />
+      <main className="mx-auto flex w-full max-w-[1180px] flex-1 px-4 py-6 sm:px-6 lg:px-8">
+        Loading buyer area...
+      </main>
+      <BuyerFooter />
     </div>
   );
 }
 
 async function BuyerLayoutContent({ children }: { children: ReactNode }) {
-  const { user } = await getCurrentAppUser();
+  const status = await getUserOnboardingStatus();
+
+  const user = status.appUser;
+
+  const accessLinks = {
+    rfqs:
+      getBuyerAccessRedirect(status, {
+        requirement: "profile",
+        targetPath: "/buyer/rfqs",
+        reason: "rfq",
+      }) ?? "/buyer/rfqs",
+    sourcingBoard:
+      getBuyerAccessRedirect(status, {
+        requirement: "profile",
+        targetPath: "/buyer/sourcing-board",
+        reason: "sourcing-board",
+      }) ?? "/buyer/sourcing-board",
+    purchaseOrders:
+      getBuyerAccessRedirect(status, {
+        requirement: "documents",
+        targetPath: "/buyer/purchase-orders",
+        reason: "purchase-orders",
+      }) ?? "/buyer/purchase-orders",
+    messages:
+      getBuyerAccessRedirect(status, {
+        requirement: "profile",
+        targetPath: "/buyer/messages",
+        reason: "messages",
+      }) ?? "/buyer/messages",
+  };
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="flex min-h-screen flex-col bg-white">
       <BuyerHeader
         isLoggedIn={!!user}
-        role={user?.roles?.role_name?.toLowerCase() ?? null}
+        userName={user?.name ?? null}
+        accessLinks={accessLinks}
       />
-      <div className="mx-auto max-w-7xl px-6 py-6">{children}</div>
+      <main className="mx-auto w-full max-w-[1180px] flex-1 px-4 py-6 sm:px-6 lg:px-8">
+        {children}
+      </main>
+      <BuyerFooter />
     </div>
   );
 }

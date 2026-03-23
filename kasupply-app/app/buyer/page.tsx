@@ -1,13 +1,22 @@
 import Link from "next/link";
+import { AccountActivatedModal } from "@/components/modals";
 import { getSupplierSearchResults } from "./search/actions";
 import { getUserOnboardingStatus } from "@/lib/auth/get-user-onboarding-status";
 import { getPastSuppliers } from "./actions";
 import { getOrderAgainItems } from "./actions";
 
-export default async function BuyerPage() {
+type BuyerPageProps = {
+  searchParams?: Promise<{
+    activated?: string;
+  }>;
+};
+
+export default async function BuyerPage({ searchParams }: BuyerPageProps) {
   const recommendedSuppliers = await getSupplierSearchResults();
   const featuredSuppliers = recommendedSuppliers.slice(0, 3);
   const status = await getUserOnboardingStatus();
+  const params = (await searchParams) ?? {};
+  const showActivatedModal = params.activated === "1";
 
   const isLoggedInBuyer =
   status.authenticated &&
@@ -19,7 +28,16 @@ export default async function BuyerPage() {
   const orderAgainItems = isLoggedInBuyer ? await getOrderAgainItems() : [];
 
   return (
-    <div className="space-y-8">
+    <>
+      <AccountActivatedModal
+        isOpen={showActivatedModal}
+        title="Account activated!"
+        description="Your buyer account is verified and ready. You can now browse suppliers, send RFQs, and post on the sourcing board."
+        ctaHref="/buyer"
+        ctaLabel="Go To Dashboard"
+      />
+
+      <div className="space-y-8">
       {/* hero section */}
       <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-zinc-900">
         <div className="absolute inset-0">
@@ -352,6 +370,7 @@ export default async function BuyerPage() {
           )
         )}
       </section>
-    </div>
+      </div>
+    </>
   );
 }

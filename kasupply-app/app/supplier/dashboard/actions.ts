@@ -63,7 +63,7 @@ export type SupplierDashboardData = {
   onboarding: {
     hasBusinessProfile: boolean;
     hasSubmittedRequiredSupplierDocuments: boolean;
-    hasSubmittedSiteVideo: boolean;
+    hasSubmittedSiteImages: boolean;
   };
   stats: {
     inventoryItems: number;
@@ -237,7 +237,7 @@ export async function getSupplierDashboardData(): Promise<SupplierDashboardData>
       hasBusinessProfile: status.hasBusinessProfile,
       hasSubmittedRequiredSupplierDocuments:
         status.hasSubmittedRequiredSupplierDocuments,
-      hasSubmittedSiteVideo: status.hasSubmittedSiteVideo,
+      hasSubmittedSiteImages: status.hasSubmittedSiteImages,
     },
     stats: {
       inventoryItems: safeCount(inventoryResult.count),

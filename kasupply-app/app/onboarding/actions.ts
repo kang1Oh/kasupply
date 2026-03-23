@@ -114,7 +114,7 @@ export async function completeOnboarding(formData: FormData) {
 
   // 6. Create buyer or supplier profile
   if (role.role_name.toLowerCase() === "buyer") {
-    redirect("/buyer");
+    redirect("/onboarding/buyer/categories");
   }
 
   if (role.role_name.toLowerCase() === "supplier") {
@@ -133,7 +133,7 @@ export async function completeOnboarding(formData: FormData) {
       );
     }
 
-    redirect("/onboarding/supplier-documents");
+    redirect("/onboarding/categories");
   }
 
   throw new Error(`Unsupported role: ${role.role_name}`);

@@ -21,6 +21,23 @@ export async function uploadBuyerDocument(formData: FormData) {
     throw new Error("DTI document is required.");
   }
 
+  const allowedTypes = new Set([
+    "application/pdf",
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ]);
+
+  if (!allowedTypes.has(file.type)) {
+    throw new Error("Please upload a PDF, JPG, JPEG, PNG, DOC, or DOCX file.");
+  }
+
+  if (file.size > 10 * 1024 * 1024) {
+    throw new Error("The file must be 10MB or smaller.");
+  }
+
   // 1. Get app user
   const { data: appUser, error: appUserError } = await supabase
     .from("users")
@@ -43,18 +60,40 @@ export async function uploadBuyerDocument(formData: FormData) {
     throw new Error("Business profile not found.");
   }
 
-  // 3. Use fixed DTI doc type id
-  const dtiDocTypeId = 1;
+  const dtiDocumentTypeNames = [
+    "DTI Business Registration Certificate",
+    "DTI Certificate",
+  ];
+
+  const { data: dtiDocumentType, error: dtiDocumentTypeError } = await supabase
+    .from("document_types")
+    .select("doc_type_id, document_type_name")
+    .in("document_type_name", dtiDocumentTypeNames)
+    .limit(1)
+    .maybeSingle();
+
+  if (dtiDocumentTypeError || !dtiDocumentType) {
+    throw new Error(
+      dtiDocumentTypeError?.message || "DTI document type is not configured."
+    );
+  }
 
   // 4. Upload file to storage
   const fileExt = file.name.split(".").pop();
   const fileName = `buyer-dti-${Date.now()}.${fileExt}`;
   const filePath = `${businessProfile.profile_id}/${fileName}`;
 
+  const { data: existingDocument } = await supabase
+    .from("business_documents")
+    .select("doc_id, file_url")
+    .eq("profile_id", businessProfile.profile_id)
+    .eq("doc_type_id", dtiDocumentType.doc_type_id)
+    .maybeSingle();
+
   const { error: uploadError } = await supabase.storage
     .from("business-documents")
     .upload(filePath, file, {
-      upsert: false,
+      upsert: true,
     });
 
   if (uploadError) {
@@ -62,21 +101,30 @@ export async function uploadBuyerDocument(formData: FormData) {
   }
 
   // 5. Save metadata to business_documents
-  const { error: documentInsertError } = await supabase
-    .from("business_documents")
-    .insert({
-      profile_id: businessProfile.profile_id,
-      doc_type_id: dtiDocTypeId,
-      file_url: filePath,
-      ocr_extracted_data: null,
-      status: "pending",
-      uploaded_at: new Date().toISOString(),
-      verified_at: null,
-    });
+  const documentPayload = {
+    profile_id: businessProfile.profile_id,
+    doc_type_id: dtiDocumentType.doc_type_id,
+    file_url: filePath,
+    ocr_extracted_data: null,
+    status: "pending",
+    uploaded_at: new Date().toISOString(),
+    verified_at: null,
+  };
 
-  if (documentInsertError) {
-    throw new Error(documentInsertError.message);
+  const { error: documentSaveError } = existingDocument?.doc_id
+    ? await supabase
+        .from("business_documents")
+        .update(documentPayload)
+        .eq("doc_id", existingDocument.doc_id)
+    : await supabase.from("business_documents").insert(documentPayload);
+
+  if (documentSaveError) {
+    throw new Error(documentSaveError.message);
   }
 
-  redirect("/buyer");
+  if (existingDocument?.file_url && existingDocument.file_url !== filePath) {
+    await supabase.storage.from("business-documents").remove([existingDocument.file_url]);
+  }
+
+  redirect("/buyer?activated=1");
 }

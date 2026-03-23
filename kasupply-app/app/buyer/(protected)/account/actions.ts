@@ -5,6 +5,24 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentAppUser } from "@/lib/auth/get-current-app-user";
 
+const ALLOWED_BUSINESS_TYPES = new Set([
+  "manufacturer",
+  "distributor",
+  "trader",
+  "retailer",
+  "processor",
+  "wholesaler",
+]);
+
+function normalizeBusinessType(value: string) {
+  const normalized = value.trim().toLowerCase();
+
+  if (normalized === "restaurant") return "retailer";
+  if (normalized === "food_service") return "retailer";
+
+  return normalized;
+}
+
 export async function updateBuyerAccount(formData: FormData) {
   const supabase = await createClient();
 
@@ -15,9 +33,13 @@ export async function updateBuyerAccount(formData: FormData) {
   }
 
   const name = String(formData.get("name") || "").trim();
+  const nextPath = String(formData.get("next_path") || "").trim();
+  const requiredFlow = String(formData.get("required_flow") || "").trim();
 
   const business_name = String(formData.get("business_name") || "").trim();
-  const business_type = String(formData.get("business_type") || "").trim();
+  const business_type = normalizeBusinessType(
+    String(formData.get("business_type") || ""),
+  );
   const contact_name = String(formData.get("contact_name") || "").trim();
   const contact_number = String(formData.get("contact_number") || "").trim();
   const business_location = String(formData.get("business_location") || "").trim();
@@ -41,6 +63,10 @@ export async function updateBuyerAccount(formData: FormData) {
     !region
   ) {
     throw new Error("Please fill in all required fields.");
+  }
+
+  if (!ALLOWED_BUSINESS_TYPES.has(business_type)) {
+    throw new Error("Please select a valid business type.");
   }
 
   const { data: businessProfile, error: businessProfileError } = await supabase
@@ -171,7 +197,21 @@ export async function updateBuyerAccount(formData: FormData) {
 
   revalidatePath("/buyer/account");
 
-  return { success: true };
+  const redirectParams = new URLSearchParams();
+
+  if (nextPath) {
+    redirectParams.set("next", nextPath);
+  }
+
+  if (requiredFlow) {
+    redirectParams.set("required", requiredFlow);
+  }
+
+  redirect(
+    `/onboarding/buyer/categories${
+      redirectParams.toString() ? `?${redirectParams.toString()}` : ""
+    }`,
+  );
 }
 
 export async function logoutBuyerAccount() {

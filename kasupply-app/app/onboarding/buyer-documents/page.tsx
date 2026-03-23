@@ -1,16 +1,55 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { BuyerDocumentsForm } from "@/components/buyer-documents-form";
 import { getUserOnboardingStatus } from "@/lib/auth/get-user-onboarding-status";
 
-export default async function BuyerDocumentsPage() {
+type BuyerDocumentsPageProps = {
+  searchParams?: Promise<{
+    next?: string;
+    required?: string;
+  }>;
+};
+
+function BuyerDocumentsPageFallback() {
+  return (
+    <div className="min-h-svh bg-[#fafbfd] p-6 md:p-10">
+      <div className="mx-auto max-w-5xl rounded-[18px] border border-[#edf1f7] bg-white p-8 text-sm text-[#8a94a6] shadow-[0_10px_28px_rgba(15,23,42,0.04)]">
+        Loading verification requirements...
+      </div>
+    </div>
+  );
+}
+
+async function BuyerDocumentsPageContent({
+  searchParams,
+}: BuyerDocumentsPageProps) {
   const status = await getUserOnboardingStatus();
+  const params = (await searchParams) ?? {};
 
   if (!status.authenticated) {
-    redirect("/auth/login");
+    redirect("/login");
   }
 
   if (!status.hasBusinessProfile) {
-    redirect("/onboarding");
+    redirect("/onboarding/buyer");
+  }
+
+  if (!status.hasCompletedCategorySelection) {
+    const query = new URLSearchParams();
+
+    if (params.required) {
+      query.set("required", params.required);
+    }
+
+    if (params.next) {
+      query.set("next", params.next);
+    }
+
+    redirect(
+      `/onboarding/buyer/categories${
+        query.toString() ? `?${query.toString()}` : ""
+      }`,
+    );
   }
 
   if (status.role !== "buyer") {
@@ -18,17 +57,21 @@ export default async function BuyerDocumentsPage() {
   }
 
   return (
-    <div className="flex min-h-svh items-center justify-center p-6 md:p-10">
-      <div className="w-full max-w-xl rounded-xl border bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-bold">Buyer Document Submission</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Upload your DTI Business Registration Certificate for verification.
-        </p>
-
-        <div className="mt-6">
-          <BuyerDocumentsForm />
-        </div>
+    <div className="min-h-svh bg-[#fafbfd] p-6 md:p-10">
+      <div className="mx-auto max-w-5xl">
+        <BuyerDocumentsForm
+          nextPath={params.next ?? null}
+          requiredFlow={params.required ?? null}
+        />
       </div>
     </div>
+  );
+}
+
+export default function BuyerDocumentsPage(props: BuyerDocumentsPageProps) {
+  return (
+    <Suspense fallback={<BuyerDocumentsPageFallback />}>
+      <BuyerDocumentsPageContent {...props} />
+    </Suspense>
   );
 }

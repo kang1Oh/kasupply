@@ -109,8 +109,8 @@ async function DashboardPageContent() {
               complete={data.onboarding.hasSubmittedRequiredSupplierDocuments}
             />
             <ChecklistItem
-              label="Site showcase video uploaded"
-              complete={data.onboarding.hasSubmittedSiteVideo}
+              label="Site showcase images uploaded"
+              complete={data.onboarding.hasSubmittedSiteImages}
             />
 
             <div className="pt-2 text-sm text-gray-600">

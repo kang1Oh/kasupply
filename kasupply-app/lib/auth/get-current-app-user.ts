@@ -27,25 +27,31 @@ export async function getCurrentAppUser(): Promise<{
     return { user: null, error: "Not authenticated" };
   }
 
-  const { data: appUser, error: appUserError } = await supabase
+  const { data: appUserRow, error: appUserError } = await supabase
     .from("users")
-    .select(`
-      user_id,
-      auth_user_id,
-      role_id,
-      name,
-      email,
-      roles!users_role_id_fkey (
-        role_id,
-        role_name
-      )
-    `)
+    .select("user_id, auth_user_id, role_id, name, email")
     .eq("auth_user_id", authUser.id)
-    .single<CurrentAppUser>();
+    .single<Pick<CurrentAppUser, "user_id" | "auth_user_id" | "role_id" | "name" | "email">>();
 
-  if (appUserError || !appUser) {
+  if (appUserError || !appUserRow) {
     return { user: null, error: "User record not found in public.users" };
   }
 
-  return { user: appUser, error: null };
+  const { data: role, error: roleError } = await supabase
+    .from("roles")
+    .select("role_id, role_name")
+    .eq("role_id", appUserRow.role_id)
+    .maybeSingle<NonNullable<CurrentAppUser["roles"]>>();
+
+  if (roleError) {
+    return { user: null, error: roleError.message || "Failed to load user role." };
+  }
+
+  return {
+    user: {
+      ...appUserRow,
+      roles: role ?? null,
+    },
+    error: null,
+  };
 }

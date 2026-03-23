@@ -4,12 +4,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-const REQUIRED_SUPPLIER_DOCUMENTS = [
-  "DTI Business Registration Certificate",
-  "Mayor's Permit",
-  "FDA Certificate",
-];
-
 type ExistingDocumentRow = {
   doc_id: number;
   file_url: string;
@@ -131,35 +125,8 @@ export async function uploadSupplierDocument(formData: FormData) {
     }
   }
 
-  const { data: uploadedDocuments } = await supabase
-    .from("business_documents")
-    .select(`
-      doc_id,
-      document_types!business_documents_doc_type_id_fkey (
-        document_type_name
-      )
-    `)
-    .eq("profile_id", businessProfile.profile_id);
-
-  const uploadedNames = new Set(
-    ((uploadedDocuments as Array<{
-      doc_id: number;
-      document_types: { document_type_name: string } | null;
-    }> | null) ?? [])
-      .map((doc) => doc.document_types?.document_type_name?.trim().toLowerCase() ?? "")
-      .filter(Boolean)
-  );
-
-  const hasAllRequiredDocuments = REQUIRED_SUPPLIER_DOCUMENTS.every((name) =>
-    uploadedNames.has(name.trim().toLowerCase())
-  );
-
   revalidatePath("/onboarding/supplier-documents");
   revalidatePath("/dashboard");
-
-  if (hasAllRequiredDocuments) {
-    redirect("/onboarding/supplier-site-video");
-  }
 
   redirect("/onboarding/supplier-documents");
 }

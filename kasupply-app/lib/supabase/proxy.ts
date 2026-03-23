@@ -37,10 +37,32 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
   const pathname = request.nextUrl.pathname;
+  const authAliasMap: Record<string, string> = {
+    "/auth/login": "/login",
+    "/auth/sign-up": "/sign-up",
+    "/auth/sign-up-success": "/sign-up-success",
+    "/auth/forgot-password": "/forgot-password",
+    "/auth/update-password": "/update-password",
+    "/auth/error": "/auth-error",
+  };
+
+  const aliasedPath = authAliasMap[pathname];
+
+  if (aliasedPath) {
+    const url = request.nextUrl.clone();
+    url.pathname = aliasedPath;
+    return NextResponse.redirect(url);
+  }
 
   const isPublicPath =
     pathname === "/" ||
     pathname.startsWith("/auth") ||
+    pathname === "/login" ||
+    pathname === "/sign-up" ||
+    pathname === "/sign-up-success" ||
+    pathname === "/forgot-password" ||
+    pathname === "/update-password" ||
+    pathname === "/auth-error" ||
     pathname === "/buyer" ||
     pathname.startsWith("/buyer/search");
 
