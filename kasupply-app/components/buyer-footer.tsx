@@ -7,7 +7,7 @@ const footerGroups = [
     links: [
       { href: "/buyer/search", label: "Browse Suppliers" },
       { href: "/buyer/sourcing-board", label: "Sourcing Board" },
-      { href: "/buyer/rfqs/new", label: "Post an RFQ" },
+      { href: "/buyer/rfqs", label: "My RFQs" },
     ],
   },
   {
