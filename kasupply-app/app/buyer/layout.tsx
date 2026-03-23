@@ -47,6 +47,11 @@ async function BuyerLayoutContent({ children }: { children: ReactNode }) {
         targetPath: "/buyer/messages",
         reason: "messages",
       }) ?? "/buyer/messages",
+    account:
+      getBuyerAccessRedirect(status, {
+        requirement: "authenticated",
+        targetPath: "/buyer/account",
+      }) ?? "/buyer/account",
   };
 
   return (

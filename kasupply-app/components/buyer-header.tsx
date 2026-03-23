@@ -22,6 +22,7 @@ type BuyerAccessLinks = {
   sourcingBoard?: string;
   purchaseOrders?: string;
   messages?: string;
+  account?: string;
 };
 
 type BuyerHeaderProps = {
@@ -94,6 +95,8 @@ export function BuyerHeader({
     "/buyer/purchase-orders":
       accessLinks?.purchaseOrders ?? "/buyer/purchase-orders",
   };
+  const messagesHref = accessLinks?.messages ?? "/buyer/messages";
+  const accountHref = accessLinks?.account ?? "/buyer/account";
 
   return (
     <>
@@ -179,20 +182,31 @@ export function BuyerHeader({
                 <span className="absolute right-[7px] top-[7px] h-2 w-2 rounded-full bg-[#ff5331]" />
               </button>
 
-              <button
-                type="button"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#5f789d] text-[#dbe4f2] transition hover:bg-[#2d4a76] hover:text-white"
-                aria-label="Messages"
-              >
-                <MessageIcon />
-              </button>
+              {isLoggedIn ? (
+                <Link
+                  href={messagesHref}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#5f789d] text-[#dbe4f2] transition hover:bg-[#2d4a76] hover:text-white"
+                  aria-label="Messages"
+                >
+                  <MessageIcon />
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowModal(true)}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#5f789d] text-[#dbe4f2] transition hover:bg-[#2d4a76] hover:text-white"
+                  aria-label="Messages"
+                >
+                  <MessageIcon />
+                </button>
+              )}
             </div>
 
             <div className="h-9 w-px bg-[#6f84a5]" />
 
             {isLoggedIn ? (
               <Link
-                href="/buyer/account"
+                href={accountHref}
                 aria-label="Open buyer account"
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-[#3f73e0] text-[10px] font-semibold text-white transition hover:scale-[1.03]"
               >

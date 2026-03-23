@@ -46,7 +46,7 @@ function BuyerAccountBody({
       <main className="p-6 space-y-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">Account</h1>
+            <h1 className="text-2xl font-bold text-[#223654]">Account</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Add your buyer business details when you are ready to create an RFQ or place an order.
             </p>
@@ -85,7 +85,7 @@ function BuyerAccountBody({
     <main className="p-6 space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Account</h1>
+          <h1 className="text-2xl font-bold text-[#223654]">Account</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             View your buyer account and business profile details.
           </p>

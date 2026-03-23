@@ -16,10 +16,22 @@ export type SupplierProfileDetails = {
   contactNumber: string | null;
   verified: boolean;
   verifiedBadge: boolean;
+  businessDocuments: {
+    documentId: number;
+    documentTypeName: string;
+    fileUrl: string;
+    documentUrl: string | null;
+    fileName: string;
+    isImageFile: boolean;
+    isPdfFile: boolean;
+    status: string;
+    verifiedAt: string | null;
+  }[];
   products: {
     productId: number;
     productName: string;
     description: string | null;
+    imageUrl: string | null;
     categoryName: string;
     unit: string;
     pricePerUnit: number;
@@ -62,6 +74,93 @@ function isImagePath(path: string) {
 
 function isPdfPath(path: string) {
   return path.toLowerCase().endsWith(".pdf");
+}
+
+function isAbsoluteUrl(path: string) {
+  return /^https?:\/\//i.test(path);
+}
+
+function getBusinessDocumentTypeName(docTypeId: number) {
+  const documentTypeNames: Record<number, string> = {
+    1: "DTI",
+    2: "SEC",
+    3: "Mayor's Permit",
+    4: "BIR",
+    5: "FDA Permit",
+  };
+
+  return documentTypeNames[docTypeId] ?? "Business Document";
+}
+
+async function getCertificationDocumentUrl(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  filePath: string
+) {
+  if (isAbsoluteUrl(filePath)) {
+    return filePath;
+  }
+
+  const bucketNames = [
+    "supplier_certifications",
+    "supplier-certifications",
+    "business-documents",
+  ];
+
+  for (const bucketName of bucketNames) {
+    const { data, error } = await supabase.storage
+      .from(bucketName)
+      .createSignedUrl(filePath, 60 * 60);
+
+    if (!error && data?.signedUrl) {
+      return data.signedUrl;
+    }
+  }
+
+  return null;
+}
+
+async function getBusinessDocumentUrl(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  filePath: string
+) {
+  if (isAbsoluteUrl(filePath)) {
+    return filePath;
+  }
+
+  const { data, error } = await supabase.storage
+    .from("business-documents")
+    .createSignedUrl(filePath, 60 * 60);
+
+  if (error) {
+    console.error("Unable to resolve business document URL:", filePath, error);
+    return null;
+  }
+
+  return data?.signedUrl ?? null;
+}
+
+async function getProductImageUrl(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  filePath: string | null
+) {
+  if (!filePath) {
+    return null;
+  }
+
+  if (isAbsoluteUrl(filePath)) {
+    return filePath;
+  }
+
+  const { data, error } = await supabase.storage
+    .from("product-images")
+    .createSignedUrl(filePath, 60 * 60);
+
+  if (error) {
+    console.error("Unable to resolve product image URL:", filePath, error);
+    return null;
+  }
+
+  return data?.signedUrl ?? null;
 }
 
 export async function getSupplierProfileDetails(
@@ -119,6 +218,7 @@ export async function getSupplierProfileDetails(
       supplier_id,
       product_name,
       description,
+      image_url,
       unit,
       price_per_unit,
       moq,
@@ -165,16 +265,70 @@ export async function getSupplierProfileDetails(
     throw new Error("Failed to fetch supplier certifications.");
   }
 
+  const { data: businessDocumentRows, error: businessDocumentError } =
+    await supabase
+      .from("business_documents")
+      .select(
+        `
+        doc_id,
+        doc_type_id,
+        file_url,
+        status,
+        verified_at,
+        is_visible_to_others
+      `
+      )
+      .eq("profile_id", profile.profile_id)
+      .eq("is_visible_to_others", true)
+      .eq("status", "approved")
+      .order("uploaded_at", { ascending: false });
+
+  if (businessDocumentError) {
+    console.error(
+      "Error fetching supplier business documents:",
+      businessDocumentError
+    );
+    throw new Error("Failed to fetch supplier business documents.");
+  }
+
+  const businessDocuments = await Promise.all(
+    (businessDocumentRows ?? []).map(async (row) => {
+      const filePath = row.file_url;
+      const fileName = getFileNameFromPath(filePath);
+      const isImageFile = isImagePath(filePath);
+      const isPdfFile = isPdfPath(filePath);
+
+      return {
+        documentId: row.doc_id,
+        documentTypeName: getBusinessDocumentTypeName(row.doc_type_id),
+        fileUrl: filePath,
+        documentUrl: await getBusinessDocumentUrl(supabase, filePath),
+        fileName,
+        isImageFile,
+        isPdfFile,
+        status: row.status,
+        verifiedAt: row.verified_at,
+      };
+    })
+  );
+
   const certifications = await Promise.all(
     (certificationRows ?? []).map(async (row) => {
       const filePath = row.file_url;
       const fileName = getFileNameFromPath(filePath);
       const isImageFile = isImagePath(filePath);
       const isPdfFile = isPdfPath(filePath);
+      const documentUrl = await getCertificationDocumentUrl(
+        supabase,
+        filePath
+      );
 
-      const { data: signedUrlData } = await supabase.storage
-        .from("business-documents")
-        .createSignedUrl(filePath, 60 * 60);
+      if (!documentUrl) {
+        console.error(
+          "Unable to resolve supplier certification document URL:",
+          filePath
+        );
+      }
 
       return {
         certificationId: row.certification_id,
@@ -186,7 +340,7 @@ export async function getSupplierProfileDetails(
                 | { certification_type_name?: string }
                 | null)?.certification_type_name ?? "Unknown",
         fileUrl: filePath,
-        documentUrl: signedUrlData?.signedUrl ?? null,
+        documentUrl,
         fileName,
         isImageFile,
         isPdfFile,
@@ -196,6 +350,26 @@ export async function getSupplierProfileDetails(
         verifiedAt: row.verified_at,
       };
     })
+  );
+
+  const products = await Promise.all(
+    (productRows ?? []).map(async (row) => ({
+      productId: row.product_id,
+      productName: row.product_name,
+      description: row.description,
+      imageUrl: await getProductImageUrl(supabase, row.image_url),
+      categoryName:
+        Array.isArray(row.product_categories)
+          ? row.product_categories[0]?.category_name ?? "Uncategorized"
+          : (row.product_categories as { category_name?: string } | null)
+              ?.category_name ?? "Uncategorized",
+      unit: row.unit,
+      pricePerUnit: Number(row.price_per_unit),
+      moq: row.moq,
+      maxCapacity: row.max_capacity,
+      leadTime: row.lead_time,
+      stockAvailable: row.stock_available,
+    }))
   );
 
   return {
@@ -212,22 +386,8 @@ export async function getSupplierProfileDetails(
     contactNumber: profile.contact_number,
     verified: supplierRow.verified,
     verifiedBadge: supplierRow.verified_badge,
-    products: (productRows ?? []).map((row) => ({
-      productId: row.product_id,
-      productName: row.product_name,
-      description: row.description,
-      categoryName:
-        Array.isArray(row.product_categories)
-          ? row.product_categories[0]?.category_name ?? "Uncategorized"
-          : (row.product_categories as { category_name?: string } | null)
-              ?.category_name ?? "Uncategorized",
-      unit: row.unit,
-      pricePerUnit: Number(row.price_per_unit),
-      moq: row.moq,
-      maxCapacity: row.max_capacity,
-      leadTime: row.lead_time,
-      stockAvailable: row.stock_available,
-    })),
+    businessDocuments,
+    products,
     certifications,
   };
 }

@@ -2,7 +2,6 @@ type BuyerAccessStatus = {
   authenticated: boolean;
   role: string | null;
   hasBusinessProfile: boolean;
-  hasCompletedCategorySelection: boolean;
   hasSubmittedBuyerDocuments: boolean;
 };
 
@@ -47,20 +46,6 @@ export function getBuyerAccessRedirect(
 
     params.set("next", targetPath);
     return withQuery("/onboarding/buyer", params);
-  }
-
-  if (
-    (requirement === "profile" || requirement === "documents") &&
-    !status.hasCompletedCategorySelection
-  ) {
-    const params = new URLSearchParams();
-
-    if (reason) {
-      params.set("required", reason);
-    }
-
-    params.set("next", targetPath);
-    return withQuery("/onboarding/buyer/categories", params);
   }
 
   if (requirement === "documents" && !status.hasSubmittedBuyerDocuments) {
