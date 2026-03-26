@@ -75,14 +75,14 @@ function Field({
   rightButton?: React.ReactNode;
 }) {
   return (
-    <div className="mx-auto w-full max-w-[520px] space-y-1.5">
+    <div className="mx-auto w-full max-w-[460px] space-y-1.5">
       <label
         htmlFor={id}
-        className="ml-8 inline-block bg-white px-1 text-[18px] font-medium leading-none text-[#334a6f]"
+        className="ml-6 inline-block bg-white px-1 text-[16px] font-medium leading-none text-[#334a6f]"
       >
         {label}
       </label>
-      <div className="-mt-2.5 flex h-[56px] w-full max-w-[520px] items-center rounded-full border border-[#445f88] bg-white px-8">
+      <div className="-mt-2 flex h-[52px] w-full max-w-[460px] items-center rounded-full border border-[#445f88] bg-white px-6">
         <input
           id={id}
           type={type}
@@ -91,7 +91,7 @@ function Field({
           placeholder={placeholder}
           autoComplete={autoComplete}
           required
-          className="h-full w-full border-0 bg-transparent text-[18px] text-slate-700 outline-none placeholder:text-[#a7a7a7]"
+          className="h-full w-full border-0 bg-transparent text-[16px] text-slate-700 outline-none placeholder:text-[#a7a7a7]"
         />
         <span className="ml-4 shrink-0">{rightButton ?? icon}</span>
       </div>
@@ -224,21 +224,21 @@ export function SignUpForm() {
   };
 
   return (
-    <div className="grid min-h-screen w-full bg-[#294773] lg:grid-cols-[1.08fr_0.92fr]">
+    <div className="grid min-h-screen w-full bg-[#294773] lg:grid-cols-[1.14fr_0.86fr]">
       <div className="hidden bg-[#294773] lg:block" />
 
-      <div className="flex min-h-screen items-center justify-center rounded-l-[26px] bg-white px-8 py-12 sm:px-12">
-        <div className="w-full max-w-[520px]">
+      <div className="flex min-h-screen items-center justify-center rounded-l-[24px] bg-white px-8 py-10 sm:px-10">
+        <div className="w-full max-w-[460px]">
           <div className="text-center">
-            <h1 className="text-[24px] font-semibold leading-none text-[#3d4659] sm:text-[33px]">
+            <h1 className="text-[22px] font-semibold leading-none text-[#3d4659] sm:text-[28px]">
               Create New Account
             </h1>
-            <p className="mt-2 text-[26px] font-medium leading-none text-[#ff6f06]">
+            <p className="mt-2 text-[20px] font-medium leading-none text-[#ff6f06]">
               Join KaSupply today
             </p>
           </div>
 
-          <form onSubmit={handleSignUp} className="mt-12 flex flex-col items-center space-y-7">
+          <form onSubmit={handleSignUp} className="mt-10 flex flex-col items-center space-y-6">
             <Field
               id="name"
               label="Full Name"
@@ -274,7 +274,7 @@ export function SignUpForm() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((current) => !current)}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full transition hover:bg-slate-100"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-full transition hover:bg-slate-100"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                   aria-pressed={showPassword}
                 >
@@ -296,7 +296,7 @@ export function SignUpForm() {
                 <button
                   type="button"
                   onClick={() => setShowRepeatPassword((current) => !current)}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full transition hover:bg-slate-100"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-full transition hover:bg-slate-100"
                   aria-label={showRepeatPassword ? "Hide password" : "Show password"}
                   aria-pressed={showRepeatPassword}
                 >
@@ -320,17 +320,17 @@ export function SignUpForm() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-7 h-[60px] w-full max-w-[520px] rounded-full bg-[#294773] text-[18px] font-semibold text-white transition hover:bg-[#233d63] disabled:cursor-not-allowed disabled:opacity-70"
+              className="mt-5 h-[54px] w-full max-w-[460px] rounded-full bg-[#294773] text-[17px] font-semibold text-white transition hover:bg-[#233d63] disabled:cursor-not-allowed disabled:opacity-70"
             >
               {loading ? "Creating account..." : "Create Account"}
             </button>
           </form>
 
-          <p className="mx-auto mt-8 max-w-[540px] text-center text-[17px] font-medium leading-6 text-[#3d4659]">
+          <p className="mx-auto mt-7 max-w-[460px] text-center text-[15px] font-medium leading-6 text-[#3d4659]">
             By signing up, you agree to KaSupply&apos;s Terms &amp; Privacy Policy
           </p>
 
-          <p className="mx-auto mt-20 max-w-[540px] text-center text-[16px] text-[#3d4659]">
+          <p className="mx-auto mt-12 max-w-[460px] text-center text-[15px] text-[#3d4659]">
             Already have an account?{" "}
             <Link href="/auth/login" className="font-semibold text-[#ff6f06]">
               Log In

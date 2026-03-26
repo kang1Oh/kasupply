@@ -9,6 +9,9 @@ export type RFQFormPrefillData = {
   supplier: {
     supplierId: number;
     businessName: string;
+    businessType: string;
+    locationLabel: string;
+    profileHref: string;
   } | null;
   product: {
     productId: number;
@@ -26,6 +29,9 @@ export type RFQFormPrefillData = {
     quantity: number;
     unit: string;
     specifications: string | null;
+    targetPricePerUnit: string;
+    preferredDeliveryDate: string;
+    deliveryLocation: string;
     deadline: string;
   } | null;
   categories: {
@@ -35,10 +41,14 @@ export type RFQFormPrefillData = {
   initialValues: {
     supplierId: string;
     categoryId: string;
+    productId: string;
     productName: string;
     quantity: string;
     unit: string;
-    specifications: string;
+    targetPricePerUnit: string;
+    preferredDeliveryDate: string;
+    deliveryLocation: string;
+    notes: string;
     deadline: string;
   };
 };
@@ -117,7 +127,10 @@ export async function getNewRFQPrefillData(params: {
         `
         supplier_id,
         business_profiles (
-          business_name
+          business_name,
+          business_type,
+          city,
+          province
         )
       `
       )
@@ -137,6 +150,9 @@ export async function getNewRFQPrefillData(params: {
       supplier = {
         supplierId: supplierRow.supplier_id,
         businessName: profile?.business_name ?? "Unknown Supplier",
+        businessType: profile?.business_type ?? "Supplier",
+        locationLabel: [profile?.city, profile?.province].filter(Boolean).join(", "),
+        profileHref: `/buyer/search/${supplierRow.supplier_id}`,
       };
     }
   }
@@ -203,6 +219,9 @@ export async function getNewRFQPrefillData(params: {
         quantity,
         unit,
         specifications,
+        target_price_per_unit,
+        preferred_delivery_date,
+        delivery_location,
         deadline
       `
       )
@@ -223,6 +242,12 @@ export async function getNewRFQPrefillData(params: {
         quantity: rfqRow.quantity,
         unit: rfqRow.unit,
         specifications: rfqRow.specifications,
+        targetPricePerUnit:
+          rfqRow.target_price_per_unit != null
+            ? String(rfqRow.target_price_per_unit)
+            : "",
+        preferredDeliveryDate: rfqRow.preferred_delivery_date ?? "",
+        deliveryLocation: rfqRow.delivery_location ?? "",
         deadline: rfqRow.deadline,
       };
     }
@@ -242,10 +267,14 @@ export async function getNewRFQPrefillData(params: {
     initialValues = {
       supplierId: String(supplier.supplierId),
       categoryId: String(product.categoryId),
+      productId: String(product.productId),
       productName: product.productName,
       quantity: String(product.moq),
       unit: product.unit,
-      specifications: product.description ?? "",
+      targetPricePerUnit: "",
+      preferredDeliveryDate: "",
+      deliveryLocation: "",
+      notes: product.description ?? "",
       deadline: "",
     };
   } else {
@@ -256,10 +285,14 @@ export async function getNewRFQPrefillData(params: {
     initialValues = {
       supplierId: String(supplier.supplierId),
       categoryId: String(reusedRfq.categoryId),
+      productId: "",
       productName: reusedRfq.productName,
       quantity: String(reusedRfq.quantity),
       unit: reusedRfq.unit,
-      specifications: reusedRfq.specifications ?? "",
+      targetPricePerUnit: reusedRfq.targetPricePerUnit,
+      preferredDeliveryDate: reusedRfq.preferredDeliveryDate,
+      deliveryLocation: reusedRfq.deliveryLocation,
+      notes: reusedRfq.specifications ?? "",
       deadline: reusedRfq.deadline,
     };
   }
@@ -287,15 +320,22 @@ export async function createRFQ(formData: FormData) {
 
   const supplierId = Number(formData.get("supplierId")?.toString() ?? "");
   const categoryId = Number(formData.get("categoryId")?.toString() ?? "");
+  const productId = Number(formData.get("productId")?.toString() ?? "");
   const productName = formData.get("productName")?.toString().trim() ?? "";
   const quantity = Number(formData.get("quantity")?.toString() ?? "");
   const unit = formData.get("unit")?.toString().trim() ?? "";
-  const specifications =
-    formData.get("specifications")?.toString().trim() ?? "";
+  const targetPricePerUnit = formData.get("targetPricePerUnit")?.toString().trim() ?? "";
+  const preferredDeliveryDate = formData.get("preferredDeliveryDate")?.toString() ?? "";
+  const deliveryLocation = formData.get("deliveryLocation")?.toString().trim() ?? "";
+  const specifications = formData.get("notes")?.toString().trim() ?? "";
   const deadline = formData.get("deadline")?.toString() ?? "";
 
   if (!supplierId) {
     throw new Error("Supplier is required.");
+  }
+
+  if (!productId && !formData.get("reuseRfqId")) {
+    redirect("/buyer/rfqs");
   }
 
   if (!categoryId) {
@@ -314,6 +354,18 @@ export async function createRFQ(formData: FormData) {
     throw new Error("Unit is required.");
   }
 
+  if (!targetPricePerUnit || Number(targetPricePerUnit) <= 0) {
+    throw new Error("Target price per unit is required.");
+  }
+
+  if (!preferredDeliveryDate) {
+    throw new Error("Preferred delivery date is required.");
+  }
+
+  if (!deliveryLocation) {
+    throw new Error("Delivery location is required.");
+  }
+
   if (!deadline) {
     throw new Error("Deadline is required.");
   }
@@ -327,6 +379,9 @@ export async function createRFQ(formData: FormData) {
       quantity,
       unit,
       specifications: specifications || null,
+      target_price_per_unit: Number(targetPricePerUnit),
+      preferred_delivery_date: preferredDeliveryDate,
+      delivery_location: deliveryLocation,
       deadline,
       status: "open",
       visibility: "restricted",

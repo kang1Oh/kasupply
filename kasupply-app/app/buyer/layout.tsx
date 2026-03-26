@@ -8,9 +8,33 @@ import { getUserOnboardingStatus } from "@/lib/auth/get-user-onboarding-status";
 function BuyerLayoutFallback() {
   return (
     <div className="flex min-h-screen flex-col bg-white">
-      <BuyerHeader isLoggedIn={false} />
-      <main className="mx-auto flex w-full max-w-[1180px] flex-1 px-4 py-6 sm:px-6 lg:px-8">
-        Loading buyer area...
+      <div className="border-b border-[#e6edf6] bg-white">
+        <div className="mx-auto flex h-14 w-full max-w-[1120px] items-center justify-between px-4 sm:px-5 lg:px-6">
+          <div className="h-7 w-32 rounded-lg bg-[#eef3f9]" />
+          <div className="hidden items-center gap-3 lg:flex">
+            <div className="h-8 w-16 rounded-lg bg-[#eef3f9]" />
+            <div className="h-8 w-16 rounded-lg bg-[#eef3f9]" />
+            <div className="h-8 w-14 rounded-lg bg-[#eef3f9]" />
+            <div className="h-8 w-28 rounded-lg bg-[#eef3f9]" />
+            <div className="h-8 w-28 rounded-lg bg-[#eef3f9]" />
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-[#eef3f9]" />
+            <div className="h-9 w-9 rounded-lg bg-[#eef3f9]" />
+            <div className="h-9 w-px bg-[#eef3f9]" />
+            <div className="h-9 w-9 rounded-full bg-[#eef3f9]" />
+          </div>
+        </div>
+      </div>
+      <main className="mx-auto flex w-full max-w-[1120px] flex-1 px-4 py-5 sm:px-5 lg:px-6">
+        <div className="w-full space-y-4">
+          <div className="h-10 w-56 rounded-xl bg-[#f3f6fb]" />
+          <div className="h-56 rounded-[24px] bg-[#f3f6fb]" />
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="h-48 rounded-[24px] bg-[#f3f6fb]" />
+            <div className="h-48 rounded-[24px] bg-[#f3f6fb]" />
+          </div>
+        </div>
       </main>
       <BuyerFooter />
     </div>
@@ -61,7 +85,7 @@ async function BuyerLayoutContent({ children }: { children: ReactNode }) {
         userName={user?.name ?? null}
         accessLinks={accessLinks}
       />
-      <main className="mx-auto w-full max-w-[1180px] flex-1 px-4 py-6 sm:px-6 lg:px-8">
+      <main className="mx-auto w-full max-w-[1120px] flex-1 px-4 py-5 sm:px-5 lg:px-6">
         {children}
       </main>
       <BuyerFooter />

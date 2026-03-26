@@ -9,6 +9,9 @@ export type BuyerRFQListItem = {
   quantity: number;
   unit: string;
   specifications: string | null;
+  targetPricePerUnit: number | null;
+  preferredDeliveryDate: string | null;
+  deliveryLocation: string | null;
   deadline: string;
   status: string;
   visibility: string;
@@ -76,6 +79,9 @@ export async function getBuyerRFQs(): Promise<BuyerRFQListItem[]> {
       quantity,
       unit,
       specifications,
+      target_price_per_unit,
+      preferred_delivery_date,
+      delivery_location,
       deadline,
       status,
       visibility,
@@ -205,6 +211,9 @@ export async function getBuyerRFQs(): Promise<BuyerRFQListItem[]> {
       quantity: row.quantity,
       unit: row.unit,
       specifications: row.specifications,
+      targetPricePerUnit: row.target_price_per_unit,
+      preferredDeliveryDate: row.preferred_delivery_date,
+      deliveryLocation: row.delivery_location,
       deadline: row.deadline,
       status: row.status,
       visibility: row.visibility,

@@ -76,6 +76,10 @@ function isNavItemActive(pathname: string, href: string) {
     return pathname === "/buyer";
   }
 
+  if (href === "/buyer/search") {
+    return pathname === "/buyer/search";
+  }
+
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -101,8 +105,8 @@ export function BuyerHeader({
   return (
     <>
       <header className="border-b border-[#3a557f] bg-[#243f68] text-white">
-        <div className="mx-auto flex h-14 w-full max-w-[1180px] items-center justify-between gap-5 px-4 sm:px-5 lg:px-6">
-          <div className="flex items-center gap-6">
+        <div className="flex h-14 w-full items-center px-6 sm:px-7 lg:px-8">
+          <div className="flex min-w-0 flex-1 items-center justify-start">
             <Link href="/buyer" className="flex items-center gap-2.5">
               <Image
                 src="/images/kasupply-logo.svg"
@@ -114,64 +118,64 @@ export function BuyerHeader({
               />
               <span className="text-[15px] font-semibold leading-none">KaSupply</span>
             </Link>
+          </div>
 
-            <nav className="hidden items-center gap-2 lg:flex">
-              {publicNavItems.map((item) => {
-                const isActive = isNavItemActive(pathname, item.href);
+          <nav className="hidden flex-none items-center justify-center gap-1.5 lg:flex">
+            {publicNavItems.map((item) => {
+              const isActive = isNavItemActive(pathname, item.href);
 
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`transition ${
+                    isActive
+                      ? "rounded-lg bg-[#4e678c] px-4 py-2 text-[13px] font-medium text-white"
+                      : "rounded-lg px-4 py-2 text-[13px] font-medium text-[#dbe4f2] hover:bg-[#2d4a76] hover:text-white"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+
+            {protectedNavItems.map((item) => {
+              const isActive = isNavItemActive(pathname, item.href);
+
+              if (isLoggedIn) {
                 return (
                   <Link
                     key={item.href}
-                    href={item.href}
+                    href={protectedNavHrefs[item.href] ?? item.href}
                     className={`transition ${
                       isActive
-                        ? "rounded-lg bg-[#4e678c] px-4 py-2 text-[12px] font-medium text-white"
-                        : "rounded-lg px-4 py-2 text-[12px] font-medium text-[#dbe4f2] hover:bg-[#2d4a76] hover:text-white"
+                        ? "rounded-lg bg-[#4e678c] px-4 py-2 text-[13px] font-medium text-white"
+                        : "rounded-lg px-4 py-2 text-[13px] font-medium text-[#dbe4f2] hover:bg-[#2d4a76] hover:text-white"
                     }`}
                   >
                     {item.label}
                   </Link>
                 );
-              })}
+              }
 
-              {protectedNavItems.map((item) => {
-                const isActive = isNavItemActive(pathname, item.href);
+              return (
+                <button
+                  key={item.href}
+                  type="button"
+                  onClick={() => setShowModal(true)}
+                  className={`transition ${
+                    isActive
+                      ? "rounded-lg bg-[#4e678c] px-4 py-2 text-[13px] font-medium text-white"
+                      : "rounded-lg px-4 py-2 text-[13px] font-medium text-[#dbe4f2] hover:bg-[#2d4a76] hover:text-white"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </nav>
 
-                if (isLoggedIn) {
-                  return (
-                    <Link
-                      key={item.href}
-                      href={protectedNavHrefs[item.href] ?? item.href}
-                      className={`transition ${
-                        isActive
-                          ? "rounded-lg bg-[#4e678c] px-4 py-2 text-[12px] font-medium text-white"
-                          : "rounded-lg px-4 py-2 text-[12px] font-medium text-[#dbe4f2] hover:bg-[#2d4a76] hover:text-white"
-                      }`}
-                    >
-                      {item.label}
-                    </Link>
-                  );
-                }
-
-                return (
-                  <button
-                    key={item.href}
-                    type="button"
-                    onClick={() => setShowModal(true)}
-                    className={`transition ${
-                      isActive
-                        ? "rounded-lg bg-[#4e678c] px-4 py-2 text-[12px] font-medium text-white"
-                        : "rounded-lg px-4 py-2 text-[12px] font-medium text-[#dbe4f2] hover:bg-[#2d4a76] hover:text-white"
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
-
-          <div className="flex items-center gap-4">
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-4">
             <div className="flex items-center gap-2">
               <button
                 type="button"

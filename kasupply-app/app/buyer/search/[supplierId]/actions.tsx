@@ -56,12 +56,20 @@ export type SupplierProfileDetails = {
   }[];
 };
 
-function getFileNameFromPath(path: string) {
+function getFileNameFromPath(path: string | null | undefined) {
+  if (!path) {
+    return "document";
+  }
+
   const parts = path.split("/");
   return parts[parts.length - 1] || "document";
 }
 
-function isImagePath(path: string) {
+function isImagePath(path: string | null | undefined) {
+  if (!path) {
+    return false;
+  }
+
   const lower = path.toLowerCase();
   return (
     lower.endsWith(".jpg") ||
@@ -72,11 +80,19 @@ function isImagePath(path: string) {
   );
 }
 
-function isPdfPath(path: string) {
+function isPdfPath(path: string | null | undefined) {
+  if (!path) {
+    return false;
+  }
+
   return path.toLowerCase().endsWith(".pdf");
 }
 
-function isAbsoluteUrl(path: string) {
+function isAbsoluteUrl(path: string | null | undefined) {
+  if (!path) {
+    return false;
+  }
+
   return /^https?:\/\//i.test(path);
 }
 
@@ -94,8 +110,12 @@ function getBusinessDocumentTypeName(docTypeId: number) {
 
 async function getCertificationDocumentUrl(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  filePath: string
+  filePath: string | null | undefined
 ) {
+  if (!filePath) {
+    return null;
+  }
+
   if (isAbsoluteUrl(filePath)) {
     return filePath;
   }
@@ -121,8 +141,12 @@ async function getCertificationDocumentUrl(
 
 async function getBusinessDocumentUrl(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  filePath: string
+  filePath: string | null | undefined
 ) {
+  if (!filePath) {
+    return null;
+  }
+
   if (isAbsoluteUrl(filePath)) {
     return filePath;
   }
@@ -293,7 +317,7 @@ export async function getSupplierProfileDetails(
 
   const businessDocuments = await Promise.all(
     (businessDocumentRows ?? []).map(async (row) => {
-      const filePath = row.file_url;
+      const filePath = row.file_url ?? null;
       const fileName = getFileNameFromPath(filePath);
       const isImageFile = isImagePath(filePath);
       const isPdfFile = isPdfPath(filePath);
@@ -301,7 +325,7 @@ export async function getSupplierProfileDetails(
       return {
         documentId: row.doc_id,
         documentTypeName: getBusinessDocumentTypeName(row.doc_type_id),
-        fileUrl: filePath,
+        fileUrl: filePath ?? "",
         documentUrl: await getBusinessDocumentUrl(supabase, filePath),
         fileName,
         isImageFile,
@@ -314,7 +338,7 @@ export async function getSupplierProfileDetails(
 
   const certifications = await Promise.all(
     (certificationRows ?? []).map(async (row) => {
-      const filePath = row.file_url;
+      const filePath = row.file_url ?? null;
       const fileName = getFileNameFromPath(filePath);
       const isImageFile = isImagePath(filePath);
       const isPdfFile = isPdfPath(filePath);
@@ -339,7 +363,7 @@ export async function getSupplierProfileDetails(
             : (row.certification_types as
                 | { certification_type_name?: string }
                 | null)?.certification_type_name ?? "Unknown",
-        fileUrl: filePath,
+        fileUrl: filePath ?? "",
         documentUrl,
         fileName,
         isImageFile,

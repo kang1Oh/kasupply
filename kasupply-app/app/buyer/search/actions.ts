@@ -18,9 +18,15 @@ export type SupplierSearchItem = {
     productId: number;
     productName: string;
     categoryName: string;
+    description: string | null;
     pricePerUnit: number;
     unit: string;
     moq: number;
+  }[];
+  searchableProducts: {
+    productName: string;
+    categoryName: string;
+    description: string | null;
   }[];
   certificationsCount: number;
 };
@@ -77,6 +83,7 @@ export async function getSupplierSearchResults(
       product_id,
       supplier_id,
       product_name,
+      description,
       price_per_unit,
       unit,
       moq,
@@ -121,6 +128,7 @@ export async function getSupplierSearchResults(
           ? row.product_categories[0]?.category_name ?? "Uncategorized"
           : (row.product_categories as { category_name?: string } | null)
               ?.category_name ?? "Uncategorized",
+      description: row.description,
       pricePerUnit: Number(row.price_per_unit),
       unit: row.unit,
       moq: row.moq,
@@ -195,6 +203,11 @@ export async function getSupplierSearchResults(
       verified: row.verified,
       verifiedBadge: row.verified_badge,
       products: supplierProducts.slice(0, 4),
+      searchableProducts: supplierProducts.map((product) => ({
+        productName: product.productName,
+        categoryName: product.categoryName,
+        description: product.description,
+      })),
       certificationsCount: certificationCountBySupplier.get(row.supplier_id) ?? 0,
     });
   }
