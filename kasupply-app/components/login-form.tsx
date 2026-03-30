@@ -150,7 +150,16 @@ export function LoginForm() {
         return;
       }
 
-      if ((appUser.status ?? "").toLowerCase() !== "active") {
+      const normalizedStatus = (appUser.status ?? "active").toLowerCase();
+
+      if (["restricted", "suspended", "banned"].includes(normalizedStatus)) {
+        await supabase.auth.signOut();
+        throw new Error(
+          `This account is currently ${normalizedStatus}. Please contact support for assistance.`,
+        );
+      }
+
+      if (!["active", "warned"].includes(normalizedStatus)) {
         router.push("/auth/sign-up-success");
         return;
       }

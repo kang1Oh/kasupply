@@ -3,6 +3,7 @@ import { getSupplierPurchaseOrders } from "./data";
 
 function formatCurrency(value: number | null) {
   if (value === null) return "Not available";
+
   return new Intl.NumberFormat("en-PH", {
     style: "currency",
     currency: "PHP",
@@ -12,20 +13,19 @@ function formatCurrency(value: number | null) {
 function toTitleCase(value: string) {
   return value
     .split("_")
+    .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 }
 
 function getStatusBadgeClasses(status: string) {
   switch (status) {
-    case "pending":
-      return "bg-yellow-100 text-yellow-800";
-    case "in_transit":
+    case "confirmed":
       return "bg-blue-100 text-blue-800";
-    case "delivered":
+    case "processing":
+      return "bg-amber-100 text-amber-800";
+    case "shipped":
       return "bg-indigo-100 text-indigo-800";
-    case "paid":
-      return "bg-emerald-100 text-emerald-800";
     case "completed":
       return "bg-green-100 text-green-800";
     case "cancelled":
@@ -63,10 +63,9 @@ export default async function SupplierPurchaseOrdersPage({
   const { orders, allOrders } = await getSupplierPurchaseOrders(selectedStatus);
 
   const totalOrders = allOrders.length;
-  const pendingOrders = allOrders.filter((order) => order.status === "pending").length;
-  const inTransitOrders = allOrders.filter((order) => order.status === "in_transit").length;
-  const deliveredOrders = allOrders.filter((order) => order.status === "delivered").length;
-  const paidOrders = allOrders.filter((order) => order.status === "paid").length;
+  const confirmedOrders = allOrders.filter((order) => order.status === "confirmed").length;
+  const processingOrders = allOrders.filter((order) => order.status === "processing").length;
+  const shippedOrders = allOrders.filter((order) => order.status === "shipped").length;
   const completedOrders = allOrders.filter((order) => order.status === "completed").length;
 
   return (
@@ -74,16 +73,15 @@ export default async function SupplierPurchaseOrdersPage({
       <div>
         <h1 className="text-2xl font-bold">Purchase Orders</h1>
         <p className="text-gray-600">
-          Manage confirmed buyer orders, delivery and payment tracking, and invoice handling in one supplier workspace.
+          Manage confirmed buyer orders, set delivery fees, and complete orders once the buyer uploads a receipt.
         </p>
       </div>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <SummaryCard title="Total Orders" value={totalOrders} />
-        <SummaryCard title="Pending" value={pendingOrders} />
-        <SummaryCard title="In Transit" value={inTransitOrders} />
-        <SummaryCard title="Delivered" value={deliveredOrders} />
-        <SummaryCard title="Paid" value={paidOrders} />
+        <SummaryCard title="Confirmed" value={confirmedOrders} />
+        <SummaryCard title="Processing" value={processingOrders} />
+        <SummaryCard title="Shipped" value={shippedOrders} />
         <SummaryCard title="Completed" value={completedOrders} />
       </section>
 
@@ -92,7 +90,7 @@ export default async function SupplierPurchaseOrdersPage({
           <div>
             <h2 className="font-semibold">Purchase Orders List</h2>
             <p className="text-sm text-gray-500">
-              Review buyer purchase orders and open each one for invoice and payment details.
+              Review buyer purchase orders, monitor receipt uploads, and open each order for fulfillment details.
             </p>
           </div>
 
@@ -103,10 +101,9 @@ export default async function SupplierPurchaseOrdersPage({
               className="rounded border px-3 py-2 text-sm"
             >
               <option value="">All statuses</option>
-              <option value="pending">Pending</option>
-              <option value="in_transit">In Transit</option>
-              <option value="delivered">Delivered</option>
-              <option value="paid">Paid</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="processing">Processing</option>
+              <option value="shipped">Shipped</option>
               <option value="completed">Completed</option>
               <option value="cancelled">Cancelled</option>
             </select>
@@ -140,7 +137,7 @@ export default async function SupplierPurchaseOrdersPage({
                   <th className="px-3 py-2 font-medium">Quantity</th>
                   <th className="px-3 py-2 font-medium">Total Amount</th>
                   <th className="px-3 py-2 font-medium">Status</th>
-                  <th className="px-3 py-2 font-medium">Payment Proof</th>
+                  <th className="px-3 py-2 font-medium">Receipt</th>
                   <th className="px-3 py-2 font-medium">Actions</th>
                 </tr>
               </thead>
@@ -150,8 +147,8 @@ export default async function SupplierPurchaseOrdersPage({
                   <tr key={order.poId} className="border-b">
                     <td className="px-3 py-3 font-medium">{order.poNumber}</td>
                     <td className="px-3 py-3">{order.buyer}</td>
-                    <td className="px-3 py-3">{order.product}</td>
-                    <td className="px-3 py-3">{order.quantity}</td>
+                    <td className="px-3 py-3">{order.productName}</td>
+                    <td className="px-3 py-3">{order.quantityLabel}</td>
                     <td className="px-3 py-3">{formatCurrency(order.totalAmount)}</td>
                     <td className="px-3 py-3">
                       <span
@@ -161,13 +158,13 @@ export default async function SupplierPurchaseOrdersPage({
                       </span>
                     </td>
                     <td className="px-3 py-3">
-                      {order.paymentProof ? (
+                      {order.receiptFilePath ? (
                         <span className="rounded-full bg-green-100 px-2 py-1 text-xs text-green-700">
                           Uploaded
                         </span>
                       ) : (
                         <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-600">
-                          Not uploaded
+                          Pending
                         </span>
                       )}
                     </td>

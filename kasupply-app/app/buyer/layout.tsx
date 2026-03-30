@@ -4,6 +4,7 @@ import { BuyerFooter } from "@/components/buyer-footer";
 import { BuyerHeader } from "@/components/buyer-header";
 import { getBuyerAccessRedirect } from "@/lib/auth/buyer-access";
 import { getUserOnboardingStatus } from "@/lib/auth/get-user-onboarding-status";
+import { getBuyerUnreadNotificationCount } from "@/lib/buyer/notifications";
 
 function BuyerLayoutFallback() {
   return (
@@ -45,6 +46,9 @@ async function BuyerLayoutContent({ children }: { children: ReactNode }) {
   const status = await getUserOnboardingStatus();
 
   const user = status.appUser;
+  const unreadNotificationCount = user
+    ? await getBuyerUnreadNotificationCount(user.user_id)
+    : 0;
 
   const accessLinks = {
     rfqs:
@@ -71,6 +75,12 @@ async function BuyerLayoutContent({ children }: { children: ReactNode }) {
         targetPath: "/buyer/messages",
         reason: "messages",
       }) ?? "/buyer/messages",
+    notifications:
+      getBuyerAccessRedirect(status, {
+        requirement: "authenticated",
+        targetPath: "/buyer/notifications",
+        reason: "notifications",
+      }) ?? "/buyer/notifications",
     account:
       getBuyerAccessRedirect(status, {
         requirement: "authenticated",
@@ -84,6 +94,7 @@ async function BuyerLayoutContent({ children }: { children: ReactNode }) {
         isLoggedIn={!!user}
         userName={user?.name ?? null}
         accessLinks={accessLinks}
+        unreadNotificationCount={unreadNotificationCount}
       />
       <main className="mx-auto w-full max-w-[1120px] flex-1 px-4 py-5 sm:px-5 lg:px-6">
         {children}

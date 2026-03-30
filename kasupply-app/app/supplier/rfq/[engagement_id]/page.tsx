@@ -35,7 +35,7 @@ function formatCurrency(value: number) {
 }
 
 function toTitleCase(value: string | null) {
-  return String(value ?? "new")
+  return String(value ?? "viewing")
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
@@ -45,16 +45,16 @@ function getStatusBadgeClasses(status: string | null) {
   const safeStatus = String(status ?? "").toLowerCase();
 
   switch (safeStatus) {
-    case "new":
-      return "bg-slate-100 text-slate-700 border-slate-200";
-    case "viewed":
+    case "viewing":
       return "bg-blue-100 text-blue-700 border-blue-200";
-    case "interested":
-      return "bg-indigo-100 text-indigo-700 border-indigo-200";
     case "negotiating":
       return "bg-amber-100 text-amber-800 border-amber-200";
     case "quoted":
       return "bg-emerald-100 text-emerald-700 border-emerald-200";
+    case "accepted":
+      return "bg-emerald-100 text-emerald-700 border-emerald-200";
+    case "rejected":
+      return "bg-rose-100 text-rose-700 border-rose-200";
     case "withdrawn":
       return "bg-rose-100 text-rose-700 border-rose-200";
     default:

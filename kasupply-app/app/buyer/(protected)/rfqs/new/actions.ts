@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentAppUser } from "@/lib/auth/get-current-app-user";
 
 export type RFQFormPrefillData = {
-  entryMode: "reuse-rfq" | "product-request";
+  entryMode: "product-request";
   supplier: {
     supplierId: number;
     businessName: string;
@@ -21,18 +21,6 @@ export type RFQFormPrefillData = {
     unit: string;
     moq: number;
     description: string | null;
-  } | null;
-  reusedRfq: {
-    rfqId: number;
-    categoryId: number;
-    productName: string;
-    quantity: number;
-    unit: string;
-    specifications: string | null;
-    targetPricePerUnit: string;
-    preferredDeliveryDate: string;
-    deliveryLocation: string;
-    deadline: string;
   } | null;
   categories: {
     categoryId: number;
@@ -86,25 +74,20 @@ async function getCurrentBuyerId() {
 
 export async function getNewRFQPrefillData(params: {
   supplierId?: string;
-  rfqId?: string;
   productId?: string;
 }): Promise<RFQFormPrefillData> {
   const supabase = await createClient();
 
   const supplierId = Number(params.supplierId || "");
-  const rfqId = Number(params.rfqId || "");
   const productId = Number(params.productId || "");
 
-  const isReuseRequest = supplierId > 0 && rfqId > 0 && !productId;
-  const isProductRequest = supplierId > 0 && productId > 0 && !rfqId;
+  const isProductRequest = supplierId > 0 && productId > 0;
 
-  if (!isReuseRequest && !isProductRequest) {
+  if (!isProductRequest) {
     redirect("/buyer/rfqs");
   }
 
-  const entryMode: RFQFormPrefillData["entryMode"] = isReuseRequest
-    ? "reuse-rfq"
-    : "product-request";
+  const entryMode: RFQFormPrefillData["entryMode"] = "product-request";
 
   const { data: categoryRows, error: categoryError } = await supabase
     .from("product_categories")
@@ -118,7 +101,6 @@ export async function getNewRFQPrefillData(params: {
 
   let supplier: RFQFormPrefillData["supplier"] = null;
   let product: RFQFormPrefillData["product"] = null;
-  let reusedRfq: RFQFormPrefillData["reusedRfq"] = null;
 
   if (supplierId) {
     const { data: supplierRow, error: supplierError } = await supabase
@@ -201,107 +183,32 @@ export async function getNewRFQPrefillData(params: {
     }
   }
 
-  if (entryMode === "reuse-rfq" && rfqId) {
-    const buyerId = await getCurrentBuyerId();
-
-    if (!buyerId) {
-      throw new Error("Buyer profile not found.");
-    }
-
-    const { data: rfqRow, error: rfqError } = await supabase
-      .from("rfqs")
-      .select(
-        `
-        rfq_id,
-        buyer_id,
-        category_id,
-        product_name,
-        quantity,
-        unit,
-        specifications,
-        target_price_per_unit,
-        preferred_delivery_date,
-        delivery_location,
-        deadline
-      `
-      )
-      .eq("rfq_id", rfqId)
-      .eq("buyer_id", buyerId)
-      .maybeSingle();
-
-    if (rfqError) {
-      console.error("Error fetching reusable RFQ:", rfqError);
-      throw new Error("Failed to fetch RFQ.");
-    }
-
-    if (rfqRow) {
-      reusedRfq = {
-        rfqId: rfqRow.rfq_id,
-        categoryId: rfqRow.category_id,
-        productName: rfqRow.product_name,
-        quantity: rfqRow.quantity,
-        unit: rfqRow.unit,
-        specifications: rfqRow.specifications,
-        targetPricePerUnit:
-          rfqRow.target_price_per_unit != null
-            ? String(rfqRow.target_price_per_unit)
-            : "",
-        preferredDeliveryDate: rfqRow.preferred_delivery_date ?? "",
-        deliveryLocation: rfqRow.delivery_location ?? "",
-        deadline: rfqRow.deadline,
-      };
-    }
-  }
-
   if (!supplier) {
     redirect("/buyer/rfqs");
   }
 
-  let initialValues: RFQFormPrefillData["initialValues"];
-
-  if (entryMode === "product-request") {
-    if (!product) {
-      redirect("/buyer/rfqs");
-    }
-
-    initialValues = {
-      supplierId: String(supplier.supplierId),
-      categoryId: String(product.categoryId),
-      productId: String(product.productId),
-      productName: product.productName,
-      quantity: String(product.moq),
-      unit: product.unit,
-      targetPricePerUnit: "",
-      preferredDeliveryDate: "",
-      deliveryLocation: "",
-      notes: product.description ?? "",
-      deadline: "",
-    };
-  } else {
-    if (!reusedRfq) {
-      redirect("/buyer/rfqs");
-    }
-
-    initialValues = {
-      supplierId: String(supplier.supplierId),
-      categoryId: String(reusedRfq.categoryId),
-      productId: "",
-      productName: reusedRfq.productName,
-      quantity: String(reusedRfq.quantity),
-      unit: reusedRfq.unit,
-      targetPricePerUnit: reusedRfq.targetPricePerUnit,
-      preferredDeliveryDate: reusedRfq.preferredDeliveryDate,
-      deliveryLocation: reusedRfq.deliveryLocation,
-      notes: reusedRfq.specifications ?? "",
-      deadline: reusedRfq.deadline,
-    };
+  if (!product) {
+    redirect("/buyer/rfqs");
   }
+
+  const initialValues: RFQFormPrefillData["initialValues"] = {
+    supplierId: String(supplier.supplierId),
+    categoryId: String(product.categoryId),
+    productId: String(product.productId),
+    productName: product.productName,
+    quantity: String(product.moq),
+    unit: product.unit,
+    targetPricePerUnit: "",
+    preferredDeliveryDate: "",
+    deliveryLocation: "",
+    notes: product.description ?? "",
+    deadline: "",
+  };
 
   return {
     entryMode,
     supplier,
     product,
-    reusedRfq,
     categories: (categoryRows ?? []).map((row) => ({
       categoryId: row.category_id,
       categoryName: row.category_name,
@@ -334,7 +241,7 @@ export async function createRFQ(formData: FormData) {
     throw new Error("Supplier is required.");
   }
 
-  if (!productId && !formData.get("reuseRfqId")) {
+  if (!productId) {
     redirect("/buyer/rfqs");
   }
 

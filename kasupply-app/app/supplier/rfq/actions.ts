@@ -82,7 +82,7 @@ export async function markEngagementViewed(formData: FormData) {
   const { error } = await supabase
     .from("rfq_engagements")
     .update({
-      status: "viewed",
+      status: "viewing",
       viewed_at: new Date().toISOString(),
     })
     .eq("engagement_id", engagement_id)
@@ -109,7 +109,7 @@ export async function markEngagementInterested(formData: FormData) {
   const { error } = await supabase
     .from("rfq_engagements")
     .update({
-      status: "interested",
+      status: "viewing",
       viewed_at: new Date().toISOString(),
     })
     .eq("engagement_id", engagement_id)
@@ -136,7 +136,7 @@ export async function declineEngagement(formData: FormData) {
   const { error } = await supabase
     .from("rfq_engagements")
     .update({
-      status: "declined",
+      status: "rejected",
     })
     .eq("engagement_id", engagement_id)
     .eq("supplier_id", supplierProfile.supplier_id);

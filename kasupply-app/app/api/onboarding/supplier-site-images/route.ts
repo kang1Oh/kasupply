@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import {
+  safeQueueSiteVerification,
+  safeSyncSupplierVerificationProfile,
+} from "@/lib/verification/onboarding";
 
 type ExistingImageRow = {
   image_id: number;
@@ -120,6 +124,9 @@ export async function POST(request: Request) {
 
       savedImage = insertedImage;
     }
+
+    await safeQueueSiteVerification(businessProfile.profile_id);
+    await safeSyncSupplierVerificationProfile(businessProfile.profile_id);
 
     return NextResponse.json({
       success: true,

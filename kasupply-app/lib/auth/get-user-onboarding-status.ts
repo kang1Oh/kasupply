@@ -4,6 +4,7 @@ import { getCurrentAppUser } from "@/lib/auth/get-current-app-user";
 type BuyerProfileRow = {
   buyer_id: number;
   profile_id: number;
+  verification_status?: string | null;
 };
 
 type SupplierProfileRow = {
@@ -12,6 +13,7 @@ type SupplierProfileRow = {
   verified: boolean;
   verified_at: string | null;
   verified_badge: boolean;
+  verification_status?: string | null;
 };
 
 type BusinessProfileRow = {
@@ -69,6 +71,50 @@ const REQUIRED_SUPPLIER_DOCUMENTS = [
 
 function normalizeDocumentName(value: string) {
   return value.trim().toLowerCase();
+}
+
+async function loadBuyerProfileRow(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  profileId: number
+) {
+  const profileWithVerification = await supabase
+    .from("buyer_profiles")
+    .select("buyer_id, profile_id, verification_status")
+    .eq("profile_id", profileId)
+    .maybeSingle<BuyerProfileRow>();
+
+  if (!profileWithVerification.error) {
+    return profileWithVerification;
+  }
+
+  return supabase
+    .from("buyer_profiles")
+    .select("buyer_id, profile_id")
+    .eq("profile_id", profileId)
+    .maybeSingle<BuyerProfileRow>();
+}
+
+async function loadSupplierProfileRow(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  profileId: number
+) {
+  const profileWithVerification = await supabase
+    .from("supplier_profiles")
+    .select(
+      "supplier_id, profile_id, verified, verified_at, verified_badge, verification_status"
+    )
+    .eq("profile_id", profileId)
+    .maybeSingle<SupplierProfileRow>();
+
+  if (!profileWithVerification.error) {
+    return profileWithVerification;
+  }
+
+  return supabase
+    .from("supplier_profiles")
+    .select("supplier_id, profile_id, verified, verified_at, verified_badge")
+    .eq("profile_id", profileId)
+    .maybeSingle<SupplierProfileRow>();
 }
 
 export async function getUserOnboardingStatus() {
@@ -135,6 +181,8 @@ export async function getUserOnboardingStatus() {
   let supplierProfile: SupplierProfileRow | null = null;
   let siteImages: SiteShowcaseImageRow[] = [];
   let supplierDocumentsErrorMessage: string | null = null;
+  let buyerVerificationStatus: string | null = null;
+  let supplierVerificationState: string | null = null;
 
   let requiredDocumentsChecklist: Array<{
     name: string;
@@ -168,14 +216,14 @@ export async function getUserOnboardingStatus() {
   }
 
   if (role === "buyer" && businessProfile) {
-    const { data: buyerProfileData } = await supabase
-      .from("buyer_profiles")
-      .select("buyer_id, profile_id")
-      .eq("profile_id", businessProfile.profile_id)
-      .maybeSingle<BuyerProfileRow>();
+    const { data: buyerProfileData } = await loadBuyerProfileRow(
+      supabase,
+      businessProfile.profile_id
+    );
 
     buyerProfile = buyerProfileData ?? null;
     hasBuyerProfile = !!buyerProfile;
+    buyerVerificationStatus = buyerProfile?.verification_status ?? null;
 
     const { data: buyerDocuments } = await supabase
       .from("business_documents")
@@ -197,15 +245,17 @@ export async function getUserOnboardingStatus() {
   }
 
   if (role === "supplier" && businessProfile) {
-    const { data: supplierProfileData } = await supabase
-      .from("supplier_profiles")
-      .select("supplier_id, profile_id, verified, verified_at, verified_badge")
-      .eq("profile_id", businessProfile.profile_id)
-      .maybeSingle<SupplierProfileRow>();
+    const { data: supplierProfileData } = await loadSupplierProfileRow(
+      supabase,
+      businessProfile.profile_id
+    );
 
     supplierProfile = supplierProfileData ?? null;
     hasSupplierProfile = !!supplierProfile;
-    isSupplierVerified = supplierProfile?.verified ?? false;
+    supplierVerificationState = supplierProfile?.verification_status ?? null;
+    isSupplierVerified =
+      (supplierProfile?.verified ?? false) ||
+      supplierVerificationState === "approved";
 
     const { data: supplierDocuments, error: supplierDocumentsError } =
       await supabase
@@ -275,6 +325,12 @@ export async function getUserOnboardingStatus() {
     if (isSupplierVerified) {
       supplierVerificationStatus = "verified";
     } else if (
+      supplierVerificationState === "submitted" ||
+      supplierVerificationState === "under_review" ||
+      supplierVerificationState === "review_required"
+    ) {
+      supplierVerificationStatus = "pending";
+    } else if (
       hasSubmittedRequiredSupplierDocuments &&
       hasSubmittedSiteImages
     ) {
@@ -307,7 +363,9 @@ export async function getUserOnboardingStatus() {
       businessProfileError: businessProfileError?.message ?? null,
       businessProfileId: businessProfile?.profile_id ?? null,
       buyerProfileId: buyerProfile?.profile_id ?? null,
+      buyerVerificationStatus,
       supplierProfileId: supplierProfile?.profile_id ?? null,
+      supplierVerificationState,
       supplierDocumentsErrorMessage,
     },
   };

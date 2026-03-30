@@ -232,8 +232,8 @@ export default async function SupplierRfqPage({
   }
 
   const totalEngagements = safeEngagements.length;
-  const newEngagements = safeEngagements.filter(
-    (engagement) => String(engagement.status ?? "new") === "new"
+  const viewingEngagements = safeEngagements.filter(
+    (engagement) => String(engagement.status ?? "viewing") === "viewing"
   ).length;
   const negotiatingEngagements = safeEngagements.filter(
     (engagement) => String(engagement.status ?? "") === "negotiating"
@@ -258,8 +258,8 @@ export default async function SupplierRfqPage({
         </div>
 
         <div className="rounded-xl border bg-white p-4 shadow-sm">
-          <p className="text-sm text-gray-500">New</p>
-          <h2 className="mt-2 text-2xl font-bold">{newEngagements}</h2>
+          <p className="text-sm text-gray-500">Viewing</p>
+          <h2 className="mt-2 text-2xl font-bold">{viewingEngagements}</h2>
         </div>
 
         <div className="rounded-xl border bg-white p-4 shadow-sm">
@@ -289,12 +289,12 @@ export default async function SupplierRfqPage({
               className="rounded border px-3 py-2 text-sm"
             >
               <option value="">All statuses</option>
-              <option value="new">New</option>
-              <option value="viewed">Viewed</option>
-              <option value="interested">Interested</option>
+              <option value="viewing">Viewing</option>
               <option value="negotiating">Negotiating</option>
               <option value="quoted">Quoted</option>
-              <option value="declined">Declined</option>
+              <option value="accepted">Accepted</option>
+              <option value="rejected">Rejected</option>
+              <option value="withdrawn">Withdrawn</option>
             </select>
 
             <button
@@ -354,7 +354,7 @@ export default async function SupplierRfqPage({
 
                       <td className="px-3 py-3">
                         <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700">
-                          {engagement.status ?? "new"}
+                          {engagement.status ?? "viewing"}
                         </span>
                       </td>
 
@@ -423,7 +423,7 @@ export default async function SupplierRfqPage({
                   </div>
                   <div>
                     <span className="font-medium">Engagement status:</span>{" "}
-                    {selectedEngagement.status ?? "new"}
+                    {selectedEngagement.status ?? "viewing"}
                   </div>
                 </div>
               </div>

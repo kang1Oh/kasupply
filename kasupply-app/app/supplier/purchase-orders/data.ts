@@ -1,4 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
+import {
+  PURCHASE_ORDER_RECEIPTS_BUCKET,
+  formatPurchaseOrderNumber,
+  normalizePurchaseOrderReceiptStatus,
+  normalizePurchaseOrderStatus,
+} from "@/lib/purchase-orders/constants";
 
 type RawRecord = Record<string, unknown>;
 
@@ -30,10 +36,13 @@ type ProductRow = {
 };
 
 type QuotationRow = {
-  quote_id?: number;
-  engagement_id?: number | null;
-  price_per_unit?: number | null;
-  quantity?: number | null;
+  quote_id: number;
+  engagement_id: number;
+  supplier_id: number;
+  price_per_unit: number | null;
+  quantity: number | null;
+  lead_time: string | null;
+  notes: string | null;
 };
 
 type SupplierProfileRow = {
@@ -42,53 +51,27 @@ type SupplierProfileRow = {
 };
 
 type EngagementRow = {
-  engagement_id?: number;
-  rfq_id?: number | null;
+  engagement_id: number;
+  rfq_id: number | null;
+  supplier_id: number;
 };
 
 type RfqRow = {
-  rfq_id?: number;
+  rfq_id: number;
+  product_name: string | null;
+  unit: string | null;
+  specifications: string | null;
+  preferred_delivery_date: string | null;
+  delivery_location: string | null;
+  deadline: string | null;
 };
 
 type ConversationRow = {
-  conversation_id?: number;
-  supplier_id?: number;
-  buyer_id?: number | null;
-  engagement_id?: number | null;
+  conversation_id: number;
+  supplier_id: number;
+  buyer_id: number | null;
+  engagement_id: number | null;
 };
-
-function isMissingRelationError(error: { code?: string; message?: string } | null) {
-  if (!error) return false;
-  return (
-    error.code === "PGRST205" ||
-    error.message?.toLowerCase().includes("could not find the table") === true ||
-    error.message?.toLowerCase().includes("relation") === true
-  );
-}
-
-async function runFirstAvailable<T>(
-  tables: string[],
-  runner: (table: string) => Promise<{ data: T | null; error: { code?: string; message?: string } | null }>,
-) {
-  let lastError: { code?: string; message?: string } | null = null;
-
-  for (const table of tables) {
-    const result = await runner(table);
-
-    if (!result.error) {
-      return result.data;
-    }
-
-    if (isMissingRelationError(result.error)) {
-      lastError = result.error;
-      continue;
-    }
-
-    throw new Error(result.error.message || `Failed to query ${table}.`);
-  }
-
-  throw new Error(lastError?.message || "Required table was not found.");
-}
 
 type PartyInfo = {
   businessName: string;
@@ -102,30 +85,36 @@ export type PurchaseOrderView = {
   poId: number;
   poNumber: string;
   buyer: string;
-  product: string;
-  quantity: string;
+  productName: string;
+  quantityLabel: string;
   quantityValue: number | null;
   unit: string | null;
   pricePerUnit: number | null;
+  subtotal: number | null;
+  deliveryFee: number | null;
   totalAmount: number | null;
   status: string;
-  paymentProof: string | null;
-  paymentReference: string | null;
-  paymentDate: string | null;
+  receiptFilePath: string | null;
+  receiptFileUrl: string | null;
+  receiptStatus: string;
+  receiptReviewNotes: string | null;
   orderDate: string | null;
-  invoiceNumber: string | null;
-  invoiceIssueDate: string | null;
-  invoiceStatus: string | null;
-  invoiceFile: string | null;
-  invoiceAmount: number | null;
+  completedAt: string | null;
   quoteId: number | null;
   engagementId: number | null;
   rfqId: number | null;
+  leadTime: string | null;
+  quotationNotes: string | null;
+  paymentMethod: string | null;
+  termsAndConditions: string | null;
+  additionalNotes: string | null;
+  specifications: string | null;
+  deliveryLocation: string | null;
+  preferredDeliveryDate: string | null;
+  deadline: string | null;
   conversationId: number | null;
   buyerInfo: PartyInfo | null;
   supplierInfo: PartyInfo | null;
-  notes: string | null;
-  raw: RawRecord;
 };
 
 function asNumber(value: unknown): number | null {
@@ -144,21 +133,23 @@ function asString(value: unknown): string | null {
 function readFirstString(row: RawRecord, keys: string[]) {
   for (const key of keys) {
     const value = asString(row[key]);
-    if (value) return value;
+    if (value) {
+      return value;
+    }
   }
+
   return null;
 }
 
 function readFirstNumber(row: RawRecord, keys: string[]) {
   for (const key of keys) {
     const value = asNumber(row[key]);
-    if (value !== null) return value;
+    if (value !== null) {
+      return value;
+    }
   }
-  return null;
-}
 
-function normalizeStatus(value: string | null) {
-  return value ? value.toLowerCase().replace(/\s+/g, "_") : "pending";
+  return null;
 }
 
 function formatQuantityValue(quantity: number | null, unit: string | null) {
@@ -179,6 +170,43 @@ function formatLocation(profile: BusinessProfileRow | null) {
   ].filter((value): value is string => Boolean(value && value.trim()));
 
   return parts.length > 0 ? parts.join(", ") : "Location not available";
+}
+
+function buildPartyInfo(
+  businessProfile: BusinessProfileRow | null,
+  user: UserRow | null,
+  fallbackBusinessName: string,
+): PartyInfo {
+  return {
+    businessName: businessProfile?.business_name ?? fallbackBusinessName,
+    contactName: user?.name ?? null,
+    phone: businessProfile?.contact_number ?? null,
+    email: user?.email ?? null,
+    location: formatLocation(businessProfile),
+  };
+}
+
+async function resolveReceiptUrl(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  receiptFilePath: string | null,
+) {
+  if (!receiptFilePath) {
+    return null;
+  }
+
+  if (/^https?:\/\//i.test(receiptFilePath)) {
+    return receiptFilePath;
+  }
+
+  const { data, error } = await supabase.storage
+    .from(PURCHASE_ORDER_RECEIPTS_BUCKET)
+    .createSignedUrl(receiptFilePath, 60 * 60);
+
+  if (error || !data?.signedUrl) {
+    return receiptFilePath;
+  }
+
+  return data.signedUrl;
 }
 
 async function getCurrentSupplierContext() {
@@ -233,22 +261,9 @@ async function getCurrentSupplierContext() {
   };
 }
 
-function buildPartyInfo(
-  businessProfile: BusinessProfileRow | null,
-  user: UserRow | null,
-  fallbackBusinessName: string,
-): PartyInfo {
-  return {
-    businessName: businessProfile?.business_name ?? fallbackBusinessName,
-    contactName: user?.name ?? null,
-    phone: businessProfile?.contact_number ?? null,
-    email: user?.email ?? null,
-    location: formatLocation(businessProfile),
-  };
-}
-
 async function buildSupportingMaps(
   supabase: Awaited<ReturnType<typeof createClient>>,
+  supplierId: number,
   rows: RawRecord[],
   supplierPartyInfo: PartyInfo,
 ) {
@@ -271,31 +286,90 @@ async function buildSupportingMaps(
   const quoteIds = Array.from(
     new Set(
       rows
-        .map((row) => readFirstNumber(row, ["quote_id", "quotation_id", "final_quote_id"]))
+        .map((row) => readFirstNumber(row, ["quote_id"]))
         .filter((value): value is number => value !== null),
     ),
   );
 
-  const engagementIds = Array.from(
-    new Set(
-      rows
-        .map((row) => readFirstNumber(row, ["engagement_id", "rfq_engagement_id"]))
-        .filter((value): value is number => value !== null),
-    ),
-  );
-
-  const buyerInfoMap = new Map<number, PartyInfo>();
-  const productNameMap = new Map<number, string>();
   const quotationMap = new Map<number, QuotationRow>();
   const engagementMap = new Map<number, EngagementRow>();
   const rfqMap = new Map<number, RfqRow>();
+  const productNameMap = new Map<number, string>();
+  const buyerInfoMap = new Map<number, PartyInfo>();
   const conversationMap = new Map<string, number>();
 
+  if (quoteIds.length > 0) {
+    const { data: quotations, error: quotationsError } = await supabase
+      .from("quotations")
+      .select("quote_id, engagement_id, supplier_id, price_per_unit, quantity, lead_time, notes")
+      .in("quote_id", quoteIds);
+
+    if (quotationsError) {
+      throw new Error(quotationsError.message || "Failed to load quotations.");
+    }
+
+    for (const quotation of (quotations as QuotationRow[] | null) ?? []) {
+      quotationMap.set(quotation.quote_id, quotation);
+    }
+  }
+
+  const engagementIds = Array.from(
+    new Set(
+      Array.from(quotationMap.values())
+        .map((quotation) => quotation.engagement_id)
+        .filter((value): value is number => typeof value === "number"),
+    ),
+  );
+
+  if (engagementIds.length > 0) {
+    const { data: engagements, error: engagementsError } = await supabase
+      .from("rfq_engagements")
+      .select("engagement_id, rfq_id, supplier_id")
+      .in("engagement_id", engagementIds);
+
+    if (engagementsError) {
+      throw new Error(engagementsError.message || "Failed to load RFQ engagements.");
+    }
+
+    for (const engagement of (engagements as EngagementRow[] | null) ?? []) {
+      engagementMap.set(engagement.engagement_id, engagement);
+    }
+  }
+
+  const rfqIds = Array.from(
+    new Set(
+      Array.from(engagementMap.values())
+        .map((engagement) => engagement.rfq_id)
+        .filter((value): value is number => typeof value === "number"),
+    ),
+  );
+
+  if (rfqIds.length > 0) {
+    const { data: rfqs, error: rfqsError } = await supabase
+      .from("rfqs")
+      .select(
+        "rfq_id, product_name, unit, specifications, preferred_delivery_date, delivery_location, deadline",
+      )
+      .in("rfq_id", rfqIds);
+
+    if (rfqsError) {
+      throw new Error(rfqsError.message || "Failed to load RFQ details.");
+    }
+
+    for (const rfq of (rfqs as RfqRow[] | null) ?? []) {
+      rfqMap.set(rfq.rfq_id, rfq);
+    }
+  }
+
   if (productIds.length > 0) {
-    const { data: products } = await supabase
+    const { data: products, error: productsError } = await supabase
       .from("products")
       .select("product_id, product_name")
       .in("product_id", productIds);
+
+    if (productsError) {
+      throw new Error(productsError.message || "Failed to load products.");
+    }
 
     for (const product of (products as ProductRow[] | null) ?? []) {
       if (product.product_id != null && product.product_name) {
@@ -304,83 +378,15 @@ async function buildSupportingMaps(
     }
   }
 
-  if (quoteIds.length > 0) {
-    const { data: quotations } = await supabase
-      .from("quotations")
-      .select("quote_id, engagement_id, price_per_unit, quantity")
-      .in("quote_id", quoteIds);
-
-    for (const quotation of (quotations as QuotationRow[] | null) ?? []) {
-      if (quotation.quote_id != null) {
-        quotationMap.set(quotation.quote_id, quotation);
-      }
-    }
-  }
-
-  if (engagementIds.length > 0) {
-    const engagements = await runFirstAvailable<EngagementRow[]>(
-      ["rfq_engagements", "rfq_engagement"],
-      async (table) => {
-        const result = await supabase
-          .from(table)
-          .select("engagement_id, rfq_id")
-          .in("engagement_id", engagementIds);
-
-        return {
-          data: (result.data as EngagementRow[] | null) ?? null,
-          error: result.error,
-        };
-      },
-    );
-
-    for (const engagement of engagements ?? []) {
-      if (engagement.engagement_id != null) {
-        engagementMap.set(engagement.engagement_id, engagement);
-      }
-    }
-  }
-
-  const rfqIds = Array.from(
-    new Set(
-      [
-        ...rows
-          .map((row) => readFirstNumber(row, ["rfq_id"]))
-          .filter((value): value is number => value !== null),
-        ...Array.from(engagementMap.values())
-          .map((engagement) => engagement.rfq_id)
-          .filter((value): value is number => typeof value === "number"),
-      ],
-    ),
-  );
-
-  if (rfqIds.length > 0) {
-    const rfqs = await runFirstAvailable<RfqRow[]>(
-      ["rfqs", "rfq"],
-      async (table) => {
-        const result = await supabase
-          .from(table)
-          .select("rfq_id")
-          .in("rfq_id", rfqIds);
-
-        return {
-          data: (result.data as RfqRow[] | null) ?? null,
-          error: result.error,
-        };
-      },
-    );
-
-    for (const rfq of rfqs ?? []) {
-      if (rfq.rfq_id != null) {
-        rfqMap.set(rfq.rfq_id, rfq);
-      }
-    }
-  }
-
   if (buyerIds.length > 0) {
-    const { data: buyerProfiles } = await supabase
+    const { data: buyerProfiles, error: buyerProfilesError } = await supabase
       .from("buyer_profiles")
       .select("buyer_id, profile_id")
       .in("buyer_id", buyerIds);
+
+    if (buyerProfilesError) {
+      throw new Error(buyerProfilesError.message || "Failed to load buyer profiles.");
+    }
 
     const safeBuyerProfiles = (buyerProfiles as BuyerProfileRow[] | null) ?? [];
     const profileIds = Array.from(
@@ -395,16 +401,22 @@ async function buildSupportingMaps(
     const userMap = new Map<string, UserRow>();
 
     if (profileIds.length > 0) {
-      const { data: businessProfiles } = await supabase
+      const { data: businessProfiles, error: businessProfilesError } = await supabase
         .from("business_profiles")
         .select(
           "profile_id, user_id, business_name, business_location, city, province, region, contact_number",
         )
         .in("profile_id", profileIds);
 
-      for (const businessProfile of (businessProfiles as BusinessProfileRow[] | null) ?? []) {
-        if (businessProfile.profile_id != null) {
-          businessProfileMap.set(businessProfile.profile_id, businessProfile);
+      if (businessProfilesError) {
+        throw new Error(
+          businessProfilesError.message || "Failed to load buyer business profiles.",
+        );
+      }
+
+      for (const profile of (businessProfiles as BusinessProfileRow[] | null) ?? []) {
+        if (profile.profile_id != null) {
+          businessProfileMap.set(profile.profile_id, profile);
         }
       }
 
@@ -417,10 +429,14 @@ async function buildSupportingMaps(
       );
 
       if (userIds.length > 0) {
-        const { data: users } = await supabase
+        const { data: users, error: usersError } = await supabase
           .from("users")
           .select("user_id, name, email")
           .in("user_id", userIds);
+
+        if (usersError) {
+          throw new Error(usersError.message || "Failed to load buyer contacts.");
+        }
 
         for (const user of (users as UserRow[] | null) ?? []) {
           if (user.user_id) {
@@ -432,6 +448,7 @@ async function buildSupportingMaps(
 
     for (const buyerProfile of safeBuyerProfiles) {
       if (buyerProfile.buyer_id == null) continue;
+
       const businessProfile =
         buyerProfile.profile_id != null
           ? businessProfileMap.get(buyerProfile.profile_id) ?? null
@@ -453,136 +470,116 @@ async function buildSupportingMaps(
   }
 
   if (buyerIds.length > 0) {
-    const conversations = await runFirstAvailable<ConversationRow[]>(
-      ["conversation", "conversations"],
-      async (table) => {
-        const result = await supabase
-          .from(table)
-          .select("conversation_id, supplier_id, buyer_id, engagement_id")
-          .in("buyer_id", buyerIds);
+    const { data: conversations, error: conversationsError } = await supabase
+      .from("conversations")
+      .select("conversation_id, supplier_id, buyer_id, engagement_id")
+      .eq("supplier_id", supplierId)
+      .in("buyer_id", buyerIds);
 
-        return {
-          data: (result.data as ConversationRow[] | null) ?? null,
-          error: result.error,
-        };
-      },
-    );
+    if (conversationsError) {
+      throw new Error(conversationsError.message || "Failed to load conversations.");
+    }
 
-    for (const conversation of conversations ?? []) {
-      if (conversation.supplier_id == null || conversation.buyer_id == null) continue;
-
+    for (const conversation of (conversations as ConversationRow[] | null) ?? []) {
       const key = [
         conversation.supplier_id,
-        conversation.buyer_id,
+        conversation.buyer_id ?? 0,
         conversation.engagement_id ?? 0,
       ].join(":");
 
-      const conversationId = conversation.conversation_id ?? null;
-      if (conversationId != null) {
-        conversationMap.set(key, conversationId);
-      }
+      conversationMap.set(key, conversation.conversation_id);
     }
   }
 
   return {
-    buyerInfoMap,
-    supplierPartyInfo,
-    productNameMap,
     quotationMap,
     engagementMap,
     rfqMap,
+    productNameMap,
+    buyerInfoMap,
+    supplierPartyInfo,
     conversationMap,
   };
 }
 
-function buildPurchaseOrderView(
+async function buildPurchaseOrderView(
+  supabase: Awaited<ReturnType<typeof createClient>>,
   row: RawRecord,
   maps: Awaited<ReturnType<typeof buildSupportingMaps>>,
-): PurchaseOrderView {
-  const poId = readFirstNumber(row, ["po_id", "purchase_order_id", "id"]) ?? 0;
+): Promise<PurchaseOrderView> {
+  const poId = readFirstNumber(row, ["po_id"]) ?? 0;
   const buyerId = readFirstNumber(row, ["buyer_id"]);
   const productId = readFirstNumber(row, ["product_id"]);
-  const quoteId = readFirstNumber(row, ["quote_id", "quotation_id", "final_quote_id"]);
-  const engagementId = readFirstNumber(row, ["engagement_id", "rfq_engagement_id"]);
+  const quoteId = readFirstNumber(row, ["quote_id"]);
+  const quotation = quoteId !== null ? maps.quotationMap.get(quoteId) ?? null : null;
   const engagement =
-    engagementId !== null ? maps.engagementMap.get(engagementId) ?? null : null;
-  const rfqId =
-    readFirstNumber(row, ["rfq_id"]) ??
-    (engagement?.rfq_id ?? null);
-  const quote = quoteId !== null ? maps.quotationMap.get(quoteId) ?? null : null;
-  const buyerInfo =
-    buyerId !== null ? maps.buyerInfoMap.get(buyerId) ?? null : null;
-
-  const poNumber =
-    readFirstString(row, ["po_number", "purchase_order_number", "order_number"]) ??
-    `PO-${poId}`;
-
-  const quantityValue =
-    readFirstNumber(row, ["quantity", "order_quantity"]) ??
-    (quote?.quantity ?? null);
-  const unit = readFirstString(row, ["unit", "quantity_unit"]) ?? null;
+    quotation?.engagement_id != null
+      ? maps.engagementMap.get(quotation.engagement_id) ?? null
+      : null;
+  const rfq = engagement?.rfq_id != null ? maps.rfqMap.get(engagement.rfq_id) ?? null : null;
+  const quantityValue = readFirstNumber(row, ["quantity"]) ?? quotation?.quantity ?? null;
+  const unit = rfq?.unit ?? null;
   const pricePerUnit =
-    readFirstNumber(row, ["price_per_unit", "agreed_price_per_unit", "unit_price"]) ??
-    (quote?.price_per_unit ?? null);
-  const totalAmount =
-    readFirstNumber(row, ["total_amount", "total_price", "amount"]) ??
-    (() => {
-      return pricePerUnit !== null && quantityValue !== null
-        ? pricePerUnit * quantityValue
-        : null;
-    })();
-
-  const conversationKey = [
-    readFirstNumber(row, ["supplier_id"]) ?? 0,
-    buyerId ?? 0,
-    engagementId ?? 0,
-  ].join(":");
+    quotation?.price_per_unit == null ? null : Number(quotation.price_per_unit);
+  const subtotal =
+    quantityValue !== null && pricePerUnit !== null ? quantityValue * pricePerUnit : null;
+  const deliveryFee = readFirstNumber(row, ["delivery_fee"]);
+  const receiptFilePath = readFirstString(row, [
+    "receipt_file_url",
+    "proof_of_payment_url",
+    "payment_proof_url",
+  ]);
+  const receiptFileUrl = await resolveReceiptUrl(supabase, receiptFilePath);
+  const receiptStatus = normalizePurchaseOrderReceiptStatus(
+    readFirstString(row, ["receipt_status"]),
+    Boolean(receiptFilePath),
+  );
+  const buyerInfo = buyerId !== null ? maps.buyerInfoMap.get(buyerId) ?? null : null;
+  const conversationId =
+    buyerId !== null
+      ? maps.conversationMap.get([
+          readFirstNumber(row, ["supplier_id"]) ?? quotation?.supplier_id ?? 0,
+          buyerId,
+          quotation?.engagement_id ?? 0,
+        ].join(":")) ?? null
+      : null;
 
   return {
     poId,
-    poNumber,
+    poNumber: formatPurchaseOrderNumber(poId),
     buyer: buyerInfo?.businessName ?? "Unknown buyer",
-    product:
-      readFirstString(row, ["product_name", "item_name"]) ??
-      (productId !== null
-        ? maps.productNameMap.get(productId) ?? `Product #${productId}`
-        : "Unknown product"),
-    quantity: formatQuantityValue(quantityValue, unit),
+    productName:
+      rfq?.product_name ??
+      (productId !== null ? maps.productNameMap.get(productId) ?? `Product #${productId}` : "Unknown product"),
+    quantityLabel: formatQuantityValue(quantityValue, unit),
     quantityValue,
     unit,
     pricePerUnit,
-    totalAmount,
-    status: normalizeStatus(readFirstString(row, ["status", "order_status"])),
-    paymentProof: readFirstString(row, [
-      "proof_of_payment_url",
-      "payment_proof_url",
-      "proof_of_payment",
-      "payment_proof",
-    ]),
-    paymentReference: readFirstString(row, [
-      "payment_reference_no",
-      "payment_reference",
-      "reference_number",
-      "receipt_reference_number",
-      "receipt_number",
-    ]),
-    paymentDate: readFirstString(row, ["payment_date", "paid_at"]),
-    orderDate: readFirstString(row, ["ordered_at", "order_date", "created_at", "confirmed_at"]),
-    invoiceNumber: readFirstString(row, ["invoice_number"]),
-    invoiceIssueDate: readFirstString(row, ["invoice_issued_at", "invoice_issue_date", "issued_at"]),
-    invoiceStatus: readFirstString(row, ["invoice_status"]),
-    invoiceFile: readFirstString(row, ["invoice_file_url", "invoice_url", "invoice_file"]),
-    invoiceAmount:
-      readFirstNumber(row, ["invoice_amount"]) ??
-      totalAmount,
+    subtotal,
+    deliveryFee,
+    totalAmount: readFirstNumber(row, ["total_amount"]),
+    status: normalizePurchaseOrderStatus(readFirstString(row, ["status"])),
+    receiptFilePath,
+    receiptFileUrl,
+    receiptStatus,
+    receiptReviewNotes: readFirstString(row, ["receipt_review_notes"]),
+    orderDate: readFirstString(row, ["confirmed_at", "created_at"]),
+    completedAt: readFirstString(row, ["completed_at"]),
     quoteId,
-    engagementId,
-    rfqId,
-    conversationId: maps.conversationMap.get(conversationKey) ?? null,
+    engagementId: quotation?.engagement_id ?? null,
+    rfqId: engagement?.rfq_id ?? null,
+    leadTime: quotation?.lead_time ?? null,
+    quotationNotes: quotation?.notes ?? null,
+    paymentMethod: readFirstString(row, ["payment_method"]),
+    termsAndConditions: readFirstString(row, ["terms_and_conditions"]),
+    additionalNotes: readFirstString(row, ["additional_notes"]),
+    specifications: rfq?.specifications ?? null,
+    deliveryLocation: rfq?.delivery_location ?? null,
+    preferredDeliveryDate: rfq?.preferred_delivery_date ?? null,
+    deadline: rfq?.deadline ?? null,
+    conversationId,
     buyerInfo,
     supplierInfo: maps.supplierPartyInfo,
-    notes: readFirstString(row, ["notes", "remarks", "supplier_notes"]),
-    raw: row,
   };
 }
 
@@ -606,11 +603,18 @@ export async function getSupplierPurchaseOrders(statusFilter?: string) {
     businessProfile.business_name ?? "Your business",
   );
   const rows = (purchaseOrders as RawRecord[] | null) ?? [];
-  const maps = await buildSupportingMaps(supabase, rows, supplierPartyInfo);
-  const normalized = rows.map((row) => buildPurchaseOrderView(row, maps));
+  const maps = await buildSupportingMaps(
+    supabase,
+    supplierProfile.supplier_id ?? 0,
+    rows,
+    supplierPartyInfo,
+  );
+  const normalized = await Promise.all(
+    rows.map((row) => buildPurchaseOrderView(supabase, row, maps)),
+  );
 
   const filtered = statusFilter
-    ? normalized.filter((order) => order.status === normalizeStatus(statusFilter))
+    ? normalized.filter((order) => order.status === normalizePurchaseOrderStatus(statusFilter))
     : normalized;
 
   return {
@@ -644,7 +648,12 @@ export async function getSupplierPurchaseOrderDetail(poId: number) {
     businessProfile.business_name ?? "Your business",
   );
   const row = purchaseOrder as RawRecord;
-  const maps = await buildSupportingMaps(supabase, [row], supplierPartyInfo);
+  const maps = await buildSupportingMaps(
+    supabase,
+    supplierProfile.supplier_id ?? 0,
+    [row],
+    supplierPartyInfo,
+  );
 
-  return buildPurchaseOrderView(row, maps);
+  return buildPurchaseOrderView(supabase, row, maps);
 }

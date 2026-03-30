@@ -2,6 +2,10 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import {
+  safeQueueDocumentVerification,
+  safeSyncBuyerVerificationProfile,
+} from "@/lib/verification/onboarding";
 
 export async function uploadBuyerDocument(formData: FormData) {
   const supabase = await createClient();
@@ -111,20 +115,35 @@ export async function uploadBuyerDocument(formData: FormData) {
     verified_at: null,
   };
 
-  const { error: documentSaveError } = existingDocument?.doc_id
+  const { data: savedDocument, error: documentSaveError } = existingDocument?.doc_id
     ? await supabase
         .from("business_documents")
         .update(documentPayload)
         .eq("doc_id", existingDocument.doc_id)
-    : await supabase.from("business_documents").insert(documentPayload);
+        .select("doc_id")
+        .single()
+    : await supabase
+        .from("business_documents")
+        .insert(documentPayload)
+        .select("doc_id")
+        .single();
 
-  if (documentSaveError) {
+  if (documentSaveError || !savedDocument) {
     throw new Error(documentSaveError.message);
   }
 
   if (existingDocument?.file_url && existingDocument.file_url !== filePath) {
     await supabase.storage.from("business-documents").remove([existingDocument.file_url]);
   }
+
+  await safeQueueDocumentVerification({
+    profileId: businessProfile.profile_id,
+    docId: savedDocument.doc_id,
+    kind: "buyer_document",
+    documentTypeName: dtiDocumentType.document_type_name,
+  });
+
+  await safeSyncBuyerVerificationProfile(businessProfile.profile_id);
 
   redirect("/buyer?activated=1");
 }

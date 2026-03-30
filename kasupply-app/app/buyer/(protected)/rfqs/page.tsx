@@ -29,18 +29,18 @@ export default async function BuyerRFQsPage() {
         <div>
           <h1 className="text-2xl font-bold text-[#223654]">My RFQs</h1>
           <p className="mt-1 text-sm text-[#8b95a5]">
-            Manage your quotation requests and supplier engagements.
+            Manage your direct RFQs, public sourcing requests, and supplier engagements.
           </p>
         </div>
       </div>
 
       {rfqs.length === 0 ? (
-        <div className="rounded-2xl border border-[#edf1f7] bg-white p-6 shadow-[0_10px_28px_rgba(15,23,42,0.04)]">
+        <section className="rounded-2xl border border-[#edf1f7] bg-white p-6 shadow-[0_10px_28px_rgba(15,23,42,0.04)]">
           <h2 className="text-lg font-semibold text-[#223654]">No RFQs yet</h2>
           <p className="mt-2 text-sm text-[#8b95a5]">
-            Start from a supplier product card with Send RFQ, or reuse an existing RFQ once you have one.
+            Start from a supplier product card with Send RFQ, or post a public sourcing request from the sourcing board.
           </p>
-        </div>
+        </section>
       ) : (
         <div className="grid gap-4">
           {rfqs.map((rfq) => (
@@ -51,15 +51,18 @@ export default async function BuyerRFQsPage() {
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-xl font-semibold text-[#223654]">
+                    <Link
+                      href={`/buyer/rfqs/${rfq.rfqId}`}
+                      className="text-xl font-semibold text-black underline underline-offset-4"
+                    >
                       {rfq.productName}
-                    </h2>
+                    </Link>
 
                     <span className="rounded-full border border-[#d7dee8] bg-[#fafbfd] px-2 py-1 text-xs text-[#4a5b75]">
                       RFQ #{rfq.rfqId}
                     </span>
 
-                    <span className="rounded-full bg-blue-600/20 px-2 py-1 text-xs text-blue-600">
+                    <span className="rounded-full bg-blue-600/15 px-2 py-1 text-xs text-blue-700">
                       {rfq.status}
                     </span>
 
@@ -70,7 +73,7 @@ export default async function BuyerRFQsPage() {
 
                   <p className="text-sm text-[#4a5b75]">
                     {rfq.quantity} {rfq.unit}
-                    {rfq.category ? ` • ${rfq.category.categoryName}` : ""}
+                    {rfq.category ? ` | ${rfq.category.categoryName}` : ""}
                   </p>
 
                   {rfq.targetPricePerUnit != null ? (
@@ -104,16 +107,6 @@ export default async function BuyerRFQsPage() {
                   </p>
                 </div>
 
-                <div className="flex flex-wrap gap-3">
-                  {rfq.engagements[0]?.supplierId ? (
-                    <Link
-                      href={`/buyer/rfqs/new?rfqId=${rfq.rfqId}&supplierId=${rfq.engagements[0].supplierId}`}
-                      className="rounded-md border border-[#d7dee8] bg-white px-4 py-2 text-sm text-[#223654] transition hover:border-[#223654] hover:bg-[#f8fafc]"
-                    >
-                      Reuse RFQ
-                    </Link>
-                  ) : null}
-                </div>
               </div>
 
               <div className="mt-6">
@@ -138,7 +131,7 @@ export default async function BuyerRFQsPage() {
                           </p>
 
                           {engagement.verifiedBadge ? (
-                            <span className="rounded-full bg-green-600/20 px-2 py-1 text-xs text-green-300">
+                            <span className="rounded-full bg-green-600/15 px-2 py-1 text-xs text-green-700">
                               Verified
                             </span>
                           ) : null}

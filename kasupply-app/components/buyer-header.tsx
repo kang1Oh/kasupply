@@ -22,6 +22,7 @@ type BuyerAccessLinks = {
   sourcingBoard?: string;
   purchaseOrders?: string;
   messages?: string;
+  notifications?: string;
   account?: string;
 };
 
@@ -29,6 +30,7 @@ type BuyerHeaderProps = {
   isLoggedIn: boolean;
   userName?: string | null;
   accessLinks?: BuyerAccessLinks;
+  unreadNotificationCount?: number;
 };
 
 function BellIcon() {
@@ -87,6 +89,7 @@ export function BuyerHeader({
   isLoggedIn,
   userName,
   accessLinks,
+  unreadNotificationCount = 0,
 }: BuyerHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -100,7 +103,10 @@ export function BuyerHeader({
       accessLinks?.purchaseOrders ?? "/buyer/purchase-orders",
   };
   const messagesHref = accessLinks?.messages ?? "/buyer/messages";
+  const notificationsHref = accessLinks?.notifications ?? "/buyer/notifications";
   const accountHref = accessLinks?.account ?? "/buyer/account";
+  const isNotificationsActive = pathname === "/buyer/notifications";
+  const showUnreadDot = unreadNotificationCount > 0;
 
   return (
     <>
@@ -177,14 +183,35 @@ export function BuyerHeader({
 
           <div className="flex min-w-0 flex-1 items-center justify-end gap-4">
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#5f789d] text-[#dbe4f2] transition hover:bg-[#2d4a76] hover:text-white"
-                aria-label="Notifications"
-              >
-                <BellIcon />
-                <span className="absolute right-[7px] top-[7px] h-2 w-2 rounded-full bg-[#ff5331]" />
-              </button>
+              {isLoggedIn ? (
+                <Link
+                  href={notificationsHref}
+                  className={`relative inline-flex h-9 w-9 items-center justify-center rounded-lg border transition ${
+                    isNotificationsActive
+                      ? "border-[#8da8d2] bg-[#2d4a76] text-white"
+                      : "border-[#5f789d] text-[#dbe4f2] hover:bg-[#2d4a76] hover:text-white"
+                  }`}
+                  aria-label={
+                    showUnreadDot
+                      ? `Notifications (${unreadNotificationCount} unread)`
+                      : "Notifications"
+                  }
+                >
+                  <BellIcon />
+                  {showUnreadDot ? (
+                    <span className="absolute right-[7px] top-[7px] h-2 w-2 rounded-full bg-[#ff5331]" />
+                  ) : null}
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowModal(true)}
+                  className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#5f789d] text-[#dbe4f2] transition hover:bg-[#2d4a76] hover:text-white"
+                  aria-label="Notifications"
+                >
+                  <BellIcon />
+                </button>
+              )}
 
               {isLoggedIn ? (
                 <Link

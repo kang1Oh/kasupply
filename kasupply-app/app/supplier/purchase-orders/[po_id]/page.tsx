@@ -1,10 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSupplierPurchaseOrderDetail } from "../data";
-import { updatePurchaseOrderStatus } from "../actions";
+import {
+  reviewPurchaseOrderReceipt,
+  updatePurchaseOrderDeliveryFee,
+  updatePurchaseOrderStatus,
+} from "../actions";
 
 function formatCurrency(value: number | null) {
   if (value === null) return "Not available";
+
   return new Intl.NumberFormat("en-PH", {
     style: "currency",
     currency: "PHP",
@@ -25,22 +30,21 @@ function formatDate(value: string | null) {
 }
 
 function toTitleCase(value: string | null) {
-  return String(value ?? "pending")
+  return String(value ?? "")
     .split("_")
+    .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 }
 
 function getStatusBadgeClasses(status: string) {
   switch (status) {
-    case "pending":
-      return "bg-amber-100 text-amber-800 border-amber-200";
-    case "in_transit":
+    case "confirmed":
       return "bg-blue-100 text-blue-700 border-blue-200";
-    case "delivered":
+    case "processing":
+      return "bg-amber-100 text-amber-700 border-amber-200";
+    case "shipped":
       return "bg-indigo-100 text-indigo-700 border-indigo-200";
-    case "paid":
-      return "bg-emerald-100 text-emerald-700 border-emerald-200";
     case "completed":
       return "bg-green-100 text-green-700 border-green-200";
     case "cancelled":
@@ -50,19 +54,17 @@ function getStatusBadgeClasses(status: string) {
   }
 }
 
-function DetailRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: React.ReactNode;
-}) {
-  return (
-    <div className="grid gap-2 border-b border-slate-100 py-3 sm:grid-cols-[180px_1fr]">
-      <p className="text-sm font-medium text-slate-500">{label}</p>
-      <div className="text-sm text-slate-900">{value}</div>
-    </div>
-  );
+function getReceiptStatusBadgeClasses(status: string) {
+  switch (status) {
+    case "approved":
+      return "bg-emerald-100 text-emerald-700 border-emerald-200";
+    case "rejected":
+      return "bg-rose-100 text-rose-700 border-rose-200";
+    case "pending_review":
+      return "bg-amber-100 text-amber-700 border-amber-200";
+    default:
+      return "bg-slate-100 text-slate-700 border-slate-200";
+  }
 }
 
 function SectionCard({
@@ -85,12 +87,23 @@ function SectionCard({
   );
 }
 
-function StatusTracker({
-  status,
+function DetailRow({
+  label,
+  value,
 }: {
-  status: string;
+  label: string;
+  value: React.ReactNode;
 }) {
-  const steps = ["pending", "in_transit", "delivered", "paid", "completed"];
+  return (
+    <div className="grid gap-2 border-b border-slate-100 py-3 sm:grid-cols-[180px_1fr]">
+      <p className="text-sm font-medium text-slate-500">{label}</p>
+      <div className="text-sm text-slate-900">{value}</div>
+    </div>
+  );
+}
+
+function StatusTracker({ status }: { status: string }) {
+  const steps = ["confirmed", "processing", "shipped", "completed"];
   const activeIndex = steps.indexOf(status);
 
   return (
@@ -133,15 +146,36 @@ function StatusTracker({
 function StatusActions({
   poId,
   status,
+  receiptStatus,
 }: {
   poId: number;
   status: string;
+  receiptStatus: string;
 }) {
   const actions = [
-    { status: "in_transit", label: "Mark as In Transit", showWhen: ["pending"] },
-    { status: "delivered", label: "Mark as Delivered", showWhen: ["in_transit"] },
-    { status: "paid", label: "Mark as Paid", showWhen: ["delivered"] },
-    { status: "completed", label: "Mark as Completed", showWhen: ["paid"] },
+    {
+      status: "processing",
+      label: "Mark as Processing",
+      showWhen: ["confirmed"],
+    },
+    {
+      status: "shipped",
+      label: "Mark as Shipped",
+      showWhen: ["processing"],
+    },
+    {
+      status: "completed",
+      label:
+        receiptStatus === "approved"
+          ? "Mark as Completed"
+          : receiptStatus === "pending_review"
+            ? "Waiting for Receipt Approval"
+            : receiptStatus === "rejected"
+              ? "Waiting for Corrected Receipt"
+              : "Waiting for Buyer Receipt",
+      showWhen: ["shipped"],
+      disabled: receiptStatus !== "approved",
+    },
   ].filter((action) => action.showWhen.includes(status));
 
   if (actions.length === 0) {
@@ -160,7 +194,8 @@ function StatusActions({
           <input type="hidden" name="next_status" value={action.status} />
           <button
             type="submit"
-            className="w-full rounded-2xl bg-[#243f68] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1e3658]"
+            disabled={Boolean(action.disabled)}
+            className="w-full rounded-2xl bg-[#243f68] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1e3658] disabled:cursor-not-allowed disabled:bg-slate-300"
           >
             {action.label}
           </button>
@@ -172,7 +207,7 @@ function StatusActions({
 
 function isImageFile(url: string | null) {
   if (!url) return false;
-  return /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(url);
+  return /\.(png|jpg|jpeg|webp|gif|svg)(\?|$)/i.test(url);
 }
 
 export default async function SupplierPurchaseOrderDetailPage({
@@ -198,6 +233,10 @@ export default async function SupplierPurchaseOrderDetailPage({
   const messageBuyerHref = order.conversationId
     ? `/supplier/messages?conversation=${order.conversationId}`
     : `/supplier/messages?q=${encodeURIComponent(order.buyer)}`;
+  const canReviewReceipt =
+    order.status === "shipped" &&
+    Boolean(order.receiptFilePath) &&
+    !["approved"].includes(order.receiptStatus);
 
   return (
     <main className="space-y-6">
@@ -281,76 +320,127 @@ export default async function SupplierPurchaseOrderDetailPage({
                 label="Related RFQ / Quote"
                 value={
                   <div className="space-y-1">
-                    <p>{order.rfqId ? `RFQ-${order.rfqId}` : "RFQ not linked"}</p>
+                    <p>{order.rfqId ? `RFQ #${order.rfqId}` : "RFQ not linked"}</p>
                     <p>{order.quoteId ? `Quote #${order.quoteId}` : "Quote not linked"}</p>
                   </div>
                 }
               />
-              <DetailRow label="Product" value={order.product} />
-              <DetailRow label="Quantity" value={order.quantity} />
-              <DetailRow
-                label="Agreed price per unit"
-                value={formatCurrency(order.pricePerUnit)}
-              />
+              <DetailRow label="Product" value={order.productName} />
+              <DetailRow label="Specifications" value={order.specifications || "No specifications provided."} />
+              <DetailRow label="Quantity" value={order.quantityLabel} />
+              <DetailRow label="Agreed price per unit" value={formatCurrency(order.pricePerUnit)} />
+              <DetailRow label="Subtotal" value={formatCurrency(order.subtotal)} />
+              <DetailRow label="Delivery fee" value={formatCurrency(order.deliveryFee)} />
               <DetailRow label="Total amount" value={formatCurrency(order.totalAmount)} />
-              <DetailRow label="Ordered at" value={formatDate(order.orderDate)} />
+              <DetailRow label="Lead time" value={order.leadTime || "Not specified"} />
+              <DetailRow label="Delivery location" value={order.deliveryLocation || "Not specified"} />
+              <DetailRow label="Preferred delivery" value={formatDate(order.preferredDeliveryDate)} />
+              <DetailRow label="Confirmed at" value={formatDate(order.orderDate)} />
+              <DetailRow label="Completed at" value={formatDate(order.completedAt)} />
             </div>
           </SectionCard>
 
           <SectionCard
-            title="Buyer Proof of Payment"
-            subtitle="Payment receipt, reference number, and payment date if the buyer has already uploaded them."
+            title="Buyer Order Inputs"
+            subtitle="Buyer-entered commercial details attached to this purchase order."
+          >
+            <div className="divide-y divide-slate-100">
+              <DetailRow label="Payment method" value={order.paymentMethod || "Not specified"} />
+              <DetailRow label="Terms and conditions" value={order.termsAndConditions || "Not specified"} />
+              <DetailRow label="Additional notes" value={order.additionalNotes || "Not specified"} />
+              <DetailRow label="Quotation notes" value={order.quotationNotes || "Not specified"} />
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Buyer Receipt"
+            subtitle="Review the buyer receipt before allowing the order to be completed."
           >
             <div className="space-y-4">
-              {order.paymentProof ? (
+              {order.receiptFileUrl ? (
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  {isImageFile(order.paymentProof) ? (
+                  {isImageFile(order.receiptFileUrl) ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={order.paymentProof}
-                      alt="Buyer proof of payment"
-                      className="max-h-[320px] w-full rounded-2xl object-cover"
+                      src={order.receiptFileUrl}
+                      alt="Buyer receipt"
+                      className="max-h-[320px] w-full rounded-2xl object-contain"
                     />
                   ) : (
                     <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500">
-                      Payment proof file uploaded for this order.
+                      Receipt file uploaded for this order.
                     </div>
                   )}
 
                   <a
-                    href={order.paymentProof}
+                    href={order.receiptFileUrl}
                     target="_blank"
                     rel="noreferrer"
                     className="mt-4 inline-flex rounded-2xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-white"
                   >
-                    View Proof of Payment
+                    View Receipt
                   </a>
                 </div>
               ) : (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">
-                  No proof of payment uploaded yet.
+                  No receipt uploaded yet.
                 </div>
               )}
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 px-4 py-3">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Payment reference
-                  </p>
-                  <p className="mt-1 text-sm text-slate-700">
-                    {order.paymentReference ?? "Not available"}
-                  </p>
-                </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                  Receipt review status
+                </p>
+                <span
+                  className={`mt-3 inline-flex rounded-full border px-3 py-1 text-xs ${getReceiptStatusBadgeClasses(
+                    order.receiptStatus,
+                  )}`}
+                >
+                  {toTitleCase(order.receiptStatus)}
+                </span>
 
-                <div className="rounded-2xl border border-slate-200 px-4 py-3">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Payment date
+                {order.receiptReviewNotes ? (
+                  <p className="mt-3 text-sm text-slate-600">
+                    Review notes: {order.receiptReviewNotes}
                   </p>
-                  <p className="mt-1 text-sm text-slate-700">
-                    {formatDate(order.paymentDate)}
-                  </p>
-                </div>
+                ) : null}
               </div>
+
+              {canReviewReceipt ? (
+                <form action={reviewPurchaseOrderReceipt} className="space-y-4">
+                  <input type="hidden" name="po_id" value={order.poId} />
+                  <label className="block space-y-2">
+                    <span className="text-sm font-medium text-slate-700">
+                      Review notes
+                    </span>
+                    <textarea
+                      name="review_notes"
+                      rows={4}
+                      defaultValue={order.receiptReviewNotes ?? ""}
+                      placeholder="Add a short reason if you need the buyer to re-upload the receipt."
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#243f68]"
+                    />
+                  </label>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <button
+                      type="submit"
+                      name="decision"
+                      value="approved"
+                      className="rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                    >
+                      Approve Receipt
+                    </button>
+                    <button
+                      type="submit"
+                      name="decision"
+                      value="rejected"
+                      className="rounded-2xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-rose-700"
+                    >
+                      Reject Receipt
+                    </button>
+                  </div>
+                </form>
+              ) : null}
             </div>
           </SectionCard>
         </div>
@@ -358,87 +448,42 @@ export default async function SupplierPurchaseOrderDetailPage({
         <div className="space-y-6">
           <SectionCard
             title="Status Tracker"
-            subtitle="Update the supplier-side order progress as delivery and payment move forward."
+            subtitle="Update fulfillment as the order moves from confirmation to completion."
           >
             <StatusTracker status={order.status} />
             <div className="mt-5">
-              <StatusActions poId={order.poId} status={order.status} />
+              <StatusActions
+                poId={order.poId}
+                status={order.status}
+                receiptStatus={order.receiptStatus}
+              />
             </div>
           </SectionCard>
 
           <SectionCard
-            title="Supplier Invoice"
-            subtitle="Invoice details are currently stored inside the purchase order record for this capstone flow."
+            title="Delivery Fee"
+            subtitle="Suppliers can set or revise the delivery fee while the order is still active."
           >
-            <div className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 px-4 py-3">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Invoice number
-                  </p>
-                  <p className="mt-1 text-sm text-slate-700">
-                    {order.invoiceNumber ?? "Not available"}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 px-4 py-3">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Invoice issued at
-                  </p>
-                  <p className="mt-1 text-sm text-slate-700">
-                    {formatDate(order.invoiceIssueDate)}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 px-4 py-3">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Invoice status
-                  </p>
-                  <p className="mt-1 text-sm text-slate-700">
-                    {order.invoiceStatus ? toTitleCase(order.invoiceStatus) : "Not available"}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 px-4 py-3">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Invoice amount
-                  </p>
-                  <p className="mt-1 text-sm text-slate-700">
-                    {formatCurrency(order.invoiceAmount)}
-                  </p>
-                </div>
-              </div>
-
-              {order.invoiceFile ? (
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-sm text-slate-600">
-                    An invoice file is already attached to this purchase order.
-                  </p>
-                  <a
-                    href={order.invoiceFile}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-4 inline-flex rounded-2xl border border-[#243f68] px-4 py-2 text-sm font-semibold text-[#243f68] transition hover:bg-white"
-                  >
-                    View Invoice
-                  </a>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5">
-                  <p className="text-sm text-slate-500">
-                    No invoice file has been attached yet. You can store invoice metadata directly in
-                    `purchase_orders` for now.
-                  </p>
-                  <button
-                    type="button"
-                    disabled
-                    className="mt-4 rounded-2xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-400"
-                  >
-                    Generate / Upload Invoice
-                  </button>
-                </div>
-              )}
-            </div>
+            <form action={updatePurchaseOrderDeliveryFee} className="space-y-4">
+              <input type="hidden" name="po_id" value={order.poId} />
+              <label className="block space-y-2">
+                <span className="text-sm font-medium text-slate-700">Delivery fee</span>
+                <input
+                  type="number"
+                  name="delivery_fee"
+                  min="0"
+                  step="0.01"
+                  defaultValue={order.deliveryFee ?? 0}
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#243f68]"
+                />
+              </label>
+              <button
+                type="submit"
+                className="w-full rounded-2xl border border-[#243f68] px-4 py-3 text-sm font-semibold text-[#243f68] transition hover:bg-slate-50"
+              >
+                Save Delivery Fee
+              </button>
+            </form>
           </SectionCard>
         </div>
       </section>

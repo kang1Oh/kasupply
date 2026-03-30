@@ -186,7 +186,7 @@ export async function getSupplierDashboardData(): Promise<SupplierDashboardData>
       .from("purchase_orders")
       .select("*", { count: "exact", head: true })
       .eq("supplier_id", supplierProfile.supplier_id)
-      .in("status", ["pending", "in_transit", "delivered"]),
+      .in("status", ["confirmed", "processing", "shipped"]),
 
     supabase
       .from("invoices")

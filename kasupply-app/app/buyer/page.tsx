@@ -2,6 +2,8 @@ import { BuyerMarketplaceHome } from "@/components/buyer-marketplace-home";
 import { AccountActivatedModal } from "@/components/modals";
 import { createClient } from "@/lib/supabase/server";
 import { getSupplierSearchResults } from "./search/actions";
+import { getUserOnboardingStatus } from "@/lib/auth/get-user-onboarding-status";
+import { getPastSuppliers } from "./actions";
 
 type BuyerPageProps = {
   searchParams?: Promise<{

@@ -106,7 +106,7 @@ export async function engageWithRfq(formData: FormData) {
     .insert({
       rfq_id,
       supplier_id: supplierProfile.supplier_id,
-      status: "new",
+      status: "viewing",
       viewed_at: null,
       initiated_at: now,
       final_quote_id: null,

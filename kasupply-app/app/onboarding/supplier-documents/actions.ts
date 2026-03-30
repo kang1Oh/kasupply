@@ -3,6 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import {
+  safeQueueDocumentVerification,
+  safeSyncSupplierVerificationProfile,
+} from "@/lib/verification/onboarding";
 
 type ExistingDocumentRow = {
   doc_id: number;
@@ -86,6 +90,8 @@ export async function uploadSupplierDocument(formData: FormData) {
     throw new Error(uploadError.message);
   }
 
+  let savedDocumentId: number | null = existingDocument?.doc_id ?? null;
+
   if (existingDocument) {
     if (existingDocument.file_url && existingDocument.file_url !== filePath) {
       await supabase.storage
@@ -108,7 +114,7 @@ export async function uploadSupplierDocument(formData: FormData) {
       throw new Error(updateError.message);
     }
   } else {
-    const { error: insertError } = await supabase
+    const { data: insertedDocument, error: insertError } = await supabase
       .from("business_documents")
       .insert({
         profile_id: businessProfile.profile_id,
@@ -118,12 +124,27 @@ export async function uploadSupplierDocument(formData: FormData) {
         status: "pending",
         uploaded_at: new Date().toISOString(),
         verified_at: null,
-      });
+      })
+      .select("doc_id")
+      .single();
 
-    if (insertError) {
-      throw new Error(insertError.message);
+    if (insertError || !insertedDocument) {
+      throw new Error(insertError?.message || "Failed to save uploaded document.");
     }
+
+    savedDocumentId = insertedDocument.doc_id;
   }
+
+  if (savedDocumentId) {
+    await safeQueueDocumentVerification({
+      profileId: businessProfile.profile_id,
+      docId: savedDocumentId,
+      kind: "supplier_document",
+      documentTypeName: existingDocumentType.document_type_name,
+    });
+  }
+
+  await safeSyncSupplierVerificationProfile(businessProfile.profile_id);
 
   revalidatePath("/onboarding/supplier-documents");
   revalidatePath("/dashboard");
