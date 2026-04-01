@@ -40,7 +40,12 @@ type RfqRow = {
   rfq_id: number;
   buyer_id: number;
   category_id: number | null;
-  product_name: string;
+  product_id: number | null;
+  requested_product_name: string | null;
+  products?:
+    | { product_id: number; product_name: string | null }
+    | { product_id: number; product_name: string | null }[]
+    | null;
   quantity: number;
   unit: string | null;
   specifications: string | null;
@@ -83,6 +88,12 @@ type QuotationRow = {
 function getSingleRfq(rfqs: RfqRow | RfqRow[] | null | undefined): RfqRow | null {
   if (!rfqs) return null;
   return Array.isArray(rfqs) ? rfqs[0] ?? null : rfqs;
+}
+
+function getRfqProductName(rfq: RfqRow | null) {
+  if (!rfq) return null;
+  const product = Array.isArray(rfq.products) ? rfq.products[0] : rfq.products;
+  return product?.product_name || rfq.requested_product_name?.trim() || null;
 }
 
 export default async function SupplierRfqPage({
@@ -155,7 +166,8 @@ export default async function SupplierRfqPage({
         rfq_id,
         buyer_id,
         category_id,
-        product_name,
+        product_id,
+        requested_product_name,
         quantity,
         unit,
         specifications,
@@ -163,7 +175,11 @@ export default async function SupplierRfqPage({
         status,
         visibility,
         created_at,
-        updated_at
+        updated_at,
+        products!rfqs_product_id_fkey (
+          product_id,
+          product_name
+        )
       )
     `)
     .eq("supplier_id", supplierProfile.supplier_id)
@@ -337,7 +353,7 @@ export default async function SupplierRfqPage({
                     <tr key={engagement.engagement_id} className="border-b">
                       <td className="px-3 py-3">
                         <div className="font-medium">
-                          {rfq?.product_name ?? "Unnamed RFQ"}
+                          {getRfqProductName(rfq) ?? "Unnamed RFQ"}
                         </div>
                         <div className="text-xs text-gray-500">
                           {rfq?.specifications ?? "No specifications provided."}
@@ -406,7 +422,7 @@ export default async function SupplierRfqPage({
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-lg border p-4">
-                <h3 className="font-medium">{rfq.product_name}</h3>
+                <h3 className="font-medium">{getRfqProductName(rfq) ?? "Unnamed RFQ"}</h3>
 
                 <div className="mt-4 space-y-2 text-sm text-gray-600">
                   <div>

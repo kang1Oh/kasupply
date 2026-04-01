@@ -82,9 +82,18 @@ export default async function SupplierProfilePage({
         <div className="flex flex-col gap-6 px-7 pb-7 pt-0 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0 flex-1">
             <div className="-mt-11">
-              <div className="flex h-[92px] w-[92px] items-center justify-center rounded-2xl bg-[#e8f7ea] text-[26px] font-semibold text-[#2f7f4d] shadow-[0_6px_18px_rgba(15,23,42,0.06)]">
-                {initials}
-              </div>
+              {supplier.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={supplier.avatarUrl}
+                  alt={`${supplier.businessName} avatar`}
+                  className="h-[92px] w-[92px] rounded-2xl border-4 border-white object-cover shadow-[0_6px_18px_rgba(15,23,42,0.06)]"
+                />
+              ) : (
+                <div className="flex h-[92px] w-[92px] items-center justify-center rounded-2xl bg-[#e8f7ea] text-[26px] font-semibold text-[#2f7f4d] shadow-[0_6px_18px_rgba(15,23,42,0.06)]">
+                  {initials}
+                </div>
+              )}
             </div>
 
             <div className="mt-4 min-w-0">

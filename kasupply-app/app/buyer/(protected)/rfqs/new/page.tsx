@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DatePickerInput } from "@/components/date-picker-input";
 import { createRFQ, getNewRFQPrefillData } from "./actions";
 
 type NewRFQPageProps = {
@@ -7,6 +8,15 @@ type NewRFQPageProps = {
     productId?: string;
   }>;
 };
+
+function getInitials(value: string) {
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
+}
 
 export default async function NewRFQPage({
   searchParams,
@@ -34,7 +44,7 @@ export default async function NewRFQPage({
             Send an RFQ
           </h1>
           <p className="mt-1 text-[16px] text-[#97a3b5]">
-            Fill in what you need  the supplier will respond with a quote
+            Fill in what you need and the supplier will respond with a quote
           </p>
         </div>
       </div>
@@ -45,14 +55,18 @@ export default async function NewRFQPage({
         </p>
         <div className="mt-4 flex flex-col gap-4 rounded-[14px] border border-[#edf2f7] bg-[#fbfcfe] p-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-[14px] bg-[#eaf6ed] text-[22px] font-semibold text-[#4d8e55]">
-              {prefill.supplier?.businessName
-                .split(/\s+/)
-                .filter(Boolean)
-                .slice(0, 2)
-                .map((part) => part.charAt(0).toUpperCase())
-                .join("")}
-            </div>
+            {prefill.supplier?.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={prefill.supplier.avatarUrl}
+                alt={`${prefill.supplier.businessName} avatar`}
+                className="h-14 w-14 rounded-[14px] border border-[#e6edf6] object-cover"
+              />
+            ) : (
+              <div className="flex h-14 w-14 items-center justify-center rounded-[14px] bg-[#eaf6ed] text-[22px] font-semibold text-[#4d8e55]">
+                {getInitials(prefill.supplier?.businessName ?? "Supplier")}
+              </div>
+            )}
 
             <div>
               <div className="flex flex-wrap items-center gap-2">
@@ -192,7 +206,7 @@ export default async function NewRFQPage({
             step="0.01"
             defaultValue={prefill.initialValues.targetPricePerUnit}
             placeholder="e.g. 10"
-            className="h-[46px] w-full rounded-[10px] border border-[#d7dee8] bg-white px-4 text-[14px] text-[#223654] outline-none transition placeholder:text-[#b0b8c5] focus:border-[#223654]"
+            className="h-[46px] w-full rounded-[10px] border border-[#d7dee8] bg-white px-4 text-[14px] text-[#223654] outline-none transition placeholder:text-[#b0b8c5] focus:border-[#223654] [color-scheme:light]"
             required
           />
         </div>
@@ -212,12 +226,10 @@ export default async function NewRFQPage({
           >
             Preferred Date <span className="text-[#ff5b4d]">*</span>
           </label>
-          <input
+          <DatePickerInput
             id="preferredDeliveryDate"
             name="preferredDeliveryDate"
-            type="date"
             defaultValue={prefill.initialValues.preferredDeliveryDate}
-            className="h-[46px] w-full rounded-[10px] border border-[#d7dee8] bg-white px-4 text-[14px] text-[#223654] outline-none transition focus:border-[#223654]"
             required
           />
         </div>
@@ -264,7 +276,7 @@ export default async function NewRFQPage({
             className="w-full rounded-[10px] border border-[#d7dee8] bg-white px-4 py-3 text-[14px] text-[#223654] outline-none transition placeholder:text-[#b0b8c5] focus:border-[#223654]"
           />
           <p className="text-[11px] text-[#b0b8c5]">
-            Optional  helps the supplier prepare a more accurate quote
+            Optional - helps the supplier prepare a more accurate quote
           </p>
         </div>
 
@@ -275,12 +287,10 @@ export default async function NewRFQPage({
           >
             RFQ deadline <span className="text-[#ff5b4d]">*</span>
           </label>
-          <input
+          <DatePickerInput
             id="deadline"
             name="deadline"
-            type="date"
             defaultValue={prefill.initialValues.deadline}
-            className="h-[46px] w-full rounded-[10px] border border-[#d7dee8] bg-white px-4 text-[14px] text-[#223654] outline-none transition focus:border-[#223654]"
             required
           />
         </div>

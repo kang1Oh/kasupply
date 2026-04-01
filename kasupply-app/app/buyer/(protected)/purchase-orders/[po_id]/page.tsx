@@ -1,27 +1,49 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { uploadPurchaseOrderReceipt } from "../actions";
+import { ModalShell } from "@/components/modals";
+import { cancelPurchaseOrder, uploadPurchaseOrderReceipt } from "../actions";
 import { getBuyerPurchaseOrderDetail } from "../data";
 
 function formatCurrency(value: number | null) {
   if (value === null || Number.isNaN(value)) return "Not available";
 
+  const hasDecimals = !Number.isInteger(value);
+
   return new Intl.NumberFormat("en-PH", {
     style: "currency",
     currency: "PHP",
+    minimumFractionDigits: hasDecimals ? 2 : 0,
+    maximumFractionDigits: 2,
   }).format(value);
 }
 
-function formatDate(value: string | null) {
-  if (!value) return "Not available";
+function formatDate(
+  value: string | null,
+  options: Intl.DateTimeFormatOptions = {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  },
+) {
+  if (!value) return "-";
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+
+  return new Intl.DateTimeFormat("en-PH", options).format(parsed);
+}
+
+function formatStepTimestamp(value: string | null) {
+  if (!value) return "-";
 
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
 
   return new Intl.DateTimeFormat("en-PH", {
-    year: "numeric",
     month: "short",
     day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   }).format(parsed);
 }
 
@@ -33,108 +55,65 @@ function toTitleCase(value: string | null) {
     .join(" ");
 }
 
+function getInitials(value: string | null | undefined) {
+  const initials = String(value || "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
+
+  return initials || "PO";
+}
+
+function getPurchaseOrderCode(poId: number, createdAt: string | null) {
+  if (!createdAt) {
+    return `PO-${String(poId).padStart(4, "0")}`;
+  }
+
+  const parsed = new Date(createdAt);
+  const year = Number.isNaN(parsed.getTime())
+    ? new Date().getFullYear()
+    : parsed.getFullYear();
+
+  return `PO-${year}-${String(poId).padStart(4, "0")}`;
+}
+
 function getStatusBadgeClasses(status: string) {
   switch (status) {
     case "confirmed":
-      return "border-blue-200 bg-blue-50 text-blue-700";
+      return "border-[#ffe2cc] bg-[#fff2e7] text-[#f08b38]";
     case "processing":
-      return "border-amber-200 bg-amber-50 text-amber-700";
+      return "border-[#ffe2cc] bg-[#fff2e7] text-[#f08b38]";
     case "shipped":
-      return "border-indigo-200 bg-indigo-50 text-indigo-700";
+      return "border-[#ead7fb] bg-[#f7efff] text-[#a15bd3]";
     case "completed":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+      return "border-[#d7f0dd] bg-[#edf8ef] text-[#2f7a45]";
     case "cancelled":
-      return "border-rose-200 bg-rose-50 text-rose-700";
+      return "border-[#ffd9d6] bg-[#fff1f0] text-[#e05547]";
     default:
-      return "border-slate-200 bg-slate-50 text-slate-700";
+      return "border-[#dde3eb] bg-[#f8fafc] text-[#526176]";
   }
 }
 
-function getReceiptStatusBadgeClasses(status: string) {
-  switch (status) {
-    case "approved":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700";
-    case "rejected":
-      return "border-rose-200 bg-rose-50 text-rose-700";
-    case "pending_review":
-      return "border-amber-200 bg-amber-50 text-amber-700";
-    default:
-      return "border-slate-200 bg-slate-50 text-slate-700";
+function getFileName(path: string | null) {
+  if (!path) return "receipt";
+  return path.split("/").pop() || "receipt";
+}
+
+function buildDetailHref(
+  poId: number,
+  params: Record<string, string | null | undefined> = {},
+) {
+  const searchParams = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params)) {
+    if (!value) continue;
+    searchParams.set(key, value);
   }
-}
 
-function SectionCard({
-  title,
-  subtitle,
-  children,
-}: {
-  title: string;
-  subtitle?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="rounded-2xl border border-[#edf1f7] bg-white p-6 shadow-[0_10px_28px_rgba(15,23,42,0.04)]">
-      <div className="mb-4">
-        <h2 className="text-lg font-semibold text-[#223654]">{title}</h2>
-        {subtitle ? <p className="mt-1 text-sm text-[#8b95a5]">{subtitle}</p> : null}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function DetailRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: React.ReactNode;
-}) {
-  return (
-    <div className="grid gap-2 border-b border-[#edf1f7] py-3 sm:grid-cols-[180px_1fr]">
-      <p className="text-sm font-medium text-[#8b95a5]">{label}</p>
-      <div className="text-sm text-[#223654]">{value}</div>
-    </div>
-  );
-}
-
-function StatusTracker({ status }: { status: string }) {
-  const steps = ["confirmed", "processing", "shipped", "completed"];
-  const activeIndex = steps.indexOf(status);
-
-  return (
-    <div className="space-y-3">
-      {steps.map((step, index) => {
-        const isComplete = activeIndex >= index;
-        const isCurrent = status === step;
-
-        return (
-          <div
-            key={step}
-            className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${
-              isComplete
-                ? "border-emerald-200 bg-emerald-50"
-                : "border-[#edf1f7] bg-[#fafbfd]"
-            }`}
-          >
-            <div
-              className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
-                isComplete ? "bg-emerald-600 text-white" : "bg-[#d7dee8] text-[#4a5b75]"
-              }`}
-            >
-              {index + 1}
-            </div>
-            <div>
-              <p className="font-medium text-[#223654]">{toTitleCase(step)}</p>
-              <p className="text-xs text-[#8b95a5]">
-                {isCurrent ? "Current stage" : isComplete ? "Completed stage" : "Upcoming stage"}
-              </p>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
+  const query = searchParams.toString();
+  return query ? `/buyer/purchase-orders/${poId}?${query}` : `/buyer/purchase-orders/${poId}`;
 }
 
 function isImageFile(url: string | null) {
@@ -142,11 +121,325 @@ function isImageFile(url: string | null) {
   return /\.(png|jpg|jpeg|webp|gif|svg)(\?|$)/i.test(url);
 }
 
+function SectionCard({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-[22px] border border-[#e8edf5] bg-white px-4 py-5 shadow-[0_10px_28px_rgba(15,23,42,0.04)] sm:px-5">
+      <p className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#3b5a83]">
+        {title}
+      </p>
+      <div className="mt-4">{children}</div>
+    </section>
+  );
+}
+
+function DetailMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#c0c8d4]">
+        {label}
+      </p>
+      <div className="mt-1.5 text-[16px] font-semibold leading-tight text-[#223654]">
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function StatusStepper({
+  status,
+  timeline,
+}: {
+  status: string;
+  timeline: Record<string, string | null>;
+}) {
+  const steps = [
+    { key: "confirmed", label: "Confirmed" },
+    { key: "processing", label: "Processing" },
+    { key: "shipped", label: "Shipped" },
+    { key: "completed", label: "Completed" },
+  ];
+  const safeStatus = status === "cancelled" ? "confirmed" : status;
+  const activeIndex = steps.findIndex((step) => step.key === safeStatus);
+
+  return (
+    <section className="rounded-[22px] border border-[#e8edf5] bg-white px-4 py-5 shadow-[0_10px_28px_rgba(15,23,42,0.04)] sm:px-5">
+      <div className="flex items-start overflow-x-auto pb-1">
+        {steps.map((step, index) => {
+          const isComplete = activeIndex > index;
+          const isCurrent = activeIndex === index;
+          const isFuture = activeIndex < index;
+          const circleClassName = isCurrent
+            ? "border-[#3f73e0] bg-[#3f73e0] text-white"
+            : isComplete
+              ? "border-[#223f68] bg-[#223f68] text-white"
+              : "border-[#b9c2d0] bg-white text-[#9ca7b6]";
+          const connectorClassName = activeIndex > index
+            ? "bg-[#223f68]"
+            : activeIndex === index
+              ? "bg-[linear-gradient(90deg,#223f68_0%,#cfd7e4_100%)]"
+              : "bg-[#cfd7e4]";
+
+          return (
+            <div key={step.key} className="flex min-w-[144px] flex-1 items-start">
+              <div className="flex min-w-0 flex-1 flex-col items-center text-center">
+                <span
+                  className={`flex h-8 w-8 items-center justify-center rounded-full border text-[13px] font-semibold transition ${circleClassName}`}
+                >
+                  {isComplete ? (
+                    <svg viewBox="0 0 20 20" className="h-4 w-4" aria-hidden="true">
+                      <path
+                        d="m5.5 10 2.5 2.5 6-6"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.9"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  ) : (
+                    index + 1
+                  )}
+                </span>
+                <p
+                  className={`mt-3 text-[12px] font-semibold uppercase tracking-[0.04em] ${
+                    isFuture ? "text-[#9ca7b6]" : "text-[#223654]"
+                  }`}
+                >
+                  {step.label}
+                </p>
+                <p className="mt-1 text-[11px] text-[#9ca7b6]">
+                  {timeline[step.key] ? formatStepTimestamp(timeline[step.key]) : "-"}
+                </p>
+              </div>
+
+              {index < steps.length - 1 ? (
+                <div className="mx-3 mt-4 h-px min-w-[60px] flex-1 sm:min-w-[88px]">
+                  <div className={`h-full w-full ${connectorClassName}`} />
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function NotificationCard({
+  tone,
+  title,
+  description,
+  children,
+}: {
+  tone: "blue" | "orange" | "purple" | "red" | "green" | "slate";
+  title: string;
+  description: string;
+  children?: React.ReactNode;
+}) {
+  const toneClasses = {
+    blue: {
+      container: "border-[#9db8ff] bg-[#f7faff]",
+      icon: "bg-[#3f73e0] text-white",
+      title: "text-[#2b5bc7]",
+      description: "text-[#7f90aa]",
+    },
+    orange: {
+      container: "border-[#ffbe92] bg-[#fff8f2]",
+      icon: "bg-[#ff7a1a] text-white",
+      title: "text-[#f08b38]",
+      description: "text-[#8c97a7]",
+    },
+    purple: {
+      container: "border-[#d4b6fa] bg-[#fbf7ff]",
+      icon: "bg-[#6f35d4] text-white",
+      title: "text-[#6f35d4]",
+      description: "text-[#8c97a7]",
+    },
+    red: {
+      container: "border-[#ffb8b1] bg-[#fff5f4]",
+      icon: "bg-[#ff3b30] text-white",
+      title: "text-[#da3b2f]",
+      description: "text-[#8c97a7]",
+    },
+    green: {
+      container: "border-[#9fd2ae] bg-[#f4fbf5]",
+      icon: "bg-[#267c46] text-white",
+      title: "text-[#2f7a45]",
+      description: "text-[#7f90aa]",
+    },
+    slate: {
+      container: "border-[#d9e1ec] bg-[#fbfcfe]",
+      icon: "bg-[#526176] text-white",
+      title: "text-[#223654]",
+      description: "text-[#8c97a7]",
+    },
+  }[tone];
+
+  return (
+    <section className={`rounded-[18px] border px-4 py-4 ${toneClasses.container}`}>
+      <div className="flex items-start gap-3">
+        <div
+          className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] ${toneClasses.icon}`}
+        >
+          <svg viewBox="0 0 20 20" className="h-5 w-5" aria-hidden="true">
+            <path
+              d="m5.5 10 2.5 2.5 6-6"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <p className={`text-[15px] font-semibold ${toneClasses.title}`}>{title}</p>
+          <p className={`mt-1 text-[13px] leading-5 ${toneClasses.description}`}>
+            {description}
+          </p>
+          {children ? <div className="mt-4">{children}</div> : null}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ReceiptPreview({
+  receiptFileUrl,
+  receiptFilePath,
+  description,
+}: {
+  receiptFileUrl: string | null;
+  receiptFilePath: string | null;
+  description: string;
+}) {
+  if (!receiptFileUrl) {
+    return null;
+  }
+
+  return (
+    <section className="rounded-[18px] border border-[#e8edf5] bg-white px-4 py-4 shadow-[0_10px_28px_rgba(15,23,42,0.04)]">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-[14px] font-semibold text-[#223654]">Payment Receipt</p>
+          <p className="mt-1 text-[13px] text-[#8c97a7]">{description}</p>
+        </div>
+        <a
+          href={receiptFileUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex h-10 items-center justify-center rounded-[10px] border border-[#d9e1ec] bg-white px-4 text-[13px] font-medium text-[#526176] transition hover:border-[#c5d0df] hover:text-[#223654]"
+        >
+          View Receipt
+        </a>
+      </div>
+
+      {isImageFile(receiptFileUrl) ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={receiptFileUrl}
+          alt="Uploaded receipt"
+          className="mt-4 max-h-[300px] w-full rounded-[16px] border border-[#edf1f7] object-contain"
+        />
+      ) : (
+        <div className="mt-4 rounded-[16px] border border-dashed border-[#d7dee8] bg-[#fafbfd] px-4 py-6 text-[13px] text-[#8c97a7]">
+          Attached file: {getFileName(receiptFilePath)}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ReceiptUploadForm({
+  poId,
+  mode,
+  reviewNotes,
+  currentFileName,
+}: {
+  poId: number;
+  mode: "first_upload" | "resubmit";
+  reviewNotes?: string | null;
+  currentFileName?: string | null;
+}) {
+  return (
+    <NotificationCard
+      tone={mode === "resubmit" ? "red" : "purple"}
+      title={
+        mode === "resubmit"
+          ? "Payment receipt was rejected. Please upload a clearer or valid receipt."
+          : "Upload your payment receipt"
+      }
+      description={
+        mode === "resubmit"
+          ? "The supplier needs a legible receipt before the order can be completed."
+          : "Once the order is delivered and paid, submit your receipt so the supplier can verify the payment."
+      }
+    >
+      <form action={uploadPurchaseOrderReceipt} className="space-y-3">
+        <input type="hidden" name="poId" value={poId} />
+
+        {reviewNotes ? (
+          <div className="rounded-[12px] border border-[#ffd4d0] bg-white px-3 py-3 text-[13px] text-[#da3b2f]">
+            Supplier notes: {reviewNotes}
+          </div>
+        ) : null}
+
+        {currentFileName ? (
+          <div className="rounded-[12px] border border-[#f1d7d4] bg-white px-3 py-3 text-[13px] text-[#8c97a7]">
+            Previous upload: {currentFileName}
+          </div>
+        ) : null}
+
+        <input
+          type="file"
+          name="receiptFile"
+          accept="application/pdf,image/jpeg,image/jpg,image/png,image/webp"
+          required
+          className="block w-full rounded-[12px] border border-[#d7dee8] bg-white px-3 py-3 text-sm text-[#223654]"
+        />
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-[12px] text-[#9aa5b6]">
+            PDF, JPG, PNG, or WEBP up to 10MB.
+          </p>
+          <button
+            type="submit"
+            className={`inline-flex h-10 items-center justify-center rounded-[10px] px-4 text-[13px] font-semibold text-white transition ${
+              mode === "resubmit"
+                ? "bg-[#ff4d3d] hover:bg-[#eb3b2b]"
+                : "bg-[#6f35d4] hover:bg-[#5f2abd]"
+            }`}
+          >
+            {mode === "resubmit" ? "Resubmit Receipt" : "Upload Receipt"}
+          </button>
+        </div>
+      </form>
+    </NotificationCard>
+  );
+}
+
 export default async function BuyerPurchaseOrderDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{
     po_id: string;
+  }>;
+  searchParams?: Promise<{
+    modal?: string;
   }>;
 }) {
   const resolvedParams = await params;
@@ -157,261 +450,320 @@ export default async function BuyerPurchaseOrderDetailPage({
   }
 
   const order = await getBuyerPurchaseOrderDetail(poId);
+  const resolvedSearchParams = (await searchParams) ?? {};
 
   if (!order) {
     notFound();
   }
 
-  const canUploadReceipt =
-    order.status === "shipped" &&
-    ["not_uploaded", "rejected"].includes(order.receiptStatus);
+  const canCancelOrder = ["confirmed", "processing"].includes(order.status);
   const messageSupplierHref = order.conversationId
     ? `/buyer/messages?conversation=${order.conversationId}`
     : "/buyer/messages";
+  const supplierProfileHref = order.supplierId
+    ? `/buyer/suppliers/${order.supplierId}`
+    : messageSupplierHref;
+  const showCancelModal = resolvedSearchParams.modal === "cancel" && canCancelOrder;
+  const referenceCode = getPurchaseOrderCode(order.poId, order.createdAt);
+  const placedOnDate = formatDate(order.confirmedAt ?? order.createdAt);
+  const supplierName = order.supplierInfo?.businessName ?? "Unknown supplier";
+  const stepTimeline = {
+    confirmed: order.confirmedAt ?? order.createdAt,
+    processing: order.status === "processing" ? order.updatedAt : null,
+    shipped: order.status === "shipped" ? order.updatedAt : null,
+    completed: order.completedAt,
+  };
+  const orderSummaryTotal =
+    order.totalAmount ??
+    ((order.subtotal ?? 0) + (order.deliveryFee ?? 0) > 0
+      ? (order.subtotal ?? 0) + (order.deliveryFee ?? 0)
+      : null);
+  const shouldShowReceiptUpload =
+    order.status === "shipped" &&
+    ["not_uploaded", "rejected"].includes(order.receiptStatus);
+  const shouldShowReceiptPendingReview =
+    order.status === "shipped" && order.receiptStatus === "pending_review";
+  const shouldShowReceiptApproved =
+    order.status === "shipped" && order.receiptStatus === "approved";
+  const showCompletedReceipt = order.status === "completed" && Boolean(order.receiptFileUrl);
+  const notesFromBuyer = [order.additionalNotes, order.quotationNotes]
+    .filter(Boolean)
+    .join(" ");
+  const deliveryFeeLabel =
+    order.status === "confirmed" && (!order.deliveryFee || order.deliveryFee <= 0)
+      ? "Not yet set"
+      : formatCurrency(order.deliveryFee);
 
   return (
-    <main className="space-y-6 p-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold text-[#223654]">{order.poNumber}</h1>
-            <span
-              className={`rounded-full border px-3 py-1 text-xs ${getStatusBadgeClasses(order.status)}`}
-            >
-              {toTitleCase(order.status)}
-            </span>
-          </div>
-          <p className="mt-2 text-sm text-[#8b95a5]">
-            Purchase order for {order.productName}
-          </p>
-        </div>
-
-        <div className="flex flex-wrap gap-3">
-          <Link
-            href={messageSupplierHref}
-            className="rounded-md bg-[#243f68] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#1f3658]"
-          >
-            Message Supplier
+    <>
+      <main className="space-y-5 pb-2">
+        <nav className="flex flex-wrap items-center gap-2 text-[12px] text-[#b0bac7]">
+          <Link href="/buyer/purchase-orders" className="transition hover:text-[#526176]">
+            Purchase Orders
           </Link>
-          <Link
-            href="/buyer/purchase-orders"
-            className="rounded-md border border-[#d7dee8] bg-white px-4 py-2 text-sm text-[#223654] transition hover:border-[#223654] hover:bg-[#f8fafc]"
-          >
-            Back to Purchase Orders
-          </Link>
-        </div>
-      </div>
+          <span>&gt;</span>
+          <span className="text-[#98a3b4]">{referenceCode}</span>
+        </nav>
 
-      <section className="rounded-2xl border border-[#edf1f7] bg-white p-6 shadow-[0_10px_28px_rgba(15,23,42,0.04)]">
-        <div className="grid gap-4 md:grid-cols-4">
-          <div className="rounded-xl border border-[#edf1f7] bg-[#fafbfd] p-4">
-            <p className="text-xs uppercase tracking-wide text-[#8b95a5]">Supplier</p>
-            <p className="mt-2 text-base font-semibold text-[#223654]">
-              {order.supplierInfo?.businessName ?? "Unknown supplier"}
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h1 className="text-[31px] font-semibold tracking-[-0.03em] text-[#223654]">
+              {referenceCode}
+            </h1>
+            <p className="mt-1 text-[15px] text-[#8a96a8]">
+              Placed on {placedOnDate} | {supplierName}
             </p>
           </div>
-          <div className="rounded-xl border border-[#edf1f7] bg-[#fafbfd] p-4">
-            <p className="text-xs uppercase tracking-wide text-[#8b95a5]">Quantity</p>
-            <p className="mt-2 text-base font-semibold text-[#223654]">{order.quantityLabel}</p>
-          </div>
-          <div className="rounded-xl border border-[#edf1f7] bg-[#fafbfd] p-4">
-            <p className="text-xs uppercase tracking-wide text-[#8b95a5]">Total Amount</p>
-            <p className="mt-2 text-base font-semibold text-[#223654]">
-              {formatCurrency(order.totalAmount)}
-            </p>
-          </div>
-          <div className="rounded-xl border border-[#edf1f7] bg-[#fafbfd] p-4">
-            <p className="text-xs uppercase tracking-wide text-[#8b95a5]">Receipt Review</p>
-            <span
-              className={`mt-2 inline-flex rounded-full border px-3 py-1 text-xs ${getReceiptStatusBadgeClasses(
-                order.receiptStatus,
-              )}`}
-            >
-              {toTitleCase(order.receiptStatus)}
-            </span>
-          </div>
+
+          <span
+            className={`inline-flex items-center rounded-full border px-3 py-1.5 text-[12px] font-semibold ${getStatusBadgeClasses(
+              order.status,
+            )}`}
+          >
+            <span className="mr-2 inline-flex h-2.5 w-2.5 rounded-full bg-current/80" />
+            {toTitleCase(order.status)}
+          </span>
         </div>
-      </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <div className="space-y-6">
-          <SectionCard
-            title="Order Details"
-            subtitle="Confirmed RFQ, quotation, and buyer-entered purchase order details."
-          >
-            <div className="divide-y divide-[#edf1f7]">
-              <DetailRow label="Product" value={order.productName} />
-              <DetailRow label="Related RFQ" value={order.rfqId ? `RFQ #${order.rfqId}` : "Not linked"} />
-              <DetailRow label="Quotation" value={order.quoteId ? `Quote #${order.quoteId}` : "Not linked"} />
-              <DetailRow label="Specifications" value={order.specifications || "No specifications provided."} />
-              <DetailRow label="Quantity" value={order.quantityLabel} />
-              <DetailRow label="Agreed unit price" value={formatCurrency(order.pricePerUnit)} />
-              <DetailRow label="Subtotal" value={formatCurrency(order.subtotal)} />
-              <DetailRow label="Delivery fee" value={formatCurrency(order.deliveryFee)} />
-              <DetailRow label="Total amount" value={formatCurrency(order.totalAmount)} />
-              <DetailRow label="Lead time" value={order.leadTime || "Not specified"} />
-              <DetailRow label="Delivery location" value={order.deliveryLocation || "Not specified"} />
-              <DetailRow
-                label="Preferred delivery"
-                value={formatDate(order.preferredDeliveryDate)}
-              />
-              <DetailRow label="Created at" value={formatDate(order.createdAt)} />
-              <DetailRow label="Confirmed at" value={formatDate(order.confirmedAt)} />
-              <DetailRow label="Completed at" value={formatDate(order.completedAt)} />
-            </div>
-          </SectionCard>
+        <StatusStepper status={order.status} timeline={stepTimeline} />
 
-          <SectionCard
-            title="Buyer Inputs"
-            subtitle="These are the editable fields the buyer supplied when creating the purchase order."
-          >
-            <div className="divide-y divide-[#edf1f7]">
-              <DetailRow label="Payment method" value={order.paymentMethod || "Not specified"} />
-              <DetailRow
-                label="Terms and conditions"
-                value={order.termsAndConditions || "Not specified"}
-              />
-              <DetailRow label="Additional notes" value={order.additionalNotes || "Not specified"} />
-              <DetailRow label="Quotation notes" value={order.quotationNotes || "Not specified"} />
-            </div>
-          </SectionCard>
+        <SectionCard title="Supplier Info">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-center gap-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[14px] bg-[#edf8ef] text-[20px] font-semibold text-[#2f7a45]">
+                {getInitials(supplierName)}
+              </div>
 
-          <SectionCard
-            title="Receipt Upload"
-            subtitle="Upload your offline payment receipt after the supplier marks the order as shipped."
-          >
-            <div className="space-y-4">
-              {order.receiptFileUrl ? (
-                <div className="rounded-xl border border-[#edf1f7] bg-[#fafbfd] p-4">
-                  {isImageFile(order.receiptFileUrl) ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={order.receiptFileUrl}
-                      alt="Receipt upload"
-                      className="max-h-[320px] w-full rounded-xl object-contain"
-                    />
-                  ) : (
-                    <p className="text-sm text-[#4a5b75]">A receipt file is already attached to this order.</p>
-                  )}
-
-                  <a
-                    href={order.receiptFileUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-4 inline-flex rounded-md border border-[#d7dee8] bg-white px-4 py-2 text-sm text-[#223654] transition hover:border-[#223654] hover:bg-white"
-                  >
-                    View uploaded receipt
-                  </a>
-                </div>
-              ) : (
-                <div className="rounded-xl border border-dashed border-[#d7dee8] bg-[#fafbfd] p-5 text-sm text-[#8b95a5]">
-                  No receipt uploaded yet.
-                </div>
-              )}
-
-              <div className="rounded-xl border border-[#edf1f7] bg-[#fafbfd] p-4">
-                <p className="text-xs uppercase tracking-wide text-[#8b95a5]">Receipt review status</p>
-                <span
-                  className={`mt-3 inline-flex rounded-full border px-3 py-1 text-xs ${getReceiptStatusBadgeClasses(
-                    order.receiptStatus,
-                  )}`}
-                >
-                  {toTitleCase(order.receiptStatus)}
-                </span>
-
-                {order.receiptReviewNotes ? (
-                  <p className="mt-3 text-sm text-[#4a5b75]">
-                    Supplier notes: {order.receiptReviewNotes}
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-[22px] font-semibold tracking-[-0.03em] text-[#223654]">
+                    {supplierName}
                   </p>
-                ) : null}
-              </div>
+                  <span className="inline-flex items-center rounded-full border border-[#9fd2ae] bg-[#f3fbf5] px-2.5 py-1 text-[11px] font-medium text-[#2f7a45]">
+                    Partner Supplier
+                  </span>
+                </div>
 
-              {canUploadReceipt ? (
-                <form action={uploadPurchaseOrderReceipt} className="space-y-3">
-                  <input type="hidden" name="poId" value={order.poId} />
-                  <input
-                    type="file"
-                    name="receiptFile"
-                    accept="image/jpeg,image/jpg,image/png,image/webp"
-                    required
-                    className="block w-full rounded-md border border-[#d7dee8] bg-white px-3 py-3 text-sm text-[#223654]"
-                  />
-                  <button
-                    type="submit"
-                    className="rounded-md bg-[#243f68] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#1f3658]"
-                  >
-                    {order.receiptStatus === "rejected" ? "Upload corrected receipt" : "Upload receipt"}
-                  </button>
-                </form>
-              ) : order.receiptStatus === "pending_review" ? (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
-                  Your uploaded receipt is waiting for supplier review.
-                </div>
-              ) : order.receiptStatus === "approved" ? (
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
-                  Your receipt has been approved. The supplier can now complete the order.
-                </div>
-              ) : (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
-                  Receipt upload will be enabled once the supplier marks the order as shipped.
-                </div>
-              )}
+                <p className="mt-1 text-[14px] text-[#8c97a7]">
+                  {order.supplierInfo?.location ?? "Location not available"}
+                </p>
+              </div>
             </div>
-          </SectionCard>
-        </div>
 
-        <div className="space-y-6">
-          <SectionCard
-            title="Status Tracker"
-            subtitle="Follow the supplier fulfillment progress from confirmation through completion."
-          >
-            <StatusTracker status={order.status} />
-            {order.status === "shipped" && order.receiptStatus === "not_uploaded" ? (
-              <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
-                Uploading a receipt is required before the supplier can mark the order as completed.
-              </div>
-            ) : null}
-            {order.status === "shipped" && order.receiptStatus === "pending_review" ? (
-              <div className="mt-5 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-700">
-                Your receipt is uploaded and waiting for supplier approval.
-              </div>
-            ) : null}
-            {order.status === "shipped" && order.receiptStatus === "rejected" ? (
-              <div className="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
-                The supplier rejected your receipt. Upload another one to continue the order.
-              </div>
-            ) : null}
-          </SectionCard>
+            <Link
+              href={supplierProfileHref}
+              className="inline-flex h-10 items-center justify-center rounded-[10px] border border-[#d9e1ec] bg-white px-4 text-[13px] font-medium text-[#526176] transition hover:border-[#c5d0df] hover:text-[#223654]"
+            >
+              View Profile
+            </Link>
+          </div>
+        </SectionCard>
 
-          <SectionCard
-            title="Supplier Information"
-            subtitle="Order fulfillment contact details for this supplier."
-          >
-            <div className="space-y-3 text-sm text-[#4a5b75]">
-              <p>
-                <span className="font-medium text-[#223654]">Business:</span>{" "}
-                {order.supplierInfo?.businessName ?? "Not available"}
-              </p>
-              <p>
-                <span className="font-medium text-[#223654]">Contact:</span>{" "}
-                {order.supplierInfo?.contactName ?? "Not available"}
-              </p>
-              <p>
-                <span className="font-medium text-[#223654]">Phone:</span>{" "}
-                {order.supplierInfo?.phone ?? "Not available"}
-              </p>
-              <p>
-                <span className="font-medium text-[#223654]">Email:</span>{" "}
-                {order.supplierInfo?.email ?? "Not available"}
-              </p>
-              <p>
-                <span className="font-medium text-[#223654]">Location:</span>{" "}
-                {order.supplierInfo?.location ?? "Not available"}
-              </p>
+        <SectionCard title="Order Summary">
+          <div className="overflow-hidden rounded-[16px] border border-[#edf1f7]">
+            <div className="grid grid-cols-[minmax(0,1.4fr)_0.6fr_0.7fr_0.7fr] gap-4 border-b border-[#edf1f7] bg-[#fbfcfe] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#b0bac7]">
+              <span>Item</span>
+              <span className="text-right">Qty</span>
+              <span className="text-right">Unit Price</span>
+              <span className="text-right">Total</span>
             </div>
-          </SectionCard>
+
+            <div className="grid grid-cols-[minmax(0,1.4fr)_0.6fr_0.7fr_0.7fr] gap-4 px-4 py-4 text-[15px] text-[#223654]">
+              <span className="font-semibold">{order.productName}</span>
+              <span className="text-right text-[#8c97a7]">{order.quantityLabel}</span>
+              <span className="text-right text-[#8c97a7]">
+                {formatCurrency(order.pricePerUnit)}
+              </span>
+              <span className="text-right font-semibold">{formatCurrency(order.subtotal)}</span>
+            </div>
+
+            <div className="border-t border-[#edf1f7] px-4 py-3 text-[14px]">
+              <div className="flex items-center justify-between py-1 text-[#b0bac7]">
+                <span>Subtotal</span>
+                <span>{formatCurrency(order.subtotal)}</span>
+              </div>
+              <div className="flex items-center justify-between py-1 text-[#b0bac7]">
+                <span>Delivery Fee</span>
+                <span>{deliveryFeeLabel}</span>
+              </div>
+              <div className="mt-2 flex items-center justify-between border-t border-[#edf1f7] pt-3 text-[16px] font-semibold text-[#223654]">
+                <span>Total</span>
+                <span>{formatCurrency(orderSummaryTotal)}</span>
+              </div>
+            </div>
+          </div>
+        </SectionCard>
+
+        <SectionCard title="More Details">
+          <div className="grid gap-5 md:grid-cols-2">
+            <DetailMetric label="Deliver To" value={order.deliveryLocation || "Not specified"} />
+            <DetailMetric
+              label="Expected Delivery"
+              value={formatDate(order.preferredDeliveryDate)}
+            />
+            <DetailMetric label="Payment Method" value={order.paymentMethod || "Not specified"} />
+            <DetailMetric
+              label="Payment Terms"
+              value={order.termsAndConditions || "Not specified"}
+            />
+          </div>
+
+          <div className="mt-5 border-t border-[#edf1f7] pt-5">
+            <DetailMetric
+              label="Notes From Buyer"
+              value={notesFromBuyer || "No additional instructions provided."}
+            />
+          </div>
+        </SectionCard>
+
+        {order.status === "confirmed" ? (
+          <NotificationCard
+            tone="blue"
+            title="Purchase order sent"
+            description="The purchase order has been submitted to the supplier. Please wait for them to confirm and begin preparing your order."
+          />
+        ) : null}
+
+        {order.status === "processing" ? (
+          <NotificationCard
+            tone="orange"
+            title="Order is being processed"
+            description="Your supplier is currently preparing this order. You will be notified once it has been dispatched."
+          />
+        ) : null}
+
+        {order.status === "shipped" && order.receiptStatus === "not_uploaded" ? (
+          <>
+            <NotificationCard
+              tone="purple"
+              title="Order on its way"
+              description="This order has been dispatched by the supplier. Once it is delivered and payment is completed, upload the receipt to continue the order."
+            />
+            <ReceiptUploadForm poId={order.poId} mode="first_upload" />
+          </>
+        ) : null}
+
+        {shouldShowReceiptPendingReview ? (
+          <>
+            <ReceiptPreview
+              receiptFileUrl={order.receiptFileUrl}
+              receiptFilePath={order.receiptFilePath}
+              description="Your receipt has been uploaded and is awaiting supplier verification."
+            />
+            <NotificationCard
+              tone="slate"
+              title="Receipt submitted for review"
+              description="The supplier is reviewing your proof of payment. Once approved, they can mark this order as completed."
+            />
+          </>
+        ) : null}
+
+        {shouldShowReceiptUpload && order.receiptStatus === "rejected" ? (
+          <>
+            {order.receiptFileUrl ? (
+              <ReceiptPreview
+                receiptFileUrl={order.receiptFileUrl}
+                receiptFilePath={order.receiptFilePath}
+                description="Previously submitted receipt."
+              />
+            ) : null}
+            <ReceiptUploadForm
+              poId={order.poId}
+              mode="resubmit"
+              reviewNotes={order.receiptReviewNotes}
+              currentFileName={getFileName(order.receiptFilePath)}
+            />
+          </>
+        ) : null}
+
+        {shouldShowReceiptApproved ? (
+          <>
+            <ReceiptPreview
+              receiptFileUrl={order.receiptFileUrl}
+              receiptFilePath={order.receiptFilePath}
+              description="The supplier has approved your uploaded receipt."
+            />
+            <NotificationCard
+              tone="green"
+              title="Receipt approved"
+              description="Your payment receipt was accepted. The supplier may now mark the order as completed."
+            />
+          </>
+        ) : null}
+
+        {showCompletedReceipt ? (
+          <>
+            <ReceiptPreview
+              receiptFileUrl={order.receiptFileUrl}
+              receiptFilePath={order.receiptFilePath}
+              description="Receipt uploaded and accepted for this purchase order."
+            />
+            <NotificationCard
+              tone="green"
+              title="Order completed successfully"
+              description={`This order was fulfilled and marked complete on ${formatDate(
+                order.completedAt,
+              )}. Total payment collected: ${formatCurrency(orderSummaryTotal)}.`}
+            />
+          </>
+        ) : null}
+
+        {order.status === "cancelled" ? (
+          <NotificationCard
+            tone="red"
+            title="Order cancelled"
+            description="This purchase order has been cancelled and is no longer active."
+          />
+        ) : null}
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href={messageSupplierHref}
+              className="inline-flex h-11 items-center justify-center rounded-[12px] border border-[#d9e1ec] bg-white px-5 text-[14px] font-medium text-[#526176] transition hover:border-[#c5d0df] hover:text-[#223654]"
+            >
+              Message Supplier
+            </Link>
+            <Link
+              href="/buyer/purchase-orders"
+              className="inline-flex h-11 items-center justify-center rounded-[12px] border border-[#d9e1ec] bg-white px-5 text-[14px] font-medium text-[#526176] transition hover:border-[#c5d0df] hover:text-[#223654]"
+            >
+              Back to Orders
+            </Link>
+          </div>
+
+          {canCancelOrder ? (
+            <Link
+              href={buildDetailHref(order.poId, { modal: "cancel" })}
+              className="inline-flex h-11 items-center justify-center rounded-[12px] px-5 text-[14px] font-semibold text-[#ff5a47] transition hover:bg-[#fff5f3]"
+            >
+              Cancel Order
+            </Link>
+          ) : null}
         </div>
-      </section>
-    </main>
+      </main>
+
+      {showCancelModal ? (
+        <ModalShell
+          title="Cancel this order?"
+          description="The supplier will be notified and this purchase order will be voided."
+          closeHref={buildDetailHref(order.poId)}
+          closeLabel="Keep"
+          maxWidthClassName="max-w-md"
+          panelClassName="rounded-[28px] border border-[#e8edf5] bg-white p-6 shadow-[0_24px_70px_rgba(15,23,42,0.2)]"
+          overlayClassName="bg-[#0f172a]/35 p-4"
+        >
+          <form action={cancelPurchaseOrder} className="mt-2 flex justify-end">
+            <input type="hidden" name="poId" value={order.poId} />
+            <button
+              type="submit"
+              className="inline-flex h-11 items-center justify-center rounded-[12px] bg-[#93a4bd] px-5 text-[14px] font-semibold text-white transition hover:bg-[#7f92ae]"
+            >
+              Cancel Order
+            </button>
+          </form>
+        </ModalShell>
+      ) : null}
+    </>
   );
 }

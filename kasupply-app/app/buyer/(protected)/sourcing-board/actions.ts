@@ -1,7 +1,18 @@
 "use server";
 
-import { getBuyerRfqListItems } from "@/lib/buyer/rfq-workflows";
+import { getBuyerRfqListItems, getCurrentBuyerContext } from "@/lib/buyer/rfq-workflows";
 
-export async function getBuyerSourcingRequests() {
-  return getBuyerRfqListItems({ visibility: "public" });
+export async function getBuyerSourcingBoardData() {
+  const [buyerContext, requests] = await Promise.all([
+    getCurrentBuyerContext(),
+    getBuyerRfqListItems({
+      visibility: "public",
+      rfqType: "sourcing_board",
+    }),
+  ]);
+
+  return {
+    buyerBusinessName: buyerContext?.businessProfile.business_name ?? "Your Business",
+    requests,
+  };
 }

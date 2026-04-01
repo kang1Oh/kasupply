@@ -29,23 +29,33 @@ type BulletinBoardItemRow = {
   rfqs:
     | {
         rfq_id: number;
-        product_name: string | null;
+        product_id: number | null;
+        requested_product_name: string | null;
         specifications: string | null;
         quantity: number | null;
         unit: string | null;
         deadline: string | null;
         status: string | null;
         created_at: string | null;
+        products?:
+          | { product_id: number; product_name: string | null }
+          | { product_id: number; product_name: string | null }[]
+          | null;
       }
     | {
         rfq_id: number;
-        product_name: string | null;
+        product_id: number | null;
+        requested_product_name: string | null;
         specifications: string | null;
         quantity: number | null;
         unit: string | null;
         deadline: string | null;
         status: string | null;
         created_at: string | null;
+        products?:
+          | { product_id: number; product_name: string | null }
+          | { product_id: number; product_name: string | null }[]
+          | null;
       }[]
     | null;
 };
@@ -96,17 +106,38 @@ function getJoinedRfq(
 ):
   | {
       rfq_id: number;
-      product_name: string | null;
+      product_id: number | null;
+      requested_product_name: string | null;
       specifications: string | null;
       quantity: number | null;
       unit: string | null;
       deadline: string | null;
       status: string | null;
       created_at: string | null;
+      products?:
+        | { product_id: number; product_name: string | null }
+        | { product_id: number; product_name: string | null }[]
+        | null;
     }
   | null {
   if (!rfqs) return null;
   return Array.isArray(rfqs) ? rfqs[0] ?? null : rfqs;
+}
+
+function getRfqProductName(
+  rfq:
+    | {
+        requested_product_name?: string | null;
+        products?:
+          | { product_id: number; product_name: string | null }
+          | { product_id: number; product_name: string | null }[]
+          | null;
+      }
+    | null,
+) {
+  if (!rfq) return null;
+  const product = Array.isArray(rfq.products) ? rfq.products[0] : rfq.products;
+  return product?.product_name || rfq.requested_product_name?.trim() || null;
 }
 
 function buildQuantityLabel(quantity: number | null, unit: string | null) {
@@ -206,13 +237,18 @@ export async function getSupplierDashboardData(): Promise<SupplierDashboardData>
         notified_at,
         rfqs (
           rfq_id,
-          product_name,
+          product_id,
+          requested_product_name,
           specifications,
           quantity,
           unit,
           deadline,
           status,
-          created_at
+          created_at,
+          products!rfqs_product_id_fkey (
+            product_id,
+            product_name
+          )
         )
       `)
       .eq("supplier_id", supplierProfile.supplier_id)
@@ -252,7 +288,7 @@ export async function getSupplierDashboardData(): Promise<SupplierDashboardData>
       return {
         matchId: row.match_id,
         rfqId: row.rfq_id,
-        title: rfq?.product_name ?? `RFQ #${row.rfq_id}`,
+        title: getRfqProductName(rfq) ?? `RFQ #${row.rfq_id}`,
         description: rfq?.specifications ?? "No specifications provided.",
         status: rfq?.status ?? "open",
         matchScore: row.match_score,

@@ -335,6 +335,7 @@ function BuyerAccountBody({
   };
   savedSuppliers: {
     supplierId: number;
+    avatarUrl: string | null;
     businessName: string;
     businessType: string;
     city: string;
@@ -622,6 +623,7 @@ async function BuyerAccountPageContent({ searchParams }: BuyerAccountPageProps) 
       }}
       savedSuppliers={pastSuppliers.slice(0, 3).map((supplier) => ({
         supplierId: supplier.supplierId,
+        avatarUrl: supplier.avatarUrl,
         businessName: supplier.businessName,
         businessType: supplier.businessType,
         city: supplier.city,

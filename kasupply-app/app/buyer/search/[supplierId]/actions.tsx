@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 export type SupplierProfileDetails = {
   supplierId: number;
   profileId: number;
+  avatarUrl: string | null;
   businessName: string;
   businessType: string;
   businessLocation: string;
@@ -202,6 +203,7 @@ export async function getSupplierProfileDetails(
       verified_badge,
       business_profiles (
         profile_id,
+        user_id,
         business_name,
         business_type,
         business_location,
@@ -232,6 +234,23 @@ export async function getSupplierProfileDetails(
 
   if (!profile) {
     return null;
+  }
+
+  let avatarUrl: string | null = null;
+
+  if (profile.user_id) {
+    const { data: userRow, error: userError } = await supabase
+      .from("users")
+      .select("avatar_url")
+      .eq("user_id", profile.user_id)
+      .maybeSingle();
+
+    if (userError) {
+      console.error("Error fetching supplier avatar:", userError);
+      throw new Error("Failed to fetch supplier avatar.");
+    }
+
+    avatarUrl = userRow?.avatar_url ?? null;
   }
 
   const { data: productRows, error: productError } = await supabase
@@ -399,6 +418,7 @@ export async function getSupplierProfileDetails(
   return {
     supplierId: supplierRow.supplier_id,
     profileId: profile.profile_id,
+    avatarUrl,
     businessName: profile.business_name,
     businessType: profile.business_type,
     businessLocation: profile.business_location,

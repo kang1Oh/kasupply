@@ -25,7 +25,9 @@ type RfqRow = {
   rfq_id: number;
   buyer_id: number;
   category_id: number | null;
-  product_name: string;
+  product_id: number | null;
+  product_name: string | null;
+  requested_product_name: string | null;
   quantity: number;
   unit: string | null;
   specifications: string | null;
@@ -34,6 +36,7 @@ type RfqRow = {
   visibility: string | null;
   created_at: string | null;
   updated_at: string | null;
+  products?: { product_id: number; product_name: string | null } | { product_id: number; product_name: string | null }[] | null;
 };
 
 type EngagementRow = {
@@ -76,6 +79,20 @@ type QuotationRow = {
 function getSingleRfq(rfqs: EngagementRow["rfqs"]): RfqRow | null {
   if (!rfqs) return null;
   return Array.isArray(rfqs) ? rfqs[0] ?? null : rfqs;
+}
+
+function getRfqProductName(rfq: RfqRow | null) {
+  if (!rfq) {
+    return null;
+  }
+
+  const product = Array.isArray(rfq.products) ? rfq.products[0] : rfq.products;
+  return (
+    product?.product_name ||
+    rfq.requested_product_name?.trim() ||
+    rfq.product_name?.trim() ||
+    null
+  );
 }
 
 async function getCurrentSupplierContext() {
@@ -188,7 +205,8 @@ export async function getSupplierRfqEngagementDetail(engagementId: number) {
         rfq_id,
         buyer_id,
         category_id,
-        product_name,
+        product_id,
+        requested_product_name,
         quantity,
         unit,
         specifications,
@@ -196,7 +214,11 @@ export async function getSupplierRfqEngagementDetail(engagementId: number) {
         status,
         visibility,
         created_at,
-        updated_at
+        updated_at,
+        products!rfqs_product_id_fkey (
+          product_id,
+          product_name
+        )
       )
     `)
     .eq("engagement_id", engagementId)
@@ -289,7 +311,13 @@ export async function getSupplierRfqEngagementDetail(engagementId: number) {
   return {
     currentAppUserId: appUserId,
     engagement,
-    rfq,
+    rfq:
+      rfq == null
+        ? null
+        : {
+            ...rfq,
+            product_name: getRfqProductName(rfq),
+          },
     match: match ?? null,
     buyer,
     offers: offers ?? [],

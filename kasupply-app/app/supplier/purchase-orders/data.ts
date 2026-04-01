@@ -58,12 +58,13 @@ type EngagementRow = {
 
 type RfqRow = {
   rfq_id: number;
-  product_name: string | null;
+  product_id: number | null;
   unit: string | null;
   specifications: string | null;
   preferred_delivery_date: string | null;
   delivery_location: string | null;
   deadline: string | null;
+  products?: ProductRow | ProductRow[] | null;
 };
 
 type ConversationRow = {
@@ -184,6 +185,15 @@ function buildPartyInfo(
     email: user?.email ?? null,
     location: formatLocation(businessProfile),
   };
+}
+
+function getRfqProductName(rfq: RfqRow | null) {
+  if (!rfq) {
+    return null;
+  }
+
+  const product = Array.isArray(rfq.products) ? rfq.products[0] : rfq.products;
+  return product?.product_name ?? null;
 }
 
 async function resolveReceiptUrl(
@@ -348,7 +358,19 @@ async function buildSupportingMaps(
     const { data: rfqs, error: rfqsError } = await supabase
       .from("rfqs")
       .select(
-        "rfq_id, product_name, unit, specifications, preferred_delivery_date, delivery_location, deadline",
+        `
+        rfq_id,
+        product_id,
+        unit,
+        specifications,
+        preferred_delivery_date,
+        delivery_location,
+        deadline,
+        products!rfqs_product_id_fkey (
+          product_id,
+          product_name
+        )
+        `,
       )
       .in("rfq_id", rfqIds);
 
@@ -549,7 +571,7 @@ async function buildPurchaseOrderView(
     poNumber: formatPurchaseOrderNumber(poId),
     buyer: buyerInfo?.businessName ?? "Unknown buyer",
     productName:
-      rfq?.product_name ??
+      getRfqProductName(rfq) ??
       (productId !== null ? maps.productNameMap.get(productId) ?? `Product #${productId}` : "Unknown product"),
     quantityLabel: formatQuantityValue(quantityValue, unit),
     quantityValue,

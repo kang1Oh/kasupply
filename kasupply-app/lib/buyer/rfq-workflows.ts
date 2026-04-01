@@ -33,6 +33,14 @@ type SupplierMatchCandidate = {
   }>;
 };
 
+type SupplierInfo = {
+  supplierName: string;
+  verifiedBadge: boolean;
+  avatarUrl: string | null;
+  businessType: string | null;
+  locationLabel: string | null;
+};
+
 export type ProductCategoryOption = {
   categoryId: number;
   categoryName: string;
@@ -40,6 +48,9 @@ export type ProductCategoryOption = {
 
 export type BuyerRfqListItem = {
   rfqId: number;
+  rfqType: string | null;
+  productId: number | null;
+  requestedProductName: string | null;
   productName: string;
   quantity: number;
   unit: string;
@@ -55,6 +66,13 @@ export type BuyerRfqListItem = {
     categoryId: number;
     categoryName: string;
   } | null;
+  supplierPreview: {
+    supplierId: number;
+    supplierName: string;
+    verifiedBadge: boolean;
+    avatarUrl: string | null;
+  } | null;
+  quotationCount: number;
   requestMatchesCount: number;
   visibleMatchesCount: number;
   topMatchScore: number | null;
@@ -64,6 +82,7 @@ export type BuyerRfqListItem = {
     supplierName: string;
     status: string;
     verifiedBadge: boolean;
+    avatarUrl: string | null;
     finalQuoteId: number | null;
   }[];
 };
@@ -72,6 +91,9 @@ export type BuyerRfqDetailsData = {
   currentAuthUserId: string;
   rfq: {
     rfqId: number;
+    rfqType: string | null;
+    productId: number | null;
+    requestedProductName: string | null;
     productName: string;
     quantity: number;
     unit: string;
@@ -108,6 +130,9 @@ export type BuyerRfqDetailsData = {
     engagementId: number;
     supplierId: number;
     supplierName: string;
+    avatarUrl: string | null;
+    businessType: string | null;
+    locationLabel: string | null;
     verifiedBadge: boolean;
     status: string;
     finalQuoteId: number | null;
@@ -171,6 +196,13 @@ export type BuyerRfqDetailsData = {
     } | null;
     conversationId: number | null;
   }[];
+  purchaseOrder: {
+    poId: number;
+    quoteId: number;
+    status: string;
+    confirmedAt: string | null;
+    createdAt: string;
+  } | null;
 };
 
 type BuyerQuotationRow = {
@@ -261,6 +293,32 @@ export async function getProductCategories(): Promise<ProductCategoryOption[]> {
 
 function normalizeText(value: string | null | undefined) {
   return String(value ?? "").trim().toLowerCase();
+}
+
+function getRfqDisplayName(params: {
+  requestedProductName?: string | null;
+  productId?: number | null;
+  products?:
+    | {
+        product_id: number;
+        product_name: string | null;
+      }
+    | {
+        product_id: number;
+        product_name: string | null;
+      }[]
+    | null;
+}) {
+  const product = Array.isArray(params.products)
+    ? params.products[0]
+    : params.products;
+  const requestedProductName = params.requestedProductName?.trim();
+
+  return (
+    product?.product_name ||
+    requestedProductName ||
+    (params.productId != null ? `Product #${params.productId}` : "Untitled request")
+  );
 }
 
 function tokenize(value: string | null | undefined) {
@@ -561,7 +619,7 @@ export async function getTopSupplierMatchesForRfq(params: {
 
 export async function createPublicSourcingRequest(input: {
   categoryId: number;
-  productName: string;
+  requestedProductName: string;
   quantity: number;
   unit: string;
   specifications: string | null;
@@ -582,7 +640,6 @@ export async function createPublicSourcingRequest(input: {
     .insert({
       buyer_id: buyerContext.buyerId,
       category_id: input.categoryId,
-      product_name: input.productName,
       quantity: input.quantity,
       unit: input.unit,
       specifications: input.specifications,
@@ -592,6 +649,9 @@ export async function createPublicSourcingRequest(input: {
       target_price_per_unit: input.targetPricePerUnit,
       preferred_delivery_date: input.preferredDeliveryDate,
       delivery_location: input.deliveryLocation,
+      product_id: null,
+      rfq_type: "sourcing_board",
+      requested_product_name: input.requestedProductName,
     })
     .select("rfq_id")
     .single();
@@ -602,7 +662,7 @@ export async function createPublicSourcingRequest(input: {
 
   const matches = await getTopSupplierMatchesForRfq({
     categoryId: input.categoryId,
-    productName: input.productName,
+    productName: input.requestedProductName,
     specifications: input.specifications,
     quantity: input.quantity,
     buyerLocation: {
@@ -650,9 +710,20 @@ function isDatePast(dateString: string | null) {
   return date.getTime() < Date.now();
 }
 
+function formatSupplierLocationLabel(params: {
+  city?: string | null;
+  province?: string | null;
+}) {
+  const parts = [params.city, params.province].filter(
+    (value): value is string => Boolean(value && value.trim())
+  );
+
+  return parts.length > 0 ? parts.join(", ") : null;
+}
+
 async function getSupplierInfoMap(supplierIds: number[]) {
   if (supplierIds.length === 0) {
-    return new Map<number, { supplierName: string; verifiedBadge: boolean }>();
+    return new Map<number, SupplierInfo>();
   }
 
   const supabase = await createClient();
@@ -664,7 +735,11 @@ async function getSupplierInfoMap(supplierIds: number[]) {
       supplier_id,
       verified_badge,
       business_profiles (
-        business_name
+        business_name,
+        business_type,
+        city,
+        province,
+        user_id
       )
     `
     )
@@ -674,7 +749,38 @@ async function getSupplierInfoMap(supplierIds: number[]) {
     throw new Error(error.message || "Failed to load supplier details.");
   }
 
-  const result = new Map<number, { supplierName: string; verifiedBadge: boolean }>();
+  const userIds = Array.from(
+    new Set(
+      (data ?? [])
+        .map((row) => {
+          const profile = Array.isArray(row.business_profiles)
+            ? row.business_profiles[0]
+            : row.business_profiles;
+
+          return profile?.user_id ?? null;
+        })
+        .filter((value): value is string => Boolean(value))
+    )
+  );
+
+  const avatarByUserId = new Map<string, string | null>();
+
+  if (userIds.length > 0) {
+    const { data: userRows, error: usersError } = await supabase
+      .from("users")
+      .select("user_id, avatar_url")
+      .in("user_id", userIds);
+
+    if (usersError) {
+      throw new Error(usersError.message || "Failed to load supplier avatars.");
+    }
+
+    for (const row of userRows ?? []) {
+      avatarByUserId.set(row.user_id, row.avatar_url);
+    }
+  }
+
+  const result = new Map<number, SupplierInfo>();
 
   for (const row of data ?? []) {
     const profile = Array.isArray(row.business_profiles)
@@ -684,6 +790,12 @@ async function getSupplierInfoMap(supplierIds: number[]) {
     result.set(row.supplier_id, {
       supplierName: profile?.business_name ?? "Unknown Supplier",
       verifiedBadge: row.verified_badge,
+      avatarUrl: profile?.user_id ? avatarByUserId.get(profile.user_id) ?? null : null,
+      businessType: profile?.business_type ?? null,
+      locationLabel: formatSupplierLocationLabel({
+        city: profile?.city,
+        province: profile?.province,
+      }),
     });
   }
 
@@ -692,6 +804,7 @@ async function getSupplierInfoMap(supplierIds: number[]) {
 
 export async function getBuyerRfqListItems(filter?: {
   visibility?: "public" | "restricted";
+  rfqType?: "direct" | "sourcing_board";
 }) {
   const supabase = await createClient();
   const buyerContext = await getCurrentBuyerContext();
@@ -706,7 +819,9 @@ export async function getBuyerRfqListItems(filter?: {
       `
       rfq_id,
       category_id,
-      product_name,
+      product_id,
+      rfq_type,
+      requested_product_name,
       quantity,
       unit,
       specifications,
@@ -720,6 +835,10 @@ export async function getBuyerRfqListItems(filter?: {
       product_categories (
         category_id,
         category_name
+      ),
+      products!rfqs_product_id_fkey (
+        product_id,
+        product_name
       )
     `
     )
@@ -728,6 +847,10 @@ export async function getBuyerRfqListItems(filter?: {
 
   if (filter?.visibility) {
     query = query.eq("visibility", filter.visibility);
+  }
+
+  if (filter?.rfqType) {
+    query = query.eq("rfq_type", filter.rfqType);
   }
 
   const { data: rfqRows, error: rfqError } = await query;
@@ -751,7 +874,8 @@ export async function getBuyerRfqListItems(filter?: {
     supabase
       .from("request_matches")
       .select("match_id, rfq_id, supplier_id, match_score, is_visible")
-      .in("rfq_id", rfqIds),
+      .in("rfq_id", rfqIds)
+      .order("match_score", { ascending: false }),
   ]);
 
   if (engagementResult.error) {
@@ -772,6 +896,36 @@ export async function getBuyerRfqListItems(filter?: {
     )
   );
   const supplierMap = await getSupplierInfoMap(supplierIds);
+  const engagementIds = engagementRows.map((row) => row.engagement_id);
+  const rfqIdByEngagementId = new Map(
+    engagementRows.map((row) => [row.engagement_id, row.rfq_id] as const)
+  );
+
+  const quotationsByRfqId = new Map<number, number>();
+
+  if (engagementIds.length > 0) {
+    const { data: quotationRows, error: quotationsError } = await supabase
+      .from("quotations")
+      .select("quote_id, engagement_id")
+      .in("engagement_id", engagementIds);
+
+    if (quotationsError) {
+      throw new Error(quotationsError.message || "Failed to load RFQ quotations.");
+    }
+
+    for (const row of quotationRows ?? []) {
+      const mappedRfqId = rfqIdByEngagementId.get(row.engagement_id);
+
+      if (!mappedRfqId) {
+        continue;
+      }
+
+      quotationsByRfqId.set(
+        mappedRfqId,
+        (quotationsByRfqId.get(mappedRfqId) ?? 0) + 1
+      );
+    }
+  }
 
   const engagementsByRfqId = new Map<number, BuyerRfqListItem["engagements"]>();
   for (const row of engagementRows) {
@@ -787,7 +941,27 @@ export async function getBuyerRfqListItems(filter?: {
       supplierName: supplier?.supplierName ?? "Unknown Supplier",
       status: row.status,
       verifiedBadge: supplier?.verifiedBadge ?? false,
+      avatarUrl: supplier?.avatarUrl ?? null,
       finalQuoteId: row.final_quote_id,
+    });
+  }
+
+  const supplierPreviewByRfqId = new Map<
+    number,
+    BuyerRfqListItem["supplierPreview"]
+  >();
+
+  for (const row of engagementRows) {
+    if (supplierPreviewByRfqId.has(row.rfq_id)) {
+      continue;
+    }
+
+    const supplier = supplierMap.get(row.supplier_id);
+    supplierPreviewByRfqId.set(row.rfq_id, {
+      supplierId: row.supplier_id,
+      supplierName: supplier?.supplierName ?? "Unknown Supplier",
+      verifiedBadge: supplier?.verifiedBadge ?? false,
+      avatarUrl: supplier?.avatarUrl ?? null,
     });
   }
 
@@ -816,17 +990,37 @@ export async function getBuyerRfqListItems(filter?: {
     }
 
     requestMatchStatsByRfqId.set(row.rfq_id, existing);
+
+    if (supplierPreviewByRfqId.has(row.rfq_id)) {
+      continue;
+    }
+
+    const supplier = supplierMap.get(row.supplier_id);
+    supplierPreviewByRfqId.set(row.rfq_id, {
+      supplierId: row.supplier_id,
+      supplierName: supplier?.supplierName ?? "Unknown Supplier",
+      verifiedBadge: supplier?.verifiedBadge ?? false,
+      avatarUrl: supplier?.avatarUrl ?? null,
+    });
   }
 
   return rfqRows.map((row) => {
     const category = Array.isArray(row.product_categories)
       ? row.product_categories[0]
       : row.product_categories;
+    const product = Array.isArray(row.products) ? row.products[0] : row.products;
     const matchStats = requestMatchStatsByRfqId.get(row.rfq_id);
 
     return {
       rfqId: row.rfq_id,
-      productName: row.product_name,
+      rfqType: row.rfq_type,
+      productId: row.product_id,
+      requestedProductName: row.requested_product_name,
+      productName: getRfqDisplayName({
+        requestedProductName: row.requested_product_name,
+        productId: row.product_id,
+        products: product,
+      }),
       quantity: row.quantity,
       unit: row.unit,
       specifications: row.specifications,
@@ -844,6 +1038,8 @@ export async function getBuyerRfqListItems(filter?: {
             categoryName: category.category_name,
           }
         : null,
+      supplierPreview: supplierPreviewByRfqId.get(row.rfq_id) ?? null,
+      quotationCount: quotationsByRfqId.get(row.rfq_id) ?? 0,
       requestMatchesCount: matchStats?.total ?? 0,
       visibleMatchesCount: matchStats?.visible ?? 0,
       topMatchScore: matchStats?.topScore ?? null,
@@ -867,7 +1063,9 @@ export async function getBuyerRfqDetails(rfqId: number) {
       rfq_id,
       buyer_id,
       category_id,
-      product_name,
+      product_id,
+      rfq_type,
+      requested_product_name,
       quantity,
       unit,
       specifications,
@@ -881,6 +1079,10 @@ export async function getBuyerRfqDetails(rfqId: number) {
       product_categories (
         category_id,
         category_name
+      ),
+      products!rfqs_product_id_fkey (
+        product_id,
+        product_name
       )
     `
     )
@@ -968,6 +1170,32 @@ export async function getBuyerRfqDetails(rfqId: number) {
     conversationRows = conversationsResult.data ?? [];
   }
 
+  const quoteIds = quotationRows.map((quotation) => quotation.quote_id);
+  let purchaseOrderRows: Array<{
+    po_id: number;
+    quote_id: number;
+    status: string;
+    confirmed_at: string | null;
+    created_at: string;
+  }> = [];
+
+  if (quoteIds.length > 0) {
+    const { data: purchaseOrders, error: purchaseOrdersError } = await supabase
+      .from("purchase_orders")
+      .select("po_id, quote_id, status, confirmed_at, created_at")
+      .eq("buyer_id", buyerContext.buyerId)
+      .in("quote_id", quoteIds)
+      .order("created_at", { ascending: false });
+
+    if (purchaseOrdersError) {
+      throw new Error(
+        purchaseOrdersError.message || "Failed to load RFQ purchase orders."
+      );
+    }
+
+    purchaseOrderRows = purchaseOrders ?? [];
+  }
+
   const quotationsByEngagement = new Map<number, BuyerQuotationRow[]>();
   for (const quotation of quotationRows) {
     if (!quotationsByEngagement.has(quotation.engagement_id)) {
@@ -994,12 +1222,20 @@ export async function getBuyerRfqDetails(rfqId: number) {
   const category = Array.isArray(rfqRow.product_categories)
     ? rfqRow.product_categories[0]
     : rfqRow.product_categories;
+  const product = Array.isArray(rfqRow.products) ? rfqRow.products[0] : rfqRow.products;
 
   return {
     currentAuthUserId: buyerContext.appUserId,
     rfq: {
       rfqId: rfqRow.rfq_id,
-      productName: rfqRow.product_name,
+      rfqType: rfqRow.rfq_type,
+      productId: rfqRow.product_id,
+      requestedProductName: rfqRow.requested_product_name,
+      productName: getRfqDisplayName({
+        requestedProductName: rfqRow.requested_product_name,
+        productId: rfqRow.product_id,
+        products: product,
+      }),
       quantity: rfqRow.quantity,
       unit: rfqRow.unit,
       specifications: rfqRow.specifications,
@@ -1077,6 +1313,9 @@ export async function getBuyerRfqDetails(rfqId: number) {
         engagementId: engagement.engagement_id,
         supplierId: engagement.supplier_id,
         supplierName: supplier?.supplierName ?? "Unknown Supplier",
+        avatarUrl: supplier?.avatarUrl ?? null,
+        businessType: supplier?.businessType ?? null,
+        locationLabel: supplier?.locationLabel ?? null,
         verifiedBadge: supplier?.verifiedBadge ?? false,
         status: engagement.status,
         finalQuoteId: engagement.final_quote_id,
@@ -1090,6 +1329,16 @@ export async function getBuyerRfqDetails(rfqId: number) {
         conversationId: conversationByEngagement.get(engagement.engagement_id) ?? null,
       };
     }),
+    purchaseOrder:
+      purchaseOrderRows[0] == null
+        ? null
+        : {
+            poId: purchaseOrderRows[0].po_id,
+            quoteId: purchaseOrderRows[0].quote_id,
+            status: purchaseOrderRows[0].status,
+            confirmedAt: purchaseOrderRows[0].confirmed_at,
+            createdAt: purchaseOrderRows[0].created_at,
+          },
   } satisfies BuyerRfqDetailsData;
 }
 

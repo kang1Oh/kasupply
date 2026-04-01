@@ -364,6 +364,7 @@ function toHomepageSupplier(supplier: SupplierSearchItem): BuyerHomepageSupplier
     profileId: supplier.profileId,
     name: supplier.businessName,
     initials: getInitials(supplier.businessName || "Supplier"),
+    avatarUrl: supplier.avatarUrl,
     supplierType: supplier.businessType,
     categoryTags,
     shortDescription:

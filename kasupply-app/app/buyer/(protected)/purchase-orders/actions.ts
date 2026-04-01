@@ -28,6 +28,29 @@ function revalidatePurchaseOrderPaths(params: {
   }
 }
 
+async function getPurchaseOrderRfqId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  quoteId: number,
+) {
+  const { data: quotation } = await supabase
+    .from("quotations")
+    .select("engagement_id")
+    .eq("quote_id", quoteId)
+    .maybeSingle();
+
+  if (!quotation?.engagement_id) {
+    return null;
+  }
+
+  const { data: engagement } = await supabase
+    .from("rfq_engagements")
+    .select("rfq_id")
+    .eq("engagement_id", quotation.engagement_id)
+    .maybeSingle();
+
+  return engagement?.rfq_id ?? null;
+}
+
 export async function createPurchaseOrder(formData: FormData) {
   const supabase = await createClient();
   const buyerContext = await getCurrentBuyerContext();
@@ -66,7 +89,7 @@ export async function createPurchaseOrder(formData: FormData) {
       quote_id: quoteId,
       buyer_id: buyerContext.buyerId,
       supplier_id: draft.supplierId,
-      product_id: null,
+      product_id: draft.productId,
       quantity: draft.quantity,
       total_amount: draft.totalAmount,
       status: "confirmed",
@@ -81,6 +104,16 @@ export async function createPurchaseOrder(formData: FormData) {
 
   if (insertError || !insertedOrder) {
     throw new Error(insertError?.message || "Failed to create purchase order.");
+  }
+
+  const { error: closeRfqError } = await supabase
+    .from("rfqs")
+    .update({ status: "closed" })
+    .eq("rfq_id", rfqId)
+    .eq("buyer_id", buyerContext.buyerId);
+
+  if (closeRfqError) {
+    throw new Error(closeRfqError.message || "Failed to close RFQ after purchase order.");
   }
 
   revalidatePurchaseOrderPaths({
@@ -105,10 +138,16 @@ export async function uploadPurchaseOrderReceipt(formData: FormData) {
     throw new Error("Receipt file is required.");
   }
 
-  const allowedTypes = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"]);
+  const allowedTypes = new Set([
+    "application/pdf",
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/webp",
+  ]);
 
   if (!allowedTypes.has(receiptFile.type)) {
-    throw new Error("Please upload a JPG, JPEG, PNG, or WEBP receipt image.");
+    throw new Error("Please upload a PDF, JPG, JPEG, PNG, or WEBP receipt file.");
   }
 
   if (receiptFile.size > 10 * 1024 * 1024) {
@@ -176,23 +215,65 @@ export async function uploadPurchaseOrderReceipt(formData: FormData) {
       .remove([uploadInfo.existingReceiptFilePath]);
   }
 
-  const { data: quotation } = await supabase
-    .from("quotations")
-    .select("engagement_id")
-    .eq("quote_id", updatedOrder.quote_id)
+  const rfqId = updatedOrder.quote_id
+    ? await getPurchaseOrderRfqId(supabase, updatedOrder.quote_id)
+    : null;
+
+  revalidatePurchaseOrderPaths({
+    poId,
+    rfqId,
+  });
+
+  redirect(`/buyer/purchase-orders/${poId}`);
+}
+
+export async function cancelPurchaseOrder(formData: FormData) {
+  const supabase = await createClient();
+  const buyerContext = await getCurrentBuyerContext();
+
+  if (!buyerContext) {
+    throw new Error("Buyer profile not found.");
+  }
+
+  const poId = Number(formData.get("poId")?.toString() ?? "");
+
+  if (!poId || Number.isNaN(poId)) {
+    throw new Error("Invalid purchase order.");
+  }
+
+  const { data: order, error: orderError } = await supabase
+    .from("purchase_orders")
+    .select("po_id, quote_id, status")
+    .eq("po_id", poId)
+    .eq("buyer_id", buyerContext.buyerId)
     .maybeSingle();
 
-  let rfqId: number | null = null;
-
-  if (quotation?.engagement_id) {
-    const { data: engagement } = await supabase
-      .from("rfq_engagements")
-      .select("rfq_id")
-      .eq("engagement_id", quotation.engagement_id)
-      .maybeSingle();
-
-    rfqId = engagement?.rfq_id ?? null;
+  if (orderError || !order) {
+    throw new Error(orderError?.message || "Purchase order not found.");
   }
+
+  const currentStatus = String(order.status || "").trim().toLowerCase();
+
+  if (!["confirmed", "processing"].includes(currentStatus)) {
+    throw new Error("Only confirmed or processing purchase orders can be cancelled.");
+  }
+
+  const { error: updateError } = await supabase
+    .from("purchase_orders")
+    .update({
+      status: "cancelled",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("po_id", poId)
+    .eq("buyer_id", buyerContext.buyerId);
+
+  if (updateError) {
+    throw new Error(updateError.message || "Failed to cancel purchase order.");
+  }
+
+  const rfqId = order.quote_id
+    ? await getPurchaseOrderRfqId(supabase, order.quote_id)
+    : null;
 
   revalidatePurchaseOrderPaths({
     poId,

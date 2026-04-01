@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 export type SupplierSearchItem = {
   supplierId: number;
   profileId: number;
+  avatarUrl: string | null;
   businessName: string;
   businessType: string;
   businessLocation: string;
@@ -59,6 +60,7 @@ export async function getSupplierSearchResults(
       verified_badge,
       business_profiles (
         profile_id,
+        user_id,
         business_name,
         business_type,
         business_location,
@@ -74,6 +76,38 @@ export async function getSupplierSearchResults(
   if (supplierError) {
     console.error("Error fetching supplier profiles:", supplierError);
     throw new Error("Failed to fetch suppliers.");
+  }
+
+  const userIds = Array.from(
+    new Set(
+      (supplierRows ?? [])
+        .map((row) => {
+          const profile = Array.isArray(row.business_profiles)
+            ? row.business_profiles[0]
+            : row.business_profiles;
+
+          return profile?.user_id ?? null;
+        })
+        .filter((value): value is string => Boolean(value))
+    )
+  );
+
+  const avatarByUserId = new Map<string, string | null>();
+
+  if (userIds.length > 0) {
+    const { data: userRows, error: userError } = await supabase
+      .from("users")
+      .select("user_id, avatar_url")
+      .in("user_id", userIds);
+
+    if (userError) {
+      console.error("Error fetching supplier avatars:", userError);
+      throw new Error("Failed to fetch supplier avatars.");
+    }
+
+    for (const row of userRows ?? []) {
+      avatarByUserId.set(row.user_id, row.avatar_url);
+    }
   }
 
   const { data: productRows, error: productError } = await supabase
@@ -193,6 +227,7 @@ export async function getSupplierSearchResults(
     results.push({
       supplierId: row.supplier_id,
       profileId: profile.profile_id,
+      avatarUrl: profile.user_id ? avatarByUserId.get(profile.user_id) ?? null : null,
       businessName: profile.business_name,
       businessType: profile.business_type,
       businessLocation: profile.business_location,

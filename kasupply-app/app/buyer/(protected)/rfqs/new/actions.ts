@@ -8,6 +8,7 @@ export type RFQFormPrefillData = {
   entryMode: "product-request";
   supplier: {
     supplierId: number;
+    avatarUrl: string | null;
     businessName: string;
     businessType: string;
     locationLabel: string;
@@ -19,6 +20,7 @@ export type RFQFormPrefillData = {
     categoryId: number;
     categoryName: string;
     unit: string;
+    pricePerUnit: number | null;
     moq: number;
     description: string | null;
   } | null;
@@ -72,6 +74,48 @@ async function getCurrentBuyerId() {
   return buyerProfile.buyer_id as number;
 }
 
+async function getCurrentBuyerLocationLabel() {
+  const supabase = await createClient();
+  const { user, error } = await getCurrentAppUser();
+
+  if (error || !user) {
+    return "";
+  }
+
+  const { data: businessProfile, error: businessProfileError } = await supabase
+    .from("business_profiles")
+    .select("business_location, city, province, region")
+    .eq("user_id", user.user_id)
+    .maybeSingle();
+
+  if (businessProfileError || !businessProfile) {
+    return "";
+  }
+
+  return (
+    businessProfile.business_location?.trim() ||
+    [businessProfile.city, businessProfile.province, businessProfile.region]
+      .filter((value): value is string => Boolean(value && value.trim()))
+      .join(", ")
+  );
+}
+
+function getTodayDateString() {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+
+  const parts = formatter.formatToParts(new Date());
+  const year = parts.find((part) => part.type === "year")?.value ?? "";
+  const month = parts.find((part) => part.type === "month")?.value ?? "";
+  const day = parts.find((part) => part.type === "day")?.value ?? "";
+
+  return `${year}-${month}-${day}`;
+}
+
 export async function getNewRFQPrefillData(params: {
   supplierId?: string;
   productId?: string;
@@ -88,6 +132,7 @@ export async function getNewRFQPrefillData(params: {
   }
 
   const entryMode: RFQFormPrefillData["entryMode"] = "product-request";
+  const buyerLocationLabel = await getCurrentBuyerLocationLabel();
 
   const { data: categoryRows, error: categoryError } = await supabase
     .from("product_categories")
@@ -109,6 +154,7 @@ export async function getNewRFQPrefillData(params: {
         `
         supplier_id,
         business_profiles (
+          user_id,
           business_name,
           business_type,
           city,
@@ -129,8 +175,26 @@ export async function getNewRFQPrefillData(params: {
         ? supplierRow.business_profiles[0]
         : supplierRow.business_profiles;
 
+      let avatarUrl: string | null = null;
+
+      if (profile?.user_id) {
+        const { data: userRow, error: userError } = await supabase
+          .from("users")
+          .select("avatar_url")
+          .eq("user_id", profile.user_id)
+          .maybeSingle();
+
+        if (userError) {
+          console.error("Error fetching supplier avatar for RFQ form:", userError);
+          throw new Error("Failed to fetch supplier avatar.");
+        }
+
+        avatarUrl = userRow?.avatar_url ?? null;
+      }
+
       supplier = {
         supplierId: supplierRow.supplier_id,
+        avatarUrl,
         businessName: profile?.business_name ?? "Unknown Supplier",
         businessType: profile?.business_type ?? "Supplier",
         locationLabel: [profile?.city, profile?.province].filter(Boolean).join(", "),
@@ -150,6 +214,7 @@ export async function getNewRFQPrefillData(params: {
         product_name,
         description,
         unit,
+        price_per_unit,
         moq,
         product_categories (
           category_name
@@ -177,6 +242,8 @@ export async function getNewRFQPrefillData(params: {
         categoryId: productRow.category_id,
         categoryName: category?.category_name ?? "Uncategorized",
         unit: productRow.unit,
+        pricePerUnit:
+          productRow.price_per_unit == null ? null : Number(productRow.price_per_unit),
         moq: productRow.moq,
         description: productRow.description,
       };
@@ -198,9 +265,10 @@ export async function getNewRFQPrefillData(params: {
     productName: product.productName,
     quantity: String(product.moq),
     unit: product.unit,
-    targetPricePerUnit: "",
+    targetPricePerUnit:
+      product.pricePerUnit == null ? "" : String(product.pricePerUnit),
     preferredDeliveryDate: "",
-    deliveryLocation: "",
+    deliveryLocation: buyerLocationLabel,
     notes: product.description ?? "",
     deadline: "",
   };
@@ -226,11 +294,8 @@ export async function createRFQ(formData: FormData) {
   }
 
   const supplierId = Number(formData.get("supplierId")?.toString() ?? "");
-  const categoryId = Number(formData.get("categoryId")?.toString() ?? "");
   const productId = Number(formData.get("productId")?.toString() ?? "");
-  const productName = formData.get("productName")?.toString().trim() ?? "";
   const quantity = Number(formData.get("quantity")?.toString() ?? "");
-  const unit = formData.get("unit")?.toString().trim() ?? "";
   const targetPricePerUnit = formData.get("targetPricePerUnit")?.toString().trim() ?? "";
   const preferredDeliveryDate = formData.get("preferredDeliveryDate")?.toString() ?? "";
   const deliveryLocation = formData.get("deliveryLocation")?.toString().trim() ?? "";
@@ -245,20 +310,8 @@ export async function createRFQ(formData: FormData) {
     redirect("/buyer/rfqs");
   }
 
-  if (!categoryId) {
-    throw new Error("Category is required.");
-  }
-
-  if (!productName) {
-    throw new Error("Product name is required.");
-  }
-
   if (!quantity || quantity <= 0) {
     throw new Error("Quantity must be greater than zero.");
-  }
-
-  if (!unit) {
-    throw new Error("Unit is required.");
   }
 
   if (!targetPricePerUnit || Number(targetPricePerUnit) <= 0) {
@@ -277,14 +330,35 @@ export async function createRFQ(formData: FormData) {
     throw new Error("Deadline is required.");
   }
 
+  const todayDateString = getTodayDateString();
+
+  if (preferredDeliveryDate < todayDateString) {
+    throw new Error("Preferred delivery date cannot be in the past.");
+  }
+
+  if (deadline < todayDateString) {
+    throw new Error("RFQ deadline cannot be in the past.");
+  }
+
+  const { data: productRow, error: productError } = await supabase
+    .from("products")
+    .select("product_id, supplier_id, category_id, product_name, unit, is_published")
+    .eq("product_id", productId)
+    .eq("supplier_id", supplierId)
+    .eq("is_published", true)
+    .maybeSingle();
+
+  if (productError || !productRow) {
+    throw new Error(productError?.message || "Selected product was not found.");
+  }
+
   const { data: insertedRfq, error: rfqError } = await supabase
     .from("rfqs")
     .insert({
       buyer_id: buyerId,
-      category_id: categoryId,
-      product_name: productName,
+      category_id: productRow.category_id,
       quantity,
-      unit,
+      unit: productRow.unit,
       specifications: specifications || null,
       target_price_per_unit: Number(targetPricePerUnit),
       preferred_delivery_date: preferredDeliveryDate,
@@ -292,6 +366,9 @@ export async function createRFQ(formData: FormData) {
       deadline,
       status: "open",
       visibility: "restricted",
+      product_id: productRow.product_id,
+      rfq_type: "direct",
+      requested_product_name: productRow.product_name,
     })
     .select("rfq_id")
     .single();

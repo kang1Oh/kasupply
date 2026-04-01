@@ -5,6 +5,7 @@ import { getCurrentAppUser } from "@/lib/auth/get-current-app-user";
 
 export type PastSupplierItem = {
   supplierId: number;
+  avatarUrl: string | null;
   businessName: string;
   businessType: string;
   city: string;
@@ -105,6 +106,7 @@ export async function getPastSuppliers(): Promise<PastSupplierItem[]> {
       supplier_id,
       verified_badge,
       business_profiles (
+        user_id,
         business_name,
         business_type,
         business_location,
@@ -122,6 +124,38 @@ export async function getPastSuppliers(): Promise<PastSupplierItem[]> {
     throw new Error("Failed to fetch supplier details.");
   }
 
+  const userIds = Array.from(
+    new Set(
+      (supplierRows ?? [])
+        .map((row) => {
+          const profile = Array.isArray(row.business_profiles)
+            ? row.business_profiles[0]
+            : row.business_profiles;
+
+          return profile?.user_id ?? null;
+        })
+        .filter((value): value is string => Boolean(value))
+    )
+  );
+
+  const avatarByUserId = new Map<string, string | null>();
+
+  if (userIds.length > 0) {
+    const { data: userRows, error: userError } = await supabase
+      .from("users")
+      .select("user_id, avatar_url")
+      .in("user_id", userIds);
+
+    if (userError) {
+      console.error("Error fetching past supplier avatars:", userError);
+      throw new Error("Failed to fetch supplier avatars.");
+    }
+
+    for (const row of userRows ?? []) {
+      avatarByUserId.set(row.user_id, row.avatar_url);
+    }
+  }
+
   const results: PastSupplierItem[] = [];
 
   for (const row of supplierRows ?? []) {
@@ -136,6 +170,7 @@ export async function getPastSuppliers(): Promise<PastSupplierItem[]> {
 
     results.push({
       supplierId: row.supplier_id,
+      avatarUrl: profile.user_id ? avatarByUserId.get(profile.user_id) ?? null : null,
       businessName: profile.business_name,
       businessType: profile.business_type,
       city: profile.city,

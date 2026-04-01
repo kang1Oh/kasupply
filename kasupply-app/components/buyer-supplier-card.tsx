@@ -7,6 +7,7 @@ export type BuyerHomepageSupplier = {
   profileId: number;
   name: string;
   initials: string;
+  avatarUrl?: string | null;
   supplierType: string;
   categoryTags: string[];
   shortDescription: string;
@@ -72,9 +73,18 @@ export function BuyerSupplierCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          <div className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-[11px] bg-[#edf6ee] text-[16px] font-semibold text-[#4f8f56]">
-            {supplier.initials}
-          </div>
+          {supplier.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={supplier.avatarUrl}
+              alt={`${supplier.name} avatar`}
+              className="h-[42px] w-[42px] shrink-0 rounded-[11px] border border-[#e6edf6] object-cover"
+            />
+          ) : (
+            <div className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-[11px] bg-[#edf6ee] text-[16px] font-semibold text-[#4f8f56]">
+              {supplier.initials}
+            </div>
+          )}
 
           <div className="min-w-0 flex-1">
             <h3 className="truncate text-[16px] font-semibold leading-tight text-[#223654]">

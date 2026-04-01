@@ -54,12 +54,13 @@ type EngagementRow = {
 
 type RfqRow = {
   rfq_id: number;
-  product_name: string | null;
+  product_id: number | null;
   unit: string | null;
   specifications: string | null;
   preferred_delivery_date: string | null;
   delivery_location: string | null;
   deadline: string | null;
+  products?: ProductRow | ProductRow[] | null;
 };
 
 type ConversationRow = {
@@ -80,6 +81,7 @@ type PartyInfo = {
 export type BuyerPurchaseOrderView = {
   poId: number;
   poNumber: string;
+  supplierId: number | null;
   productName: string;
   quantityLabel: string;
   quantityValue: number | null;
@@ -99,6 +101,7 @@ export type BuyerPurchaseOrderView = {
   createdAt: string | null;
   confirmedAt: string | null;
   completedAt: string | null;
+  updatedAt: string | null;
   quoteId: number | null;
   engagementId: number | null;
   rfqId: number | null;
@@ -116,6 +119,7 @@ export type PurchaseOrderCreationDraft = {
   rfqId: number;
   quoteId: number;
   supplierId: number;
+  productId: number;
   supplierName: string;
   productName: string;
   specifications: string | null;
@@ -187,6 +191,15 @@ function formatLocation(profile: BusinessProfileRow | null) {
   ].filter((value): value is string => Boolean(value && value.trim()));
 
   return parts.length > 0 ? parts.join(", ") : "Location not available";
+}
+
+function getRfqProductName(rfq: RfqRow | null) {
+  if (!rfq) {
+    return null;
+  }
+
+  const product = Array.isArray(rfq.products) ? rfq.products[0] : rfq.products;
+  return product?.product_name ?? null;
 }
 
 function buildPartyInfo(
@@ -403,7 +416,19 @@ async function buildBuyerPurchaseOrderViews(
     const { data: rfqs, error: rfqsError } = await supabase
       .from("rfqs")
       .select(
-        "rfq_id, product_name, unit, specifications, preferred_delivery_date, delivery_location, deadline",
+        `
+        rfq_id,
+        product_id,
+        unit,
+        specifications,
+        preferred_delivery_date,
+        delivery_location,
+        deadline,
+        products!rfqs_product_id_fkey (
+          product_id,
+          product_name
+        )
+        `,
       )
       .in("rfq_id", rfqIds);
 
@@ -510,8 +535,9 @@ async function buildBuyerPurchaseOrderViews(
       return {
         poId,
         poNumber: formatPurchaseOrderNumber(poId),
+        supplierId,
         productName:
-          rfq?.product_name ??
+          getRfqProductName(rfq) ??
           (productId !== null ? productNameMap.get(productId) ?? `Product #${productId}` : "Unknown product"),
         quantityLabel: formatQuantityValue(quantityValue, unit),
         quantityValue,
@@ -531,6 +557,7 @@ async function buildBuyerPurchaseOrderViews(
         createdAt: readFirstString(row, ["created_at"]),
         confirmedAt: readFirstString(row, ["confirmed_at"]),
         completedAt: readFirstString(row, ["completed_at"]),
+        updatedAt: readFirstString(row, ["updated_at"]),
         quoteId,
         engagementId: quotation?.engagement_id ?? null,
         rfqId: engagement?.rfq_id ?? null,
@@ -617,7 +644,20 @@ export async function getPurchaseOrderCreationDraft(rfqId: number, quoteId: numb
   const { data: rfq, error: rfqError } = await supabase
     .from("rfqs")
     .select(
-      "rfq_id, buyer_id, product_name, unit, specifications, preferred_delivery_date, delivery_location",
+      `
+      rfq_id,
+      buyer_id,
+      product_id,
+      unit,
+      specifications,
+      preferred_delivery_date,
+      delivery_location,
+      deadline,
+      products!rfqs_product_id_fkey (
+        product_id,
+        product_name
+      )
+      `,
     )
     .eq("rfq_id", rfqId)
     .eq("buyer_id", buyerContext.buyerId)
@@ -685,8 +725,9 @@ export async function getPurchaseOrderCreationDraft(rfqId: number, quoteId: numb
     rfqId,
     quoteId,
     supplierId: quote.supplier_id,
+    productId: rfq.product_id,
     supplierName: supplierInfo?.businessName ?? `Supplier #${quote.supplier_id}`,
-    productName: rfq.product_name,
+    productName: getRfqProductName(rfq) ?? `Product #${rfq.product_id}`,
     specifications: rfq.specifications,
     quantity,
     unit: rfq.unit,
