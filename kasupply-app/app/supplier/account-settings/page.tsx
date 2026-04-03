@@ -1,19 +1,14 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ModalField, ModalShell } from "@/components/modals";
 import { createClient } from "@/lib/supabase/server";
 import {
-  updateSupplierAccountSettings,
+  saveSupplierCertificationUpdates,
+  saveSupplierPermitUpdates,
   uploadSupplierCertification,
-  deleteSupplierCertification,
 } from "./actions";
-
-type SupplierProfileRow = {
-  supplier_id: number;
-  profile_id: number;
-  verified: boolean;
-  verified_at: string | null;
-};
+import { CertificationsForm } from "./certifications-form";
+import { PermitsLicensesForm } from "./permits-licenses-form";
 
 type AppUserRow = {
   user_id: string;
@@ -24,97 +19,204 @@ type AppUserRow = {
 
 type BusinessProfileRow = {
   profile_id: number;
-  business_name: string;
-  business_type: string;
-  business_location: string;
-  city: string;
-  province: string;
-  region: string;
-  about: string | null;
-  contact_number: string | null;
-  contact_name: string | null;
+  business_name: string | null;
+  business_type: string | null;
 };
 
-type CertificationTypeRow = {
-  cert_type_id: number;
-  certification_type_name: string;
-  description: string | null;
+type SupplierProfileRow = {
+  supplier_id: number;
+  profile_id: number;
+};
+
+type BusinessDocumentRow = {
+  doc_id: number;
+  doc_type_id: number;
+  file_url: string | null;
+  status: string | null;
+  verified_at: string | null;
+  uploaded_at: string | null;
+  ocr_extracted_fields: Record<string, unknown> | null;
+  metadata_analysis: Record<string, unknown> | null;
+  document_types:
+    | {
+        document_type_name: string | null;
+      }
+    | {
+        document_type_name: string | null;
+      }[]
+    | null;
 };
 
 type SupplierCertificationRow = {
   certification_id: number;
   cert_type_id: number;
-  file_url: string;
+  file_url: string | null;
   status: string | null;
   issued_at: string | null;
   expires_at: string | null;
   verified_at: string | null;
+  certification_types:
+    | {
+        certification_type_name: string | null;
+      }
+    | {
+        certification_type_name: string | null;
+      }[]
+    | null;
 };
 
-const PHILIPPINE_REGIONS = [
-  "NCR - National Capital Region",
-  "CAR - Cordillera Administrative Region",
-  "Region I - Ilocos Region",
-  "Region II - Cagayan Valley",
-  "Region III - Central Luzon",
-  "Region IV-A - CALABARZON",
-  "Region IV-B - MIMAROPA",
-  "Region V - Bicol Region",
-  "Region VI - Western Visayas",
-  "Region VII - Central Visayas",
-  "Region VIII - Eastern Visayas",
-  "Region IX - Zamboanga Peninsula",
-  "Region X - Northern Mindanao",
-  "Region XI - Davao Region",
-  "Region XII - SOCCSKSARGEN",
-  "Region XIII - Caraga",
-  "BARMM - Bangsamoro Autonomous Region",
-];
+type CertificationTypeRow = {
+  cert_type_id: number;
+  certification_type_name: string | null;
+};
 
-function formatDate(value: string | null) {
-  if (!value) return "—";
-
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-
-  return new Intl.DateTimeFormat("en-PH", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  }).format(parsed);
-}
-
-function getAvatarFallback(name: string | null, businessName: string) {
-  const source = (name || businessName).trim();
-  return source ? source.charAt(0).toUpperCase() : "S";
-}
-
-function InfoField({
-  label,
-  value,
+function HeaderActionIcon({
+  children,
 }: {
-  label: string;
-  value: string;
+  children: ReactNode;
 }) {
   return (
-    <div>
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-        {label}
-      </p>
-      <p className="mt-2 text-[1.05rem] text-slate-900">{value}</p>
-    </div>
+    <button
+      type="button"
+      className="inline-flex h-8 w-8 items-center justify-center rounded-[10px] border border-[#E6EBF3] bg-[#FBFCFE] text-[#B4BECF] transition hover:border-[#D7E0EC] hover:text-[#7D8CA3]"
+    >
+      {children}
+    </button>
   );
+}
+
+function getDocumentTypeName(
+  relation: BusinessDocumentRow["document_types"],
+  fallback = "Business Document",
+) {
+  const item = Array.isArray(relation) ? relation[0] : relation;
+  return item?.document_type_name?.trim() || fallback;
+}
+
+function getStatusLabel(status: string | null | undefined, verifiedAt: string | null) {
+  if (verifiedAt || String(status ?? "").toLowerCase() === "approved") {
+    return "Verified";
+  }
+
+  const normalized = String(status ?? "").trim().toLowerCase();
+  if (!normalized) {
+    return "Pending";
+  }
+
+  return normalized
+    .split("_")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function formatExpiryLabel(value: string | null) {
+  if (!value) {
+    return "No expiry date available";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return `Expires ${new Intl.DateTimeFormat("en-PH", {
+    month: "short",
+    year: "numeric",
+  }).format(parsed)}`;
+}
+
+function getCertificationTypeName(
+  relation: SupplierCertificationRow["certification_types"],
+  fallback = "Certification",
+) {
+  const item = Array.isArray(relation) ? relation[0] : relation;
+  return item?.certification_type_name?.trim() || fallback;
+}
+
+function extractExpiryDate(document: BusinessDocumentRow) {
+  const sources = [document.ocr_extracted_fields, document.metadata_analysis];
+  const candidateKeys = [
+    "expires_at",
+    "expiry_date",
+    "expiration_date",
+    "valid_until",
+    "expiry",
+  ];
+
+  for (const source of sources) {
+    if (!source || typeof source !== "object") {
+      continue;
+    }
+
+    for (const key of candidateKeys) {
+      const value = source[key];
+      if (typeof value === "string" && value.trim()) {
+        return value.trim();
+      }
+    }
+  }
+
+  return null;
+}
+
+async function getBusinessDocumentUrl(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  filePath: string | null | undefined,
+) {
+  if (!filePath) {
+    return null;
+  }
+
+  if (/^https?:\/\//i.test(filePath)) {
+    return filePath;
+  }
+
+  const { data, error } = await supabase.storage
+    .from("business-documents")
+    .createSignedUrl(filePath, 60 * 60);
+
+  if (error || !data?.signedUrl) {
+    return null;
+  }
+
+  return data.signedUrl;
+}
+
+async function getCertificationDocumentUrl(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  filePath: string | null | undefined,
+) {
+  if (!filePath) {
+    return null;
+  }
+
+  if (/^https?:\/\//i.test(filePath)) {
+    return filePath;
+  }
+
+  const bucketNames = ["supplier_certifications", "supplier-certifications"];
+
+  for (const bucketName of bucketNames) {
+    const { data, error } = await supabase.storage
+      .from(bucketName)
+      .createSignedUrl(filePath, 60 * 60);
+
+    if (!error && data?.signedUrl) {
+      return data.signedUrl;
+    }
+  }
+
+  return null;
 }
 
 export default async function SupplierAccountSettingsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{
-    edit?: string;
-  }>;
+  searchParams?: Promise<{ tab?: string }>;
 }) {
   const resolvedSearchParams = (await searchParams) ?? {};
-  const isEditModalOpen = resolvedSearchParams.edit === "profile";
+  const activeTab = resolvedSearchParams.tab === "business" ? "business" : resolvedSearchParams.tab === "certifications" ? "certifications" : "permits";
 
   const supabase = await createClient();
 
@@ -134,23 +236,12 @@ export default async function SupplierAccountSettingsPage({
     .single<AppUserRow>();
 
   if (appUserError || !appUser) {
-    throw new Error("User record not found.");
+    throw new Error(appUserError.message || "User record not found.");
   }
 
   const { data: businessProfile, error: businessProfileError } = await supabase
     .from("business_profiles")
-    .select(`
-      profile_id,
-      business_name,
-      business_type,
-      business_location,
-      city,
-      province,
-      region,
-      about,
-      contact_number,
-      contact_name
-    `)
+    .select("profile_id, business_name, business_type")
     .eq("user_id", appUser.user_id)
     .single<BusinessProfileRow>();
 
@@ -160,17 +251,68 @@ export default async function SupplierAccountSettingsPage({
 
   const { data: supplierProfile, error: supplierProfileError } = await supabase
     .from("supplier_profiles")
-    .select("supplier_id, profile_id, verified, verified_at")
+    .select("supplier_id, profile_id")
     .eq("profile_id", businessProfile.profile_id)
     .single<SupplierProfileRow>();
 
   if (supplierProfileError || !supplierProfile) {
-    throw new Error("Supplier profile not found.");
+    redirect("/onboarding");
+  }
+
+  const { data: businessDocuments, error: businessDocumentsError } = await supabase
+    .from("business_documents")
+    .select(
+      `
+      doc_id,
+      doc_type_id,
+      file_url,
+      status,
+      verified_at,
+      uploaded_at,
+      ocr_extracted_fields,
+      metadata_analysis,
+      document_types!business_documents_doc_type_id_fkey (
+        document_type_name
+      )
+    `,
+    )
+    .eq("profile_id", businessProfile.profile_id)
+    .order("uploaded_at", { ascending: false });
+
+  if (businessDocumentsError) {
+    throw new Error(
+      businessDocumentsError.message || "Failed to load supplier business documents.",
+    );
+  }
+
+  const { data: certificationRows, error: certificationError } = await supabase
+    .from("supplier_certifications")
+    .select(
+      `
+      certification_id,
+      cert_type_id,
+      file_url,
+      status,
+      issued_at,
+      expires_at,
+      verified_at,
+      certification_types (
+        certification_type_name
+      )
+    `,
+    )
+    .eq("supplier_id", supplierProfile.supplier_id)
+    .order("certification_id", { ascending: false });
+
+  if (certificationError) {
+    throw new Error(
+      certificationError.message || "Failed to load supplier certifications.",
+    );
   }
 
   const { data: certificationTypes, error: certificationTypesError } = await supabase
     .from("certification_types")
-    .select("cert_type_id, certification_type_name, description")
+    .select("cert_type_id, certification_type_name")
     .order("certification_type_name", { ascending: true });
 
   if (certificationTypesError) {
@@ -179,417 +321,138 @@ export default async function SupplierAccountSettingsPage({
     );
   }
 
-  const { data: certifications, error: certificationsError } = await supabase
-    .from("supplier_certifications")
-    .select(`
-      certification_id,
-      cert_type_id,
-      file_url,
-      status,
-      issued_at,
-      expires_at,
-      verified_at
-    `)
-    .eq("supplier_id", supplierProfile.supplier_id)
-    .order("issued_at", { ascending: false });
+  const permitRows = await Promise.all(
+    ((businessDocuments as BusinessDocumentRow[] | null) ?? []).map(async (document) => ({
+      documentId: document.doc_id,
+      title: getDocumentTypeName(document.document_types),
+      statusLabel: getStatusLabel(document.status, document.verified_at),
+      isVerified:
+        Boolean(document.verified_at) ||
+        String(document.status ?? "").toLowerCase() === "approved",
+      expiryLabel: formatExpiryLabel(extractExpiryDate(document)),
+      viewUrl: await getBusinessDocumentUrl(supabase, document.file_url),
+    })),
+  );
 
-  if (certificationsError) {
-    throw new Error(certificationsError.message || "Failed to load certifications.");
-  }
+  const certificationList = await Promise.all(
+    ((certificationRows as SupplierCertificationRow[] | null) ?? []).map(
+      async (certification) => ({
+        certificationId: certification.certification_id,
+        title: getCertificationTypeName(certification.certification_types),
+        statusLabel: getStatusLabel(certification.status, certification.verified_at),
+        isVerified:
+          Boolean(certification.verified_at) ||
+          String(certification.status ?? "").toLowerCase() === "approved",
+        expiryLabel: formatExpiryLabel(certification.expires_at),
+        viewUrl: await getCertificationDocumentUrl(supabase, certification.file_url),
+      }),
+    ),
+  );
 
-  const safeCertificationTypes =
-    (certificationTypes as CertificationTypeRow[] | null) ?? [];
-  const safeCertifications =
-    (certifications as SupplierCertificationRow[] | null) ?? [];
-
-  const certificationTypeMap = new Map<number, CertificationTypeRow>();
-  for (const type of safeCertificationTypes) {
-    certificationTypeMap.set(type.cert_type_id, type);
-  }
-
-  const avatarFallback = getAvatarFallback(appUser.name, businessProfile.business_name);
-  const subtitleParts = [
-    businessProfile.business_type,
-    businessProfile.region,
-    supplierProfile.verified_at
-      ? `Verified since ${formatDate(supplierProfile.verified_at)}`
-      : supplierProfile.verified
-        ? "Verified supplier"
-        : "Verification pending",
-  ].filter(Boolean);
+  const certificationTypeOptions = ((certificationTypes as CertificationTypeRow[] | null) ?? [])
+    .map((type) => ({
+      certTypeId: type.cert_type_id,
+      label: type.certification_type_name?.trim() || "Certification",
+    }))
+    .filter((type) => type.label);
 
   return (
-    <main className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Account Settings</h1>
-        <p className="text-gray-600">
-          View your public supplier profile and manage your certifications.
-        </p>
-      </div>
+    <div className="-m-6 min-h-screen bg-[#F6F8FB]">
+      <header className="border-b border-[#E6EBF3] bg-white">
+        <div className="flex items-center justify-between px-[20px] py-[10px]">
+          <div className="flex items-center gap-[8px] text-[11px] text-[#B0B9C8]">
+            <span>KaSupply</span>
+            <span>&gt;</span>
+            <span className="font-medium text-[#708196]">Account Settings</span>
+          </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-slate-950">Business profile</h2>
-          <p className="text-sm text-slate-500">
-            Your business information as shown to buyers on the platform.
-          </p>
+          <div className="flex items-center gap-[8px]">
+            <HeaderActionIcon>
+              <svg viewBox="0 0 24 24" className="h-[14px] w-[14px]" fill="none" aria-hidden="true">
+                <path
+                  d="M12 4.75a4.25 4.25 0 0 0-4.25 4.25v2.12c0 .48-.16.94-.46 1.31l-1.2 1.53a1 1 0 0 0 .79 1.61h10.24a1 1 0 0 0 .79-1.61l-1.2-1.53a2.1 2.1 0 0 1-.46-1.31V9A4.25 4.25 0 0 0 12 4.75Z"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M10.25 18a1.75 1.75 0 0 0 3.5 0"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </HeaderActionIcon>
+            <HeaderActionIcon>
+              <svg viewBox="0 0 24 24" className="h-[14px] w-[14px]" fill="none" aria-hidden="true">
+                <path
+                  d="M7.25 7.25h9.5a2 2 0 0 1 2 2v6.02a2 2 0 0 1-2 2h-5.08l-2.92 2.48c-.65.55-1.65.09-1.65-.76v-1.72H7.25a2 2 0 0 1-2-2V9.25a2 2 0 0 1 2-2Z"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </HeaderActionIcon>
+          </div>
         </div>
+      </header>
 
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-          <div className="flex items-center gap-5">
-            {appUser.avatar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={appUser.avatar_url}
-                alt={`${businessProfile.business_name} profile`}
-                className="h-20 w-20 rounded-full border border-emerald-200 object-cover"
+      <div className="px-[20px] py-[14px]">
+        <div className="mx-auto max-w-[1040px]">
+          <div className="border-b border-[#E9EEF5] pb-[11px]">
+            <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-[#223654]">
+              Account Setting
+            </h1>
+            <p className="mt-[2px] text-[12px] text-[#9CA8B9]">
+              Manage your profile, permits, and certifications.
+            </p>
+          </div>
+
+          <div className="border-b border-[#E9EEF5]">
+            <nav className="flex items-center gap-[26px] px-[10px] pt-[13px]">
+              {[
+                ["Business Profile", "business"],
+                ["Permits & Licenses", "permits"],
+                ["Certifications", "certifications"],
+              ].map(([label, value]) => {
+                const isActive = activeTab === value;
+                return (
+                  <Link
+                    key={value}
+                    href={`/supplier/account-settings?tab=${value}`}
+                    className={`relative pb-[10px] text-[12px] font-medium transition ${
+                      isActive ? "text-[#3C6FF7]" : "text-[#C1C8D4]"
+                    }`}
+                  >
+                    {label}
+                    {isActive ? (
+                      <span className="absolute inset-x-0 bottom-0 h-[2px] rounded-full bg-[#5F88FF]" />
+                    ) : null}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+
+          <div className="pt-[14px]">
+            {activeTab === "certifications" ? (
+              <CertificationsForm
+                certifications={certificationList}
+                certificationTypes={certificationTypeOptions}
+                saveAction={saveSupplierCertificationUpdates}
+                addAction={uploadSupplierCertification}
               />
             ) : (
-              <div className="flex h-20 w-20 items-center justify-center rounded-full border border-emerald-300 bg-emerald-50 text-3xl font-semibold text-[#0f766e]">
-                {avatarFallback}
-              </div>
+              <PermitsLicensesForm
+                documents={permitRows}
+                saveAction={saveSupplierPermitUpdates}
+              />
             )}
-
-            <div>
-              <h3 className="text-[1.85rem] font-semibold tracking-tight text-slate-950">
-                {businessProfile.business_name}
-              </h3>
-              <p className="mt-1 text-[1.02rem] text-slate-700">
-                {subtitleParts.join(" · ")}
-              </p>
-            </div>
-          </div>
-
-          <Link
-            href="/supplier/account-settings?edit=profile"
-            className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-          >
-            <span aria-hidden="true">✎</span>
-            Edit profile
-          </Link>
-        </div>
-
-        <div className="mt-10 grid gap-x-14 gap-y-8 md:grid-cols-2">
-          <InfoField label="Business Name" value={businessProfile.business_name} />
-          <InfoField label="Business Type" value={businessProfile.business_type} />
-          <InfoField label="Business Location" value={businessProfile.business_location} />
-          <InfoField label="Province" value={businessProfile.province} />
-          <InfoField label="City / Municipality" value={businessProfile.city} />
-          <InfoField label="Contact Number" value={businessProfile.contact_number ?? "Not provided"} />
-          <InfoField label="Region" value={businessProfile.region} />
-          <InfoField label="Contact Person" value={businessProfile.contact_name ?? appUser.name ?? "Not provided"} />
-          <div className="md:col-span-2">
-            <InfoField label="About" value={businessProfile.about ?? "No business description added yet."} />
           </div>
         </div>
-      </section>
-
-      <section className="rounded-xl border bg-white p-6 shadow-sm">
-        <div className="mb-4">
-          <h2 className="font-semibold">Additional Certifications</h2>
-          <p className="text-sm text-gray-500">
-            Upload optional certifications relevant to your goods or operations.
-          </p>
-        </div>
-
-        <form action={uploadSupplierCertification} className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-sm font-medium">Certification Type</label>
-            <select
-              name="cert_type_id"
-              required
-              className="w-full rounded border px-3 py-2"
-              defaultValue=""
-            >
-              <option value="" disabled>
-                Select certification type
-              </option>
-              {safeCertificationTypes.map((type) => (
-                <option key={type.cert_type_id} value={type.cert_type_id}>
-                  {type.certification_type_name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium">Certification File</label>
-            <input
-              name="certification_file"
-              type="file"
-              required
-              className="w-full rounded border px-3 py-2"
-              accept=".pdf,.jpg,.jpeg,.png"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium">Issued Date</label>
-            <input
-              name="issued_at"
-              type="date"
-              className="w-full rounded border px-3 py-2"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium">Expiry Date</label>
-            <input
-              name="expires_at"
-              type="date"
-              className="w-full rounded border px-3 py-2"
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <button
-              type="submit"
-              className="rounded bg-black px-4 py-2 text-white"
-            >
-              Upload Certification
-            </button>
-          </div>
-        </form>
-      </section>
-
-      <section className="rounded-xl border bg-white p-6 shadow-sm">
-        <div className="mb-4">
-          <h2 className="font-semibold">Uploaded Certifications</h2>
-          <p className="text-sm text-gray-500">
-            These are the additional certifications currently linked to your supplier profile.
-          </p>
-        </div>
-
-        {safeCertifications.length === 0 ? (
-          <p className="text-sm text-gray-500">No certifications uploaded yet.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full border-collapse text-sm">
-              <thead>
-                <tr className="border-b text-left">
-                  <th className="px-3 py-2 font-medium">Certification</th>
-                  <th className="px-3 py-2 font-medium">Status</th>
-                  <th className="px-3 py-2 font-medium">Issued</th>
-                  <th className="px-3 py-2 font-medium">Expires</th>
-                  <th className="px-3 py-2 font-medium">Verified At</th>
-                  <th className="px-3 py-2 font-medium">File</th>
-                  <th className="px-3 py-2 font-medium">Actions</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {safeCertifications.map((certification) => {
-                  const type = certificationTypeMap.get(certification.cert_type_id);
-
-                  return (
-                    <tr key={certification.certification_id} className="border-b">
-                      <td className="px-3 py-3">
-                        <div className="font-medium">
-                          {type?.certification_type_name ?? "Unknown certification"}
-                        </div>
-                        {type?.description ? (
-                          <div className="text-xs text-gray-500">{type.description}</div>
-                        ) : null}
-                      </td>
-
-                      <td className="px-3 py-3">
-                        <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700">
-                          {certification.status ?? "pending"}
-                        </span>
-                      </td>
-
-                      <td className="px-3 py-3">{formatDate(certification.issued_at)}</td>
-                      <td className="px-3 py-3">{formatDate(certification.expires_at)}</td>
-                      <td className="px-3 py-3">{formatDate(certification.verified_at)}</td>
-
-                      <td className="px-3 py-3">
-                        <span className="break-all text-xs text-gray-500">
-                          {certification.file_url}
-                        </span>
-                      </td>
-
-                      <td className="px-3 py-3">
-                        <form action={deleteSupplierCertification}>
-                          <input
-                            type="hidden"
-                            name="certification_id"
-                            value={certification.certification_id}
-                          />
-                          <button
-                            type="submit"
-                            className="rounded border border-red-300 px-3 py-1 text-xs text-red-600"
-                          >
-                            Delete
-                          </button>
-                        </form>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      {isEditModalOpen ? (
-        <ModalShell
-          title="Edit profile"
-          description="Update your public supplier profile and upload a profile picture."
-          closeHref="/supplier/account-settings"
-          maxWidthClassName="max-w-3xl"
-          panelClassName="rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl"
-          overlayClassName="bg-slate-950/45 px-4 py-8"
-        >
-            <form action={updateSupplierAccountSettings} className="grid gap-5">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                  {appUser.avatar_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={appUser.avatar_url}
-                      alt={`${businessProfile.business_name} avatar`}
-                      className="h-20 w-20 rounded-full border border-slate-200 object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-20 w-20 items-center justify-center rounded-full border border-emerald-300 bg-emerald-50 text-3xl font-semibold text-[#0f766e]">
-                      {avatarFallback}
-                    </div>
-                  )}
-
-                  <div className="flex-1">
-                    <ModalField label="Profile Picture">
-                      <input
-                        name="avatar_file"
-                        type="file"
-                        accept=".jpg,.jpeg,.png,.webp"
-                        className="w-full rounded border border-slate-200 bg-white px-3 py-2"
-                      />
-                    </ModalField>
-                    <p className="mt-2 text-xs text-slate-500">
-                      Recommended: square image, up to 5 MB. This will update `users.avatar_url`.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <ModalField label="Contact Person">
-                  <input
-                    name="contact_name"
-                    type="text"
-                    required
-                    defaultValue={businessProfile.contact_name ?? appUser.name ?? ""}
-                    className="w-full rounded border border-slate-200 px-3 py-2"
-                  />
-                </ModalField>
-
-                <ModalField label="Contact Number">
-                  <input
-                    name="contact_number"
-                    type="text"
-                    required
-                    defaultValue={businessProfile.contact_number ?? ""}
-                    className="w-full rounded border border-slate-200 px-3 py-2"
-                  />
-                </ModalField>
-
-                <ModalField label="Business Name">
-                  <input
-                    name="business_name"
-                    type="text"
-                    required
-                    defaultValue={businessProfile.business_name}
-                    className="w-full rounded border border-slate-200 px-3 py-2"
-                  />
-                </ModalField>
-
-                <ModalField label="Business Type">
-                  <input
-                    name="business_type"
-                    type="text"
-                    required
-                    defaultValue={businessProfile.business_type}
-                    className="w-full rounded border border-slate-200 px-3 py-2"
-                  />
-                </ModalField>
-
-                <div className="md:col-span-2">
-                  <ModalField label="Business Location">
-                    <input
-                      name="business_location"
-                      type="text"
-                      required
-                      defaultValue={businessProfile.business_location}
-                      className="w-full rounded border border-slate-200 px-3 py-2"
-                    />
-                  </ModalField>
-                </div>
-
-                <ModalField label="City / Municipality">
-                  <input
-                    name="city"
-                    type="text"
-                    required
-                    defaultValue={businessProfile.city}
-                    className="w-full rounded border border-slate-200 px-3 py-2"
-                  />
-                </ModalField>
-
-                <ModalField label="Province">
-                  <input
-                    name="province"
-                    type="text"
-                    required
-                    defaultValue={businessProfile.province}
-                    className="w-full rounded border border-slate-200 px-3 py-2"
-                  />
-                </ModalField>
-
-                <ModalField label="Region">
-                  <select
-                    name="region"
-                    required
-                    defaultValue={businessProfile.region}
-                    className="w-full rounded border border-slate-200 px-3 py-2"
-                  >
-                    {PHILIPPINE_REGIONS.map((region) => (
-                      <option key={region} value={region}>
-                        {region}
-                      </option>
-                    ))}
-                  </select>
-                </ModalField>
-
-                <div className="md:col-span-2">
-                  <ModalField label="About">
-                    <textarea
-                      name="about"
-                      rows={5}
-                      defaultValue={businessProfile.about ?? ""}
-                      className="w-full rounded border border-slate-200 px-3 py-2"
-                    />
-                  </ModalField>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap justify-end gap-3 border-t border-slate-200 pt-5">
-                <Link
-                  href="/supplier/account-settings"
-                  className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                >
-                  Cancel
-                </Link>
-                <button
-                  type="submit"
-                  className="rounded-2xl bg-[#243f68] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1e3658]"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </form>
-        </ModalShell>
-      ) : null}
-    </main>
+      </div>
+    </div>
   );
 }

@@ -3,6 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import {
+  safeQueueDocumentVerification,
+  safeSyncSupplierVerificationProfile,
+} from "@/lib/verification/onboarding";
 
 type SupplierProfileRow = {
   supplier_id: number;
@@ -256,6 +260,7 @@ export async function uploadSupplierCertification(formData: FormData) {
   }
 
   revalidatePath("/supplier/account-settings");
+  redirect("/supplier/account-settings?tab=certifications");
 }
 
 export async function deleteSupplierCertification(formData: FormData) {
@@ -293,4 +298,288 @@ export async function deleteSupplierCertification(formData: FormData) {
   }
 
   revalidatePath("/supplier/account-settings");
+  redirect("/supplier/account-settings?tab=certifications");
+}
+
+type ExistingSupplierCertificationRow = {
+  certification_id: number;
+  supplier_id: number;
+  cert_type_id: number;
+  file_url: string | null;
+  certification_types:
+    | {
+        certification_type_name: string | null;
+      }
+    | {
+        certification_type_name: string | null;
+      }[]
+    | null;
+};
+
+function getCertificationTypeName(
+  relation: ExistingSupplierCertificationRow["certification_types"],
+) {
+  const item = Array.isArray(relation) ? relation[0] : relation;
+  return item?.certification_type_name?.trim() || "certification";
+}
+
+async function replaceSupplierCertificationFile(params: {
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  supplierId: number;
+  certificationId: number;
+  file: File;
+}) {
+  const { supabase, supplierId, certificationId, file } = params;
+
+  const { data: existingCertification, error: existingCertificationError } =
+    await supabase
+      .from("supplier_certifications")
+      .select(
+        `
+        certification_id,
+        supplier_id,
+        cert_type_id,
+        file_url,
+        certification_types (
+          certification_type_name
+        )
+      `,
+      )
+      .eq("certification_id", certificationId)
+      .eq("supplier_id", supplierId)
+      .single<ExistingSupplierCertificationRow>();
+
+  if (existingCertificationError || !existingCertification) {
+    throw new Error(existingCertificationError?.message || "Certification not found.");
+  }
+
+  const certificationName = getCertificationTypeName(
+    existingCertification.certification_types,
+  );
+  const fileExt = file.name.split(".").pop() || "pdf";
+  const safeTypeName = certificationName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  const fileName = `${safeTypeName}-${Date.now()}.${fileExt}`;
+  const filePath = `${supplierId}/${fileName}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("supplier-certifications")
+    .upload(filePath, file, {
+      upsert: true,
+    });
+
+  if (uploadError) {
+    throw new Error(uploadError.message || "Failed to upload replacement file.");
+  }
+
+  const { error: updateError } = await supabase
+    .from("supplier_certifications")
+    .update({
+      file_url: filePath,
+      status: "pending",
+      verified_at: null,
+    })
+    .eq("certification_id", certificationId)
+    .eq("supplier_id", supplierId);
+
+  if (updateError) {
+    await supabase.storage.from("supplier-certifications").remove([filePath]);
+    throw new Error(updateError.message || "Failed to update certification.");
+  }
+
+  if (existingCertification.file_url && existingCertification.file_url !== filePath) {
+    await supabase.storage
+      .from("supplier-certifications")
+      .remove([existingCertification.file_url]);
+  }
+}
+
+export async function saveSupplierCertificationUpdates(formData: FormData) {
+  const { supabase, supplierProfile } = await getCurrentSupplierContext();
+
+  const certificationIds = formData
+    .getAll("certification_ids")
+    .map((value) => Number(value))
+    .filter((value) => !Number.isNaN(value) && value > 0);
+
+  const maxSizeInBytes = 10 * 1024 * 1024;
+
+  for (const certificationId of certificationIds) {
+    const file = formData.get(`certification_file_${certificationId}`) as File | null;
+
+    if (!file || file.size === 0) {
+      continue;
+    }
+
+    if (file.size > maxSizeInBytes) {
+      throw new Error("Certification file is too large. Maximum size is 10 MB.");
+    }
+
+    await replaceSupplierCertificationFile({
+      supabase,
+      supplierId: supplierProfile.supplier_id,
+      certificationId,
+      file,
+    });
+  }
+
+  revalidatePath("/supplier/account-settings");
+  redirect("/supplier/account-settings?tab=certifications");
+}
+
+type ExistingBusinessDocumentRow = {
+  doc_id: number;
+  profile_id: number;
+  doc_type_id: number;
+  file_url: string | null;
+  document_types: {
+    document_type_name: string | null;
+  } | null;
+};
+
+async function replaceBusinessDocumentFile(params: {
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  profileId: number;
+  documentId: number;
+  file: File;
+}) {
+  const { supabase, profileId, documentId, file } = params;
+
+  const { data: existingDocument, error: existingDocumentError } = await supabase
+    .from("business_documents")
+    .select(
+      `
+      doc_id,
+      profile_id,
+      doc_type_id,
+      file_url,
+      document_types!business_documents_doc_type_id_fkey (
+        document_type_name
+      )
+    `,
+    )
+    .eq("doc_id", documentId)
+    .eq("profile_id", profileId)
+    .single<ExistingBusinessDocumentRow>();
+
+  if (existingDocumentError || !existingDocument) {
+    throw new Error(existingDocumentError?.message || "Document not found.");
+  }
+
+  const documentName =
+    existingDocument.document_types?.document_type_name ?? "business-document";
+  const fileExt = file.name.split(".").pop() || "pdf";
+  const safeDocName = documentName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  const fileName = `${safeDocName}-${Date.now()}.${fileExt}`;
+  const filePath = `${profileId}/${fileName}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("business-documents")
+    .upload(filePath, file, {
+      upsert: true,
+    });
+
+  if (uploadError) {
+    throw new Error(uploadError.message || "Failed to upload replacement file.");
+  }
+
+  const { error: updateError } = await supabase
+    .from("business_documents")
+    .update({
+      file_url: filePath,
+      status: "pending",
+      uploaded_at: new Date().toISOString(),
+      verified_at: null,
+      review_notes: null,
+      manual_review_required: false,
+    })
+    .eq("doc_id", existingDocument.doc_id)
+    .eq("profile_id", profileId);
+
+  if (updateError) {
+    await supabase.storage.from("business-documents").remove([filePath]);
+    throw new Error(updateError.message || "Failed to update document.");
+  }
+
+  if (existingDocument.file_url && existingDocument.file_url !== filePath) {
+    await supabase.storage.from("business-documents").remove([existingDocument.file_url]);
+  }
+
+  await safeQueueDocumentVerification({
+    profileId,
+    docId: existingDocument.doc_id,
+    kind: "supplier_document",
+    documentTypeName: documentName,
+  });
+}
+
+export async function saveSupplierPermitUpdates(formData: FormData) {
+  const { supabase, businessProfile } = await getCurrentSupplierContext();
+
+  const documentIds = formData
+    .getAll("document_ids")
+    .map((value) => Number(value))
+    .filter((value) => !Number.isNaN(value) && value > 0);
+
+  const maxSizeInBytes = 10 * 1024 * 1024;
+  let hasUpdates = false;
+
+  for (const documentId of documentIds) {
+    const file = formData.get(`document_file_${documentId}`) as File | null;
+
+    if (!file || file.size === 0) {
+      continue;
+    }
+
+    hasUpdates = true;
+
+    if (file.size > maxSizeInBytes) {
+      throw new Error("Document file is too large. Maximum size is 10 MB.");
+    }
+
+    await replaceBusinessDocumentFile({
+      supabase,
+      profileId: businessProfile.profile_id,
+      documentId,
+      file,
+    });
+  }
+
+  if (hasUpdates) {
+    await safeSyncSupplierVerificationProfile(businessProfile.profile_id);
+  }
+
+  revalidatePath("/supplier/account-settings");
+  redirect("/supplier/account-settings?tab=permits");
+}
+
+export async function replaceSupplierBusinessDocument(formData: FormData) {
+  const { supabase, businessProfile } = await getCurrentSupplierContext();
+
+  const documentId = Number(formData.get("document_id"));
+  const file = formData.get("document") as File | null;
+
+  if (!documentId || Number.isNaN(documentId)) {
+    throw new Error("Invalid document.");
+  }
+
+  if (!file || file.size === 0) {
+    throw new Error("Document file is required.");
+  }
+
+  const maxSizeInBytes = 10 * 1024 * 1024;
+  if (file.size > maxSizeInBytes) {
+    throw new Error("Document file is too large. Maximum size is 10 MB.");
+  }
+
+  await replaceBusinessDocumentFile({
+    supabase,
+    profileId: businessProfile.profile_id,
+    documentId,
+    file,
+  });
+
+  await safeSyncSupplierVerificationProfile(businessProfile.profile_id);
+
+  revalidatePath("/supplier/account-settings");
+  redirect("/supplier/account-settings?tab=permits");
 }
