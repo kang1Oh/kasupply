@@ -378,8 +378,40 @@ async function buildSupportingMaps(
       throw new Error(rfqsError.message || "Failed to load RFQ details.");
     }
 
-    for (const rfq of (rfqs as RfqRow[] | null) ?? []) {
-      rfqMap.set(rfq.rfq_id, rfq);
+    const safeRfqs =
+      (rfqs as Omit<RfqRow, "product_name">[] | null) ?? [];
+    const rfqProductIds = Array.from(
+      new Set(
+        safeRfqs
+          .map((rfq) => rfq.product_id)
+          .filter((value): value is number => typeof value === "number"),
+      ),
+    );
+
+    if (rfqProductIds.length > 0) {
+      const { data: rfqProducts, error: rfqProductsError } = await supabase
+        .from("products")
+        .select("product_id, product_name")
+        .in("product_id", rfqProductIds);
+
+      if (rfqProductsError) {
+        throw new Error(rfqProductsError.message || "Failed to load RFQ products.");
+      }
+
+      for (const product of (rfqProducts as ProductRow[] | null) ?? []) {
+        if (product.product_id != null && product.product_name) {
+          productNameMap.set(product.product_id, product.product_name);
+        }
+      }
+    }
+
+    for (const rfq of safeRfqs) {
+      rfqMap.set(rfq.rfq_id, {
+        ...rfq,
+        product_name:
+          (rfq.product_id != null ? productNameMap.get(rfq.product_id) : null) ??
+          `RFQ #${rfq.rfq_id}`,
+      });
     }
   }
 

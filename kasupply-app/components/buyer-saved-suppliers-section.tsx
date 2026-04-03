@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AccountConfirmModal } from "@/components/modals";
+import { AccountConfirmModal, TrashCanModalIcon } from "@/components/modals";
 
 type SavedSupplier = {
   supplierId: number;
@@ -37,21 +37,6 @@ function formatBusinessType(value: string | null | undefined) {
 
 function formatLocation(parts: Array<string | null | undefined>) {
   return parts.map((part) => part?.trim()).filter(Boolean).join(", ");
-}
-
-function BookmarkModalIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-[30px] w-[30px]" aria-hidden="true">
-      <path
-        d="M8 4.5h8a2 2 0 0 1 2 2v13.25l-6-3.75-6 3.75V6.5a2 2 0 0 1 2-2Z"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
 }
 
 function SavedSupplierItem({
@@ -141,7 +126,7 @@ export function BuyerSavedSuppliersSection({
 
       <AccountConfirmModal
         isOpen={pendingRemoval != null}
-        icon={<BookmarkModalIcon />}
+        icon={<TrashCanModalIcon size={50} />}
         title="Remove saved supplier?"
         description={
           <>

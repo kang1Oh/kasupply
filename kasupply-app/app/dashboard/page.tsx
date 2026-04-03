@@ -25,7 +25,7 @@ export default async function DashboardPage() {
       redirect("/onboarding/supplier-documents");
     }
 
-    redirect("/dashboard/supplier");
+    redirect("/supplier/dashboard");
   }
 
   redirect("/auth/login");

@@ -201,9 +201,8 @@ export default async function NewRFQPage({
           <input
             id="targetPricePerUnit"
             name="targetPricePerUnit"
-            type="number"
-            min="0.01"
-            step="0.01"
+            type="text"
+            inputMode="decimal"
             defaultValue={prefill.initialValues.targetPricePerUnit}
             placeholder="e.g. 10"
             className="h-[46px] w-full rounded-[10px] border border-[#d7dee8] bg-white px-4 text-[14px] text-[#223654] outline-none transition placeholder:text-[#b0b8c5] focus:border-[#223654] [color-scheme:light]"

@@ -477,7 +477,11 @@ async function BuyerAccountPageContent({ searchParams }: BuyerAccountPageProps) 
   const { user, error } = await getCurrentAppUser();
 
   if (error || !user) {
-    throw new Error("Failed to load current user.");
+    redirect("/login?source=buyer-account");
+  }
+
+  if (user.roles?.role_name?.toLowerCase() !== "buyer") {
+    redirect("/dashboard");
   }
 
   const { data: businessProfile, error: businessProfileError } = await supabase

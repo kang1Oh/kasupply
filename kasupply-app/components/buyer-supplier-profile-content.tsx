@@ -151,7 +151,18 @@ function ProductDetailsModal({
   const stockLabel = getStockLabel(product.stockAvailable, product.moq);
   const stockColor =
     stockLabel === "Low stock" ? "text-[#ef4444]" : "text-[#2f7f4d]";
-  const thumbnails = [product.imageUrl, product.imageUrl, product.imageUrl];
+  const thumbnails = useMemo(
+    () =>
+      product.galleryImages.length > 0
+        ? product.galleryImages
+        : product.imageUrl
+          ? [product.imageUrl]
+          : [],
+    [product.galleryImages, product.imageUrl]
+  );
+  const [activeImage, setActiveImage] = useState<string | null>(
+    thumbnails[0] ?? product.imageUrl ?? null
+  );
 
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
@@ -171,6 +182,10 @@ function ProductDetailsModal({
     };
   }, [onClose]);
 
+  useEffect(() => {
+    setActiveImage(thumbnails[0] ?? product.imageUrl ?? null);
+  }, [product, product.imageUrl, thumbnails]);
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4"
@@ -184,10 +199,10 @@ function ProductDetailsModal({
           <div>
             <div className="overflow-hidden rounded-[18px] bg-[#eef1f5]">
               <div className="aspect-square">
-                {product.imageUrl ? (
+                {activeImage ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={product.imageUrl}
+                    src={activeImage}
                     alt={product.productName}
                     className="h-full w-full object-cover"
                   />
@@ -197,27 +212,33 @@ function ProductDetailsModal({
               </div>
             </div>
 
-            <div className="mt-3 grid grid-cols-3 gap-2.5">
-              {thumbnails.map((thumbnail, index) => (
-                <div
-                  key={`${product.productId}-thumb-${index}`}
-                  className="overflow-hidden rounded-[14px] bg-[#eef1f5]"
-                >
-                  <div className="aspect-square">
-                    {thumbnail ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={thumbnail}
-                        alt={`${product.productName} thumbnail ${index + 1}`}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <ProductFallbackImage label={product.productName} />
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+              <div className="mt-3 grid grid-cols-3 gap-2.5">
+                {thumbnails.map((thumbnail, index) => (
+                  <button
+                    key={`${product.productId}-thumb-${index}`}
+                    type="button"
+                    onClick={() => setActiveImage(thumbnail)}
+                    className={`overflow-hidden rounded-[14px] bg-[#eef1f5] ${
+                      activeImage === thumbnail
+                        ? "ring-2 ring-[#2f6df6] ring-offset-2 ring-offset-white"
+                        : ""
+                    }`}
+                  >
+                    <div className="aspect-square">
+                      {thumbnail ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={thumbnail}
+                          alt={`${product.productName} thumbnail ${index + 1}`}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <ProductFallbackImage label={product.productName} />
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
           </div>
 
           <div className="flex flex-col">

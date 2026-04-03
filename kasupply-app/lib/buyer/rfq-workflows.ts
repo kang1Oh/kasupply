@@ -836,7 +836,7 @@ export async function getBuyerRfqListItems(filter?: {
         category_id,
         category_name
       ),
-      products!rfqs_product_id_fkey (
+      products:products!rfqs_product_id_fkey (
         product_id,
         product_name
       )
@@ -1080,7 +1080,7 @@ export async function getBuyerRfqDetails(rfqId: number) {
         category_id,
         category_name
       ),
-      products!rfqs_product_id_fkey (
+      products:products!rfqs_product_id_fkey (
         product_id,
         product_name
       )

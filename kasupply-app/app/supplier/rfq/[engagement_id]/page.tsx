@@ -1,22 +1,89 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSupplierRfqEngagementDetail } from "../data";
-import {
-  submitFinalQuotation,
-  submitNegotiationOffer,
-  withdrawFromRfq,
-} from "../actions";
+import { declineEngagement, submitFinalQuotation } from "../actions";
+import { SupplierQuotationForm } from "./quotation-form";
+
+function BellIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-[15px] w-[15px]" fill="none" aria-hidden="true">
+      <path
+        d="M12 4.75a4.25 4.25 0 0 0-4.25 4.25v2.12c0 .48-.16.94-.46 1.31l-1.2 1.53a1 1 0 0 0 .79 1.61h10.24a1 1 0 0 0 .79-1.61l-1.2-1.53a2.1 2.1 0 0 1-.46-1.31V9A4.25 4.25 0 0 0 12 4.75Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10.25 18a1.75 1.75 0 0 0 3.5 0"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="18.2" cy="5.8" r="2.1" fill="#FF6A55" />
+    </svg>
+  );
+}
+
+function MessageIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-[15px] w-[15px]" fill="none" aria-hidden="true">
+      <path
+        d="M7 18.25h8.75A2.25 2.25 0 0 0 18 16V8.25A2.25 2.25 0 0 0 15.75 6H8.25A2.25 2.25 0 0 0 6 8.25V16a2.25 2.25 0 0 0 2.25 2.25Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="m9.25 18.25-2.75 2V16"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ChevronRightIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-[10px] w-[10px]" fill="none" aria-hidden="true">
+      <path
+        d="m7 4 5 6-5 6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="M12 7.75v4.5l3 1.75"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 function formatDate(value: string | null) {
-  if (!value) return "—";
-
+  if (!value) return "Not set";
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-
+  if (Number.isNaN(parsed.getTime())) return "Not set";
   return new Intl.DateTimeFormat("en-PH", {
-    year: "numeric",
     month: "short",
     day: "numeric",
+    year: "numeric",
   }).format(parsed);
 }
 
@@ -27,42 +94,177 @@ function formatDateInput(value: string | null) {
   return parsed.toISOString().split("T")[0];
 }
 
-function formatCurrency(value: number) {
+function formatQuantity(quantity: number | null, unit: string | null) {
+  if (quantity == null && !unit) return "Not specified";
+  if (quantity != null && unit) return `${quantity} ${unit}`;
+  if (quantity != null) return String(quantity);
+  return unit ?? "Not specified";
+}
+
+function formatCurrency(value: number | null) {
+  if (value == null || Number.isNaN(value)) return "Not set";
   return new Intl.NumberFormat("en-PH", {
     style: "currency",
     currency: "PHP",
+    maximumFractionDigits: 0,
+  })
+    .format(value)
+    .replace("PHP", "₱");
+}
+
+function formatCurrencyPerUnit(value: number | null, unit: string | null) {
+  if (value == null || Number.isNaN(value)) return "Not set";
+  const formatted = new Intl.NumberFormat("en-PH", {
+    style: "currency",
+    currency: "PHP",
+    maximumFractionDigits: 0,
+  })
+    .format(value)
+    .replace("PHP", "₱");
+
+  return unit ? `${formatted}/${unit}` : formatted;
+}
+
+function formatNumber(value: number | null) {
+  if (value == null || Number.isNaN(value)) return "Not set";
+  return new Intl.NumberFormat("en-PH", {
+    maximumFractionDigits: 0,
   }).format(value);
 }
 
-function toTitleCase(value: string | null) {
-  return String(value ?? "viewing")
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+function formatPurchaseOrderNumber(
+  poId: number | null | undefined,
+  createdAt: string | null | undefined,
+) {
+  if (poId == null) return "PO-Not set";
+  const parsed = createdAt ? new Date(createdAt) : null;
+  const year =
+    parsed && !Number.isNaN(parsed.getTime()) ? parsed.getFullYear() : new Date().getFullYear();
+  return `PO-${year}-${String(poId).padStart(4, "0")}`;
 }
 
-function getStatusBadgeClasses(status: string | null) {
-  const safeStatus = String(status ?? "").toLowerCase();
+function getLocation(data: Awaited<ReturnType<typeof getSupplierRfqEngagementDetail>>) {
+  if (!data?.buyer) return "Location not set";
 
-  switch (safeStatus) {
-    case "viewing":
-      return "bg-blue-100 text-blue-700 border-blue-200";
-    case "negotiating":
-      return "bg-amber-100 text-amber-800 border-amber-200";
-    case "quoted":
-      return "bg-emerald-100 text-emerald-700 border-emerald-200";
-    case "accepted":
-      return "bg-emerald-100 text-emerald-700 border-emerald-200";
-    case "rejected":
-      return "bg-rose-100 text-rose-700 border-rose-200";
-    case "withdrawn":
-      return "bg-rose-100 text-rose-700 border-rose-200";
-    default:
-      return "bg-slate-100 text-slate-700 border-slate-200";
+  return (
+    data.rfq?.delivery_location ||
+    [data.buyer.businessLocation, data.buyer.city, data.buyer.province]
+      .filter((value): value is string => Boolean(value && value.trim()))
+      .join(", ") ||
+    "Location not set"
+  );
+}
+
+function getTopBadge(status: string | null) {
+  const normalized = String(status ?? "").toLowerCase();
+
+  if (normalized === "accepted") {
+    return {
+      label: "Accepted",
+      className: "bg-[#ECF8F1] text-[#2A8A57]",
+    };
   }
+
+  if (normalized === "closed") {
+    return {
+      label: "Closed",
+      className: "bg-[#EEF1F5] text-[#8793A7]",
+    };
+  }
+
+  if (normalized === "declined") {
+    return {
+      label: "Declined",
+      className: "bg-[#FFF0ED] text-[#F36E56]",
+    };
+  }
+
+  if (normalized === "quoted" || normalized === "responded" || normalized === "negotiating") {
+    return {
+      label: "Responded",
+      className: "bg-[#EEF4FF] text-[#3D7BFF]",
+    };
+  }
+
+  return {
+    label: "New Request",
+    className: "bg-[#FFF1E8] text-[#FF8A39]",
+  };
 }
 
-function DetailRow({
+function getProgressState(data: Awaited<ReturnType<typeof getSupplierRfqEngagementDetail>>) {
+  const status = String(data?.engagement.status ?? "").toLowerCase();
+  const quotationStatus = String(data?.latestQuotation?.status ?? "").toLowerCase();
+  const hasPurchaseOrder = Boolean(data?.purchaseOrder?.po_id);
+  const poReceived = hasPurchaseOrder;
+
+  return {
+    received: true,
+    respond: ["viewing", "negotiating", "quoted", "accepted", "closed"].includes(status),
+    accepted: status === "accepted" || quotationStatus === "accepted",
+    poReceived,
+  };
+}
+
+function ProgressItem({
+  label,
+  index,
+  complete,
+  current,
+}: {
+  label: string;
+  index: number;
+  complete?: boolean;
+  current?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-[8px]">
+      <div
+        className={`flex h-[20px] w-[20px] items-center justify-center rounded-full text-[10px] font-semibold ${
+          current
+            ? "bg-[#4AA264] text-white"
+            : complete
+              ? "bg-[#233F68] text-white"
+              : "bg-[#E5E7EB] text-[#B6BDC8]"
+        }`}
+      >
+        {index}
+      </div>
+      <span
+        className={`text-[12px] font-medium ${
+          current
+            ? "text-[#4AA264]"
+            : complete
+              ? "text-[#233F68]"
+              : "text-[#C0C5CE]"
+        }`}
+      >
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function SectionCard({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-[16px] border border-[#E5EBF3] bg-white shadow-[0_4px_14px_rgba(15,23,42,0.03)]">
+      <div className="border-b border-[#EDF1F6] px-[20px] py-[14px]">
+        <h2 className="text-[12px] font-semibold uppercase tracking-[0.02em] text-[#223654]">
+          {title}
+        </h2>
+      </div>
+      <div className="px-[20px] py-[18px]">{children}</div>
+    </section>
+  );
+}
+
+function DetailItem({
   label,
   value,
 }: {
@@ -70,41 +272,26 @@ function DetailRow({
   value: React.ReactNode;
 }) {
   return (
-    <div className="grid gap-2 border-b border-slate-100 py-3 sm:grid-cols-[170px_1fr] sm:items-start">
-      <p className="text-sm font-medium text-slate-500">{label}</p>
-      <div className="text-sm text-slate-900">{value}</div>
+    <div>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.02em] text-[#A0A9B8]">
+        {label}
+      </p>
+      <div className="mt-[4px] text-[14px] font-medium leading-[1.45] text-[#334155]">
+        {value}
+      </div>
     </div>
   );
 }
 
-function SectionCard({
-  title,
-  subtitle,
-  children,
-}: {
-  title: string;
-  subtitle?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="mb-4">
-        <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-        {subtitle ? <p className="mt-1 text-sm text-slate-500">{subtitle}</p> : null}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-export default async function SupplierRfqEngagementDetailPage({
+export default async function SupplierRfqQuotePage({
   params,
+  searchParams,
 }: {
-  params: Promise<{
-    engagement_id: string;
-  }>;
+  params: Promise<{ engagement_id: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const resolvedParams = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
   const engagementId = Number(resolvedParams.engagement_id);
 
   if (!engagementId || Number.isNaN(engagementId)) {
@@ -117,502 +304,491 @@ export default async function SupplierRfqEngagementDetailPage({
     notFound();
   }
 
+  const progress = getProgressState(data);
+  const createdDate = data.rfq.created_at ? new Date(data.rfq.created_at) : null;
+  const rfqNumber = `RFQ-${createdDate?.getFullYear() ?? new Date().getFullYear()}-${String(
+    data.rfq.rfq_id,
+  ).padStart(3, "0")}`;
+  const productTitle = data.rfq.product_name;
+  const quantityLabel = formatQuantity(data.rfq.quantity, data.rfq.unit);
+  const sentDate = formatDate(data.rfq.created_at);
+  const preferredDelivery = formatDate(
+    data.rfq.preferred_delivery_date ?? data.rfq.deadline,
+  );
+  const targetPrice = data.rfq.target_price_per_unit ?? null;
+  const productMoq =
+    typeof data.rfq.product_moq === "number" && Number.isFinite(data.rfq.product_moq)
+      ? data.rfq.product_moq
+      : null;
+  const forcedView = Array.isArray(resolvedSearchParams.view)
+    ? resolvedSearchParams.view[0]
+    : resolvedSearchParams.view;
+  const quoteSent = forcedView === "sent" || Boolean(data.latestQuotation);
+  const poReceived = progress.poReceived;
+  const quoteAccepted = progress.accepted && !progress.poReceived;
+  const quoteCreatedAt = formatDate(data.latestQuotation?.created_at ?? null);
+  const agreedDate = formatDate(
+    data.latestQuotation?.updated_at ?? data.latestQuotation?.created_at ?? null,
+  );
+  const quotedTotal =
+    data.latestQuotation?.price_per_unit != null && data.latestQuotation?.quantity != null
+      ? data.latestQuotation.price_per_unit * data.latestQuotation.quantity
+      : null;
+  const buyerMessageHref = "/supplier/messages";
   const returnTo = `/supplier/rfq/${engagementId}`;
-  const latestOffer = data.offers[0] ?? null;
+  const buyerLocation = getLocation(data);
+  const poNumber = formatPurchaseOrderNumber(
+    data.purchaseOrder?.po_id,
+    data.purchaseOrder?.created_at,
+  );
+  const purchaseOrderHref = data.purchaseOrder?.po_id
+    ? `/supplier/purchase-orders/${data.purchaseOrder.po_id}`
+    : "/supplier/purchase-orders";
+  const topBadge = poReceived
+    ? {
+        label: "Closed",
+        className: "bg-[#EEF1F5] text-[#8793A7]",
+      }
+    : getTopBadge(data.engagement.status);
+  const buyerInitials =
+    data.buyer.businessName
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() ?? "")
+      .join("") || "BY";
+  const buyerSubline = [data.buyer.businessType, buyerLocation]
+    .filter((value): value is string => Boolean(value && value.trim()))
+    .join(" · ");
 
   return (
-    <main className="space-y-6">
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 px-6 py-4">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-sm text-slate-500">
-                RFQ / RFQ-{data.rfq.rfq_id}
-              </p>
-              <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950">
-                RFQ-{data.rfq.rfq_id}: {data.rfq.product_name}
-              </h1>
+    <div className="-m-6 min-h-screen bg-[#F7F9FC]">
+      <div className="border-b border-[#E8EDF4] bg-white">
+        <div className="flex items-center justify-between px-[18px] py-[15px]">
+          <div className="flex items-center gap-2 text-[12px] text-[#A4ACB9]">
+            <span>KaSupply</span>
+            <span className="text-[#CBD2DE]">
+              <ChevronRightIcon />
+            </span>
+            <span>RFQs</span>
+            <span className="text-[#CBD2DE]">
+              <ChevronRightIcon />
+            </span>
+            <span className="font-semibold text-[#506073]">{rfqNumber}</span>
+          </div>
 
-              <div className="mt-3 flex flex-wrap items-center gap-3">
-                <div>
-                  <p className="text-lg font-medium text-slate-900">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-[11px] border border-[#E6ECF3] bg-[#FBFCFE] text-[#B1B8C5]"
+              aria-label="Notifications"
+            >
+              <BellIcon />
+            </button>
+            <button
+              type="button"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-[11px] border border-[#E6ECF3] bg-[#FBFCFE] text-[#B1B8C5]"
+              aria-label="Messages"
+            >
+              <MessageIcon />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-[20px] py-[18px]">
+        <section className="rounded-[18px] border border-[#E5EBF3] bg-white shadow-[0_4px_14px_rgba(15,23,42,0.03)]">
+          <div className="flex flex-col gap-[12px] border-b border-[#EDF1F6] px-[20px] py-[16px] lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h1 className="text-[16px] font-semibold text-[#223654]">
+                {productTitle} — {quantityLabel}
+              </h1>
+              <p className="mt-[4px] text-[12px] text-[#A0A9B8]">
+                {rfqNumber} · Sent {sentDate}
+              </p>
+            </div>
+
+            <span
+              className={`inline-flex h-[28px] items-center rounded-full px-[12px] text-[11px] font-semibold ${topBadge.className}`}
+            >
+              {topBadge.label}
+            </span>
+          </div>
+
+          <div className="px-[20px] py-[14px]">
+            <div className="flex items-center gap-[10px] overflow-x-auto">
+              <ProgressItem label="Received" index={1} complete />
+              <div
+                className={`h-px min-w-[78px] flex-1 ${
+                  progress.respond ? "bg-[#7DC890]" : "bg-[#E5E7EB]"
+                }`}
+              />
+              <ProgressItem
+                label="Respond"
+                index={2}
+                current={progress.respond && !progress.accepted}
+                complete={progress.accepted || progress.poReceived}
+              />
+              <div
+                className={`h-px min-w-[78px] flex-1 ${
+                  progress.accepted ? "bg-[#7DC890]" : "bg-[#E5E7EB]"
+                }`}
+              />
+              <ProgressItem
+                label="Accepted"
+                index={3}
+                current={progress.accepted && !progress.poReceived}
+                complete={progress.poReceived}
+              />
+              <div
+                className={`h-px min-w-[78px] flex-1 ${
+                  progress.poReceived ? "bg-[#7DC890]" : "bg-[#E5E7EB]"
+                }`}
+              />
+              <ProgressItem label="PO Received" index={4} current={progress.poReceived} />
+            </div>
+          </div>
+        </section>
+
+        <div className="mt-[16px] space-y-[16px]">
+          <SectionCard title="Buyer Info">
+            <div className="flex items-center gap-[14px]">
+              <div className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-[#EDF9F1] text-[18px] font-medium text-[#2E8B57]">
+                {buyerInitials}
+              </div>
+
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-[8px]">
+                  <p className="text-[14px] font-semibold text-[#223654]">
                     {data.buyer.businessName}
                   </p>
-                  {data.buyer.contactName ? (
-                    <p className="text-sm text-slate-500">
-                      Contact: {data.buyer.contactName}
-                    </p>
-                  ) : null}
-                </div>
-                <span
-                  className={`rounded-full border px-3 py-1 text-xs font-medium ${getStatusBadgeClasses(
-                    data.engagement.status,
-                  )}`}
-                >
-                  {toTitleCase(data.engagement.status)}
-                </span>
-                {data.match?.match_score != null ? (
-                  <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
-                    Match Score: {data.match.match_score}
+                  <span className="inline-flex h-[22px] items-center rounded-full border border-[#B8E0C7] bg-[#F4FCF7] px-[8px] text-[10px] font-semibold text-[#2F8C57]">
+                    Verified
                   </span>
-                ) : null}
+                </div>
+                <p className="mt-[3px] text-[12px] text-[#8E99AB]">
+                  {buyerSubline || "Buyer profile details not available"}
+                </p>
               </div>
-
-              <p className="mt-3 max-w-3xl text-sm text-slate-500">
-                {data.match?.match_reason
-                  ? `High match: ${data.match.match_reason}`
-                  : "Manage negotiation and quotation details for this buyer request."}
-              </p>
             </div>
+          </SectionCard>
 
-            <div className="flex flex-wrap gap-3">
-              <Link
-                href="/supplier/rfq"
-                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-              >
-                Back to RFQ list
-              </Link>
-
-              <form action={withdrawFromRfq}>
-                <input type="hidden" name="engagement_id" value={engagementId} />
-                <input type="hidden" name="return_to" value={returnTo} />
-                <button
-                  type="submit"
-                  className="rounded-xl border border-rose-200 px-4 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-50"
-                >
-                  Withdraw from RFQ
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-slate-50 px-6 py-4">
-          <div className="grid gap-4 md:grid-cols-4">
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                Quantity
-              </p>
-              <p className="mt-2 text-lg font-semibold text-slate-900">
-                {data.rfq.quantity} {data.rfq.unit ?? ""}
-              </p>
-            </div>
-
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                Deadline
-              </p>
-              <p className="mt-2 text-lg font-semibold text-slate-900">
-                {formatDate(data.rfq.deadline)}
-              </p>
-            </div>
-
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                Request Status
-              </p>
-              <p className="mt-2 text-lg font-semibold text-slate-900">
-                {toTitleCase(data.rfq.status)}
-              </p>
-            </div>
-
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                Latest Quote
-              </p>
-              <p className="mt-2 text-lg font-semibold text-slate-900">
-                {data.latestQuotation
-                  ? formatCurrency(Number(data.latestQuotation.price_per_unit))
-                  : "Not quoted"}
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[1.35fr_0.95fr]">
-        <div className="space-y-6">
-          <SectionCard
-            title="Buyer Request Information"
-            subtitle="Fields shown here are taken only from your current RFQ and engagement schema."
-          >
-            <div className="divide-y divide-slate-100">
-              <DetailRow label="RFQ number" value={`RFQ-${data.rfq.rfq_id}`} />
-              <DetailRow label="Buyer" value={data.buyer.businessName} />
-              <DetailRow
-                label="Contact name"
-                value={data.buyer.contactName ?? "No contact name available."}
+          <SectionCard title="RFQ Details">
+            <div className="grid gap-x-[22px] gap-y-[16px] md:grid-cols-2 xl:grid-cols-3">
+              <DetailItem label="Product" value={productTitle} />
+              <DetailItem label="Quantity" value={quantityLabel} />
+              <DetailItem
+                label="Target Price"
+                value={formatCurrencyPerUnit(targetPrice, data.rfq.unit)}
               />
-              <DetailRow label="Product requested" value={data.rfq.product_name} />
-              <DetailRow
-                label="Quantity"
-                value={`${data.rfq.quantity} ${data.rfq.unit ?? ""}`}
-              />
-              <DetailRow label="Deadline" value={formatDate(data.rfq.deadline)} />
-              <DetailRow label="Request status" value={toTitleCase(data.rfq.status)} />
-              <DetailRow label="Posted" value={formatDate(data.rfq.created_at)} />
-              <DetailRow
-                label="Special instructions"
-                value={data.rfq.specifications ?? "No specifications provided."}
+              <DetailItem label="Preferred Delivery" value={preferredDelivery} />
+              <DetailItem label="Delivery Location" value={buyerLocation} />
+              <DetailItem
+                label="Notes"
+                value={data.rfq.specifications?.trim() || "No additional notes provided."}
               />
             </div>
           </SectionCard>
 
           <SectionCard
-            title="Match Information"
-            subtitle="This reflects the supplier match record attached to the RFQ."
+            title={
+              quoteAccepted ? "Agreed Terms" : quoteSent ? "Your Quote Sent" : "Your Quotation"
+            }
           >
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                  Match Score
-                </p>
-                <p className="mt-2 text-lg font-semibold text-slate-900">
-                  {data.match?.match_score ?? "—"}
-                </p>
-              </div>
+            {poReceived ? (
+              <>
+                <div className="flex items-center justify-end text-[12px] font-medium text-[#A0A9B8]">
+                  Agreed on {agreedDate}
+                </div>
 
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                  Notified At
-                </p>
-                <p className="mt-2 text-lg font-semibold text-slate-900">
-                  {formatDate(data.match?.notified_at ?? null)}
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                  Viewed At
-                </p>
-                <p className="mt-2 text-lg font-semibold text-slate-900">
-                  {formatDate(data.engagement.viewed_at)}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-xl border border-slate-200 p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                Match Reason
-              </p>
-              <p className="mt-2 text-sm leading-6 text-slate-700">
-                {data.match?.match_reason ?? "No match reason recorded."}
-              </p>
-            </div>
-          </SectionCard>
-
-          <SectionCard
-            title="Negotiation History"
-            subtitle="Latest supplier and buyer offers for this RFQ engagement."
-          >
-            {data.offers.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
-                No negotiation offers submitted yet.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {data.offers.map((offer) => (
-                  <div
-                    key={offer.offer_id}
-                    className="rounded-xl border border-slate-200 p-4"
-                  >
-                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="font-medium text-slate-900">
-                            {offer.offered_by === data.currentAppUserId
-                              ? "Supplier Counter Offer"
-                              : "Buyer Submission"}
-                          </h3>
-                          <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-700">
-                            Round {offer.offer_round}
-                          </span>
-                          <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-700">
-                            {offer.status ?? "pending"}
-                          </span>
-                        </div>
-
-                        <p className="mt-2 text-sm text-slate-500">
-                          {formatDate(offer.created_at)}
-                        </p>
-                      </div>
-
-                      <div className="grid min-w-[260px] gap-3 text-sm text-slate-700 sm:grid-cols-2">
-                        <div>
-                          <span className="font-medium">Offer Price:</span>{" "}
-                          {formatCurrency(Number(offer.price_per_unit))}
-                        </div>
-                        <div>
-                          <span className="font-medium">Quantity:</span> {offer.quantity}
-                        </div>
-                        <div>
-                          <span className="font-medium">MOQ:</span> {offer.moq}
-                        </div>
-                        <div>
-                          <span className="font-medium">Lead Time:</span>{" "}
-                          {offer.lead_time ?? "—"}
-                        </div>
-                      </div>
-                    </div>
-
-                    {offer.notes ? (
-                      <div className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
-                        {offer.notes}
-                      </div>
-                    ) : null}
+                <div className="mt-[14px] grid gap-[12px] md:grid-cols-2 xl:grid-cols-4">
+                  <div className="rounded-[12px] border border-[#E5EBF3] bg-[#FBFCFE] px-[14px] py-[12px]">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.02em] text-[#2A8A57]">
+                      Quoted Price
+                    </p>
+                    <p className="mt-[8px] text-[15px] font-semibold text-[#223654]">
+                      {formatCurrencyPerUnit(
+                        data.latestQuotation?.price_per_unit ?? null,
+                        data.rfq.unit,
+                      )}
+                    </p>
                   </div>
-                ))}
-              </div>
+                  <div className="rounded-[12px] border border-[#E5EBF3] bg-[#FBFCFE] px-[14px] py-[12px]">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.02em] text-[#2A8A57]">
+                      Total Amount
+                    </p>
+                    <p className="mt-[8px] text-[15px] font-semibold text-[#223654]">
+                      {formatCurrency(quotedTotal)}
+                    </p>
+                  </div>
+                  <div className="rounded-[12px] border border-[#E5EBF3] bg-[#FBFCFE] px-[14px] py-[12px]">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.02em] text-[#2A8A57]">
+                      Lead Time
+                    </p>
+                    <p className="mt-[8px] text-[15px] font-semibold text-[#223654]">
+                      {data.latestQuotation?.lead_time || "Not set"}
+                    </p>
+                  </div>
+                  <div className="rounded-[12px] border border-[#E5EBF3] bg-[#FBFCFE] px-[14px] py-[12px]">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.02em] text-[#2A8A57]">
+                      Minimum Order Qty.
+                    </p>
+                    <p className="mt-[8px] text-[15px] font-semibold text-[#223654]">
+                      {productMoq != null
+                        ? `${formatNumber(productMoq)}${data.rfq.unit ? ` ${data.rfq.unit}` : ""}`
+                        : "Not set"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-[14px] rounded-[12px] border border-[#84D1A0] bg-[#F6FFF9] px-[14px] py-[12px]">
+                  <div className="flex items-start gap-[10px]">
+                    <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] bg-[#267C49] text-white">
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="h-[18px] w-[18px]"
+                        fill="none"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="m7.5 12.5 3 3 6-7"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-[13px] font-semibold text-[#267C49]">
+                        Purchase Order {poNumber} received
+                      </p>
+                      <p className="mt-[2px] text-[12px] leading-[1.45] text-[#7C8B9F]">
+                        {data.buyer.businessName} has sent a Purchase Order. Go to Purchase Orders
+                        to confirm and start fulfilling.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-[14px] flex flex-wrap items-center gap-[10px]">
+                  <Link
+                    href={purchaseOrderHref}
+                    className="inline-flex h-[44px] min-w-[220px] flex-1 items-center justify-center rounded-[10px] bg-[#233F68] px-[18px] text-[13px] font-medium text-white"
+                  >
+                    View Purchase Order
+                  </Link>
+                </div>
+              </>
+            ) : quoteAccepted ? (
+              <>
+                <div className="flex items-center justify-end text-[12px] font-medium text-[#A0A9B8]">
+                  Agreed on {agreedDate}
+                </div>
+
+                <div className="mt-[10px] rounded-[12px] border border-[#84D1A0] bg-[#F6FFF9] px-[14px] py-[12px]">
+                  <div className="flex items-start gap-[10px]">
+                    <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] bg-[#267C49] text-white">
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="h-[18px] w-[18px]"
+                        fill="none"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="m7.5 12.5 3 3 6-7"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-[13px] font-semibold text-[#267C49]">
+                        Buyer accepted your quotation
+                      </p>
+                      <p className="mt-[2px] text-[12px] leading-[1.45] text-[#7C8B9F]">
+                        Both parties agreed on {agreedDate}. Awaiting Purchase Order from{" "}
+                        {data.buyer.businessName}. You&apos;ll be notified once the Purchase Order
+                        form is sent.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-[14px] grid gap-[12px] md:grid-cols-2 xl:grid-cols-4">
+                  <div className="rounded-[12px] border border-[#E5EBF3] bg-[#FBFCFE] px-[14px] py-[12px]">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.02em] text-[#A0A9B8]">
+                      Quoted Price
+                    </p>
+                    <p className="mt-[8px] text-[15px] font-semibold text-[#223654]">
+                      {formatCurrencyPerUnit(
+                        data.latestQuotation?.price_per_unit ?? null,
+                        data.rfq.unit,
+                      )}
+                    </p>
+                  </div>
+                  <div className="rounded-[12px] border border-[#E5EBF3] bg-[#FBFCFE] px-[14px] py-[12px]">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.02em] text-[#A0A9B8]">
+                      Total Amount
+                    </p>
+                    <p className="mt-[8px] text-[15px] font-semibold text-[#223654]">
+                      {formatCurrency(quotedTotal)}
+                    </p>
+                  </div>
+                  <div className="rounded-[12px] border border-[#E5EBF3] bg-[#FBFCFE] px-[14px] py-[12px]">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.02em] text-[#A0A9B8]">
+                      Lead Time
+                    </p>
+                    <p className="mt-[8px] text-[15px] font-semibold text-[#223654]">
+                      {data.latestQuotation?.lead_time || "Not set"}
+                    </p>
+                  </div>
+                  <div className="rounded-[12px] border border-[#E5EBF3] bg-[#FBFCFE] px-[14px] py-[12px]">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.02em] text-[#A0A9B8]">
+                      Minimum Order Qty.
+                    </p>
+                    <p className="mt-[8px] text-[15px] font-semibold text-[#223654]">
+                      {productMoq != null
+                        ? `${formatNumber(productMoq)}${data.rfq.unit ? ` ${data.rfq.unit}` : ""}`
+                        : "Not set"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-[18px] flex flex-wrap items-center gap-[10px]">
+                  <Link
+                    href="/supplier/rfq"
+                    className="inline-flex h-[44px] min-w-[220px] flex-1 items-center justify-center rounded-[10px] border border-[#D8E0EC] bg-white px-[18px] text-[13px] font-medium text-[#66758A]"
+                  >
+                    Back to RFQs
+                  </Link>
+                </div>
+              </>
+            ) : quoteSent ? (
+              <>
+                <div className="rounded-[12px] border border-[#BCD2FF] bg-[#F7FAFF] px-[14px] py-[12px]">
+                  <div className="flex items-start gap-[10px]">
+                    <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] bg-[#2D6BFF] text-white">
+                      <ClockIcon />
+                    </div>
+                    <div>
+                      <p className="text-[13px] font-semibold text-[#2D6BFF]">
+                        Waiting for buyer&apos;s response
+                      </p>
+                      <p className="mt-[2px] text-[12px] leading-[1.45] text-[#96A2B5]">
+                        Your quotation was sent on {quoteCreatedAt}. {data.buyer.businessName} is
+                        reviewing it and will respond shortly.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-[14px] grid gap-[12px] md:grid-cols-2 xl:grid-cols-4">
+                  <div className="rounded-[12px] border border-[#E5EBF3] bg-[#FBFCFE] px-[14px] py-[12px]">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.02em] text-[#A0A9B8]">
+                      Quoted Price
+                    </p>
+                    <p className="mt-[8px] text-[15px] font-semibold text-[#223654]">
+                      {formatCurrencyPerUnit(
+                        data.latestQuotation?.price_per_unit ?? null,
+                        data.rfq.unit,
+                      )}
+                    </p>
+                  </div>
+                  <div className="rounded-[12px] border border-[#E5EBF3] bg-[#FBFCFE] px-[14px] py-[12px]">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.02em] text-[#A0A9B8]">
+                      Total Amount
+                    </p>
+                    <p className="mt-[8px] text-[15px] font-semibold text-[#223654]">
+                      {formatCurrency(quotedTotal)}
+                    </p>
+                  </div>
+                  <div className="rounded-[12px] border border-[#E5EBF3] bg-[#FBFCFE] px-[14px] py-[12px]">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.02em] text-[#A0A9B8]">
+                      Lead Time
+                    </p>
+                    <p className="mt-[8px] text-[15px] font-semibold text-[#223654]">
+                      {data.latestQuotation?.lead_time || "Not set"}
+                    </p>
+                  </div>
+                  <div className="rounded-[12px] border border-[#E5EBF3] bg-[#FBFCFE] px-[14px] py-[12px]">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.02em] text-[#A0A9B8]">
+                      Minimum Order Qty.
+                    </p>
+                    <p className="mt-[8px] text-[15px] font-semibold text-[#223654]">
+                      {productMoq != null
+                        ? `${formatNumber(productMoq)}${data.rfq.unit ? ` ${data.rfq.unit}` : ""}`
+                        : "Not set"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-[12px] rounded-[12px] border border-[#E5EBF3] bg-[#FBFCFE] px-[14px] py-[12px]">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.02em] text-[#A0A9B8]">
+                    Your Note to Buyer
+                  </p>
+                  <p className="mt-[8px] text-[13px] leading-[1.55] text-[#4E5C72]">
+                    {data.latestQuotation?.notes?.trim() || "No note provided."}
+                  </p>
+                </div>
+
+                <div className="mt-[18px] flex flex-wrap items-center gap-[10px]">
+                  <Link
+                    href={buyerMessageHref}
+                    className="inline-flex h-[44px] flex-1 items-center justify-center rounded-[10px] bg-[#2D6BFF] px-[20px] text-[13px] font-semibold text-white sm:min-w-[260px]"
+                  >
+                    Message Buyer
+                  </Link>
+                  <Link
+                    href="/supplier/rfq"
+                    className="inline-flex h-[44px] min-w-[182px] items-center justify-center rounded-[10px] border border-[#D8E0EC] bg-white px-[18px] text-[13px] font-medium text-[#97A3B5]"
+                  >
+                    Go back to RFQs
+                  </Link>
+                </div>
+              </>
+            ) : (
+              <>
+                <SupplierQuotationForm
+                  engagementId={engagementId}
+                  returnTo={returnTo}
+                  quantity={data.rfq.quantity}
+                  validUntil={formatDateInput(data.rfq.deadline)}
+                  rfqDeadline={formatDateInput(data.rfq.deadline)}
+                  defaultPricePerUnit={targetPrice ?? null}
+                  defaultLeadTime=""
+                  defaultMoq={productMoq ?? data.rfq.quantity ?? null}
+                  defaultNotes=""
+                  submitAction={submitFinalQuotation}
+                />
+
+                <div className="mt-[18px] flex flex-wrap items-center gap-[10px]">
+                  <button
+                    type="submit"
+                    form="quotation-form"
+                    className="inline-flex h-[44px] flex-1 items-center justify-center rounded-[10px] bg-[#233F68] px-[20px] text-[13px] font-semibold text-white sm:min-w-[260px]"
+                  >
+                    Submit Quotation
+                  </button>
+
+                  <form action={declineEngagement}>
+                    <input type="hidden" name="engagement_id" value={engagementId} />
+                    <input type="hidden" name="return_to" value="/supplier/rfq" />
+                    <button
+                      type="submit"
+                      className="inline-flex h-[44px] min-w-[122px] items-center justify-center rounded-[10px] border border-[#FF6C57] bg-white px-[18px] text-[13px] font-medium text-[#FF5A44]"
+                    >
+                      Decline
+                    </button>
+                  </form>
+                </div>
+              </>
             )}
           </SectionCard>
         </div>
-
-        <div className="space-y-6">
-          <SectionCard
-            title="Quotation / Offer Details"
-            subtitle="Use these forms to continue negotiating or submit your final quotation."
-          >
-            <div className="space-y-4">
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                  Engagement Status
-                </p>
-                <div className="mt-2 flex items-center gap-2">
-                  <span
-                    className={`rounded-full border px-3 py-1 text-xs font-medium ${getStatusBadgeClasses(
-                      data.engagement.status,
-                    )}`}
-                  >
-                    {toTitleCase(data.engagement.status)}
-                  </span>
-                  {latestOffer ? (
-                    <span className="text-xs text-slate-500">
-                      Round {latestOffer.offer_round}
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-
-              {data.latestQuotation ? (
-                <div className="rounded-xl border border-slate-200 p-4">
-                  <p className="text-sm font-medium text-slate-900">
-                    Latest Quotation
-                  </p>
-                  <div className="mt-3 space-y-2 text-sm text-slate-600">
-                    <div>
-                      <span className="font-medium">Price:</span>{" "}
-                      {formatCurrency(Number(data.latestQuotation.price_per_unit))}
-                    </div>
-                    <div>
-                      <span className="font-medium">Quantity:</span>{" "}
-                      {data.latestQuotation.quantity}
-                    </div>
-                    <div>
-                      <span className="font-medium">MOQ:</span>{" "}
-                      {data.latestQuotation.moq}
-                    </div>
-                    <div>
-                      <span className="font-medium">Lead Time:</span>{" "}
-                      {data.latestQuotation.lead_time ?? "—"}
-                    </div>
-                    <div>
-                      <span className="font-medium">Valid Until:</span>{" "}
-                      {formatDate(data.latestQuotation.valid_until)}
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          </SectionCard>
-
-          <SectionCard
-            title="Save Negotiation Offer"
-            subtitle="This creates a new negotiation record and moves the engagement into negotiating status."
-          >
-            <form action={submitNegotiationOffer} className="grid gap-4">
-              <input type="hidden" name="engagement_id" value={engagementId} />
-              <input type="hidden" name="return_to" value={returnTo} />
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Offer Price
-                </label>
-                <input
-                  name="price_per_unit"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  required
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
-                />
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Quantity
-                  </label>
-                  <input
-                    name="quantity"
-                    type="number"
-                    min="1"
-                    required
-                    defaultValue={data.rfq.quantity}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    MOQ
-                  </label>
-                  <input
-                    name="moq"
-                    type="number"
-                    min="0"
-                    required
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Lead Time
-                </label>
-                <input
-                  name="lead_time"
-                  type="text"
-                  required
-                  placeholder="e.g. 7 days"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Notes
-                </label>
-                <textarea
-                  name="notes"
-                  rows={4}
-                  placeholder="Add negotiation remarks."
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
-              >
-                Save Negotiation Offer
-              </button>
-            </form>
-          </SectionCard>
-
-          <SectionCard
-            title="Submit Quotation"
-            subtitle="This stores the latest supplier quotation and updates the engagement status to quoted."
-          >
-            <form action={submitFinalQuotation} className="grid gap-4">
-              <input type="hidden" name="engagement_id" value={engagementId} />
-              <input type="hidden" name="return_to" value={returnTo} />
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Price Per Unit
-                </label>
-                <input
-                  name="price_per_unit"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  required
-                  defaultValue={data.latestQuotation?.price_per_unit ?? ""}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
-                />
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Quantity
-                  </label>
-                  <input
-                    name="quantity"
-                    type="number"
-                    min="1"
-                    required
-                    defaultValue={data.latestQuotation?.quantity ?? data.rfq.quantity}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    MOQ
-                  </label>
-                  <input
-                    name="moq"
-                    type="number"
-                    min="0"
-                    required
-                    defaultValue={data.latestQuotation?.moq ?? ""}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Lead Time
-                </label>
-                <input
-                  name="lead_time"
-                  type="text"
-                  required
-                  defaultValue={data.latestQuotation?.lead_time ?? ""}
-                  placeholder="e.g. 10 business days"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Valid Until
-                </label>
-                <input
-                  name="valid_until"
-                  type="date"
-                  required
-                  defaultValue={formatDateInput(data.latestQuotation?.valid_until ?? null)}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Notes
-                </label>
-                <textarea
-                  name="notes"
-                  rows={4}
-                  defaultValue={data.latestQuotation?.notes ?? ""}
-                  placeholder="Add quotation notes."
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
-              >
-                Submit Quotation
-              </button>
-            </form>
-          </SectionCard>
-        </div>
-      </section>
-    </main>
+      </div>
+    </div>
   );
 }

@@ -94,9 +94,9 @@ export async function engageWithRfq(formData: FormData) {
   }
 
   if (existingEngagement) {
-    revalidatePath("/dashboard/supplier/bulletin-board");
-    revalidatePath("/dashboard/supplier/rfq");
-    redirect(`/dashboard/supplier/rfq?engagement=${existingEngagement.engagement_id}`);
+    revalidatePath("/supplier/bulletin-board");
+    revalidatePath("/supplier/rfq");
+    redirect(`/supplier/rfq/${existingEngagement.engagement_id}`);
   }
 
   const now = new Date().toISOString();
@@ -119,9 +119,9 @@ export async function engageWithRfq(formData: FormData) {
     throw new Error(insertError?.message || "Failed to engage with RFQ.");
   }
 
-  revalidatePath("/dashboard/supplier/bulletin-board");
-  revalidatePath("/dashboard/supplier/rfq");
+  revalidatePath("/supplier/bulletin-board");
+  revalidatePath("/supplier/rfq");
   revalidatePath("/dashboard");
 
-  redirect(`/dashboard/supplier/rfq?engagement=${insertedEngagement.engagement_id}`);
+  redirect(`/supplier/rfq/${insertedEngagement.engagement_id}`);
 }

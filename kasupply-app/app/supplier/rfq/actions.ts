@@ -276,7 +276,7 @@ export async function submitFinalQuotation(formData: FormData) {
   const moq = Number(formData.get("moq"));
   const lead_time = String(formData.get("lead_time") || "").trim();
   const notes = String(formData.get("notes") || "").trim();
-  const valid_until = String(formData.get("valid_until") || "").trim();
+  const valid_until_input = String(formData.get("valid_until") || "").trim();
 
   if (!engagement_id || Number.isNaN(engagement_id)) {
     throw new Error("Invalid engagement.");
@@ -298,9 +298,11 @@ export async function submitFinalQuotation(formData: FormData) {
     throw new Error("Lead time is required.");
   }
 
-  if (!valid_until) {
-    throw new Error("Valid until date is required.");
-  }
+  const rfqDeadline = String(formData.get("rfq_deadline") || "").trim();
+  const valid_until =
+    valid_until_input ||
+    rfqDeadline ||
+    new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
   const { data: engagement, error: engagementError } = await supabase
     .from("rfq_engagements")
@@ -372,5 +374,8 @@ export async function submitFinalQuotation(formData: FormData) {
   }
 
   revalidateRfqPaths(returnTo);
-  redirect(returnTo);
+  const quoteSentReturnTo = returnTo.includes("?")
+    ? `${returnTo}&view=sent`
+    : `${returnTo}?view=sent`;
+  redirect(quoteSentReturnTo);
 }

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { createClient as createSupabaseAdminClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentBuyerContext } from "@/lib/buyer/rfq-workflows";
 import {
@@ -12,6 +13,107 @@ import {
   getCurrentBuyerReceiptUploadInfo,
   getPurchaseOrderCreationDraft,
 } from "./data";
+
+function createAdminClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    return null;
+  }
+
+  return createSupabaseAdminClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+}
+
+async function uploadReceiptWithUserSession(params: {
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  adminSupabase: ReturnType<typeof createAdminClient>;
+  path: string;
+  file: File;
+}) {
+  const { supabase, adminSupabase, path, file } = params;
+
+  if (adminSupabase) {
+    return adminSupabase.storage.from(PURCHASE_ORDER_RECEIPTS_BUCKET).upload(path, file, {
+      upsert: false,
+      contentType: file.type,
+    });
+  }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!supabaseUrl || !anonKey || !session?.access_token) {
+    return supabase.storage.from(PURCHASE_ORDER_RECEIPTS_BUCKET).upload(path, file, {
+      upsert: false,
+      contentType: file.type,
+    });
+  }
+
+  const uploadResponse = await fetch(
+    `${supabaseUrl}/storage/v1/object/${PURCHASE_ORDER_RECEIPTS_BUCKET}/${path}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        apikey: anonKey,
+        "x-upsert": "false",
+        "Content-Type": file.type || "application/octet-stream",
+      },
+      body: file,
+    },
+  );
+
+  if (uploadResponse.ok) {
+    return { error: null };
+  }
+
+  let errorMessage = "Failed to upload receipt.";
+
+  try {
+    const errorPayload = (await uploadResponse.json()) as {
+      message?: string;
+      error?: string;
+    };
+    errorMessage =
+      errorPayload.message || errorPayload.error || errorMessage;
+  } catch {
+    // Ignore JSON parsing failures and keep the generic message.
+  }
+
+  return {
+    error: {
+      message: errorMessage,
+    },
+  };
+}
+
+function buildBuyerPurchaseOrderHref(
+  poId: number,
+  params: Record<string, string | null | undefined> = {},
+) {
+  const searchParams = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params)) {
+    if (!value) continue;
+    searchParams.set(key, value);
+  }
+
+  const query = searchParams.toString();
+  return query ? `/buyer/purchase-orders/${poId}?${query}` : `/buyer/purchase-orders/${poId}`;
+}
+
+function redirectReceiptError(poId: number, message: string): never {
+  redirect(buildBuyerPurchaseOrderHref(poId, { receiptError: message }));
+}
 
 function revalidatePurchaseOrderPaths(params: {
   poId: number;
@@ -53,6 +155,8 @@ async function getPurchaseOrderRfqId(
 
 export async function createPurchaseOrder(formData: FormData) {
   const supabase = await createClient();
+  const adminSupabase = createAdminClient();
+  const databaseClient = adminSupabase ?? supabase;
   const buyerContext = await getCurrentBuyerContext();
 
   if (!buyerContext) {
@@ -83,7 +187,7 @@ export async function createPurchaseOrder(formData: FormData) {
     redirect(`/buyer/purchase-orders/${draft.existingPurchaseOrderId}`);
   }
 
-  const { data: insertedOrder, error: insertError } = await supabase
+  const { data: insertedOrder, error: insertError } = await databaseClient
     .from("purchase_orders")
     .insert({
       quote_id: quoteId,
@@ -103,6 +207,15 @@ export async function createPurchaseOrder(formData: FormData) {
     .single();
 
   if (insertError || !insertedOrder) {
+    if (
+      !adminSupabase &&
+      /row-level security policy/i.test(insertError?.message ?? "")
+    ) {
+      throw new Error(
+        "Purchase order creation is blocked by Supabase RLS. Add SUPABASE_SERVICE_ROLE_KEY to .env.local or run sql/purchase_order_policies.sql in your Supabase SQL editor.",
+      );
+    }
+
     throw new Error(insertError?.message || "Failed to create purchase order.");
   }
 
@@ -126,16 +239,26 @@ export async function createPurchaseOrder(formData: FormData) {
 
 export async function uploadPurchaseOrderReceipt(formData: FormData) {
   const supabase = await createClient();
+  const adminSupabase = createAdminClient();
+  const databaseClient = adminSupabase ?? supabase;
+  const {
+    data: { user: authUser },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !authUser) {
+    redirect("/login");
+  }
 
   const poId = Number(formData.get("poId")?.toString() ?? "");
   const receiptFile = formData.get("receiptFile") as File | null;
 
   if (!poId || Number.isNaN(poId)) {
-    throw new Error("Invalid purchase order.");
+    redirect("/buyer/purchase-orders");
   }
 
   if (!receiptFile || receiptFile.size === 0) {
-    throw new Error("Receipt file is required.");
+    redirectReceiptError(poId, "Receipt file is required.");
   }
 
   const allowedTypes = new Set([
@@ -147,48 +270,69 @@ export async function uploadPurchaseOrderReceipt(formData: FormData) {
   ]);
 
   if (!allowedTypes.has(receiptFile.type)) {
-    throw new Error("Please upload a PDF, JPG, JPEG, PNG, or WEBP receipt file.");
+    redirectReceiptError(
+      poId,
+      "Please upload a PDF, JPG, JPEG, PNG, or WEBP receipt file.",
+    );
   }
 
   if (receiptFile.size > 10 * 1024 * 1024) {
-    throw new Error("The receipt file must be 10MB or smaller.");
+    redirectReceiptError(poId, "The receipt file must be 10MB or smaller.");
   }
 
   const uploadInfo = await getCurrentBuyerReceiptUploadInfo(poId);
 
   if (!uploadInfo) {
-    throw new Error("Purchase order not found.");
+    redirectReceiptError(poId, "Purchase order not found.");
   }
 
   if (uploadInfo.status === "completed" || uploadInfo.status === "cancelled") {
-    throw new Error("This purchase order can no longer accept a receipt upload.");
+    redirectReceiptError(poId, "This purchase order can no longer accept a receipt upload.");
   }
 
   if (uploadInfo.status !== "shipped") {
-    throw new Error("Receipt upload becomes available after the supplier marks the order as shipped.");
+    redirectReceiptError(
+      poId,
+      "Receipt upload becomes available after the supplier marks the order as shipped.",
+    );
   }
 
   if (
     uploadInfo.existingReceiptFilePath &&
     !["rejected", "not_uploaded"].includes(uploadInfo.receiptStatus)
   ) {
-    throw new Error("This receipt is already waiting for supplier review.");
+    redirectReceiptError(poId, "This receipt is already waiting for supplier review.");
   }
 
-  const nextReceiptPath = buildPurchaseOrderReceiptPath(poId, receiptFile.name);
+  const nextReceiptPath = buildPurchaseOrderReceiptPath(
+    poId,
+    receiptFile.name,
+    authUser.id,
+  );
 
-  const { error: uploadError } = await supabase.storage
-    .from(PURCHASE_ORDER_RECEIPTS_BUCKET)
-    .upload(nextReceiptPath, receiptFile, {
-      upsert: true,
-      contentType: receiptFile.type,
-    });
+  const { error: uploadError } = await uploadReceiptWithUserSession({
+    supabase,
+    adminSupabase,
+    path: nextReceiptPath,
+    file: receiptFile,
+  });
 
   if (uploadError) {
-    throw new Error(uploadError.message || "Failed to upload receipt.");
+    if (/row-level security policy/i.test(uploadError.message || "")) {
+      redirectReceiptError(
+        poId,
+        "Receipt file upload is blocked by the purchase-order-receipts storage policy. Run purchase-order-receipts-storage-policy.sql in Supabase SQL editor or configure SUPABASE_SERVICE_ROLE_KEY in .env.local.",
+      );
+    }
+
+    redirectReceiptError(
+      poId,
+      uploadError.message ||
+        "Failed to upload receipt. Configure a service-role key or update the bucket RLS policy for buyer uploads.",
+    );
   }
 
-  const { data: updatedOrder, error: updateError } = await supabase
+  const { data: updatedOrder, error: updateError } = await databaseClient
     .from("purchase_orders")
     .update({
       receipt_file_url: nextReceiptPath,
@@ -202,15 +346,27 @@ export async function uploadPurchaseOrderReceipt(formData: FormData) {
     .single();
 
   if (updateError || !updatedOrder) {
-    await supabase.storage.from(PURCHASE_ORDER_RECEIPTS_BUCKET).remove([nextReceiptPath]);
-    throw new Error(updateError?.message || "Failed to attach receipt to this order.");
+    await (adminSupabase ?? supabase).storage
+      .from(PURCHASE_ORDER_RECEIPTS_BUCKET)
+      .remove([nextReceiptPath]);
+    if (
+      !adminSupabase &&
+      /row-level security policy/i.test(updateError?.message ?? "")
+    ) {
+      redirectReceiptError(
+        poId,
+        "Buyer receipt upload is blocked by the purchase_orders UPDATE policy. Update the Supabase RLS policy for buyer receipt uploads or add SUPABASE_SERVICE_ROLE_KEY to .env.local.",
+      );
+    }
+
+    redirectReceiptError(poId, updateError?.message || "Failed to attach receipt to this order.");
   }
 
   if (
     uploadInfo.existingReceiptFilePath &&
     uploadInfo.existingReceiptFilePath !== nextReceiptPath
   ) {
-    await supabase.storage
+    await (adminSupabase ?? supabase).storage
       .from(PURCHASE_ORDER_RECEIPTS_BUCKET)
       .remove([uploadInfo.existingReceiptFilePath]);
   }

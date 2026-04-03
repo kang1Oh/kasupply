@@ -13,6 +13,10 @@ type BuyerProfileRow = {
 type BusinessProfileRow = {
   profile_id: number;
   business_name: string | null;
+  business_type: string | null;
+  business_location: string | null;
+  city: string | null;
+  province: string | null;
   user_id: string;
 };
 
@@ -30,7 +34,10 @@ type RfqRow = {
   requested_product_name: string | null;
   quantity: number;
   unit: string | null;
+  target_price_per_unit: number | null;
   specifications: string | null;
+  preferred_delivery_date: string | null;
+  delivery_location: string | null;
   deadline: string | null;
   status: string | null;
   visibility: string | null;
@@ -74,6 +81,13 @@ type QuotationRow = {
   valid_until: string | null;
   created_at: string | null;
   updated_at: string | null;
+};
+
+type PurchaseOrderRow = {
+  po_id: number;
+  quote_id: number;
+  status: string | null;
+  created_at: string | null;
 };
 
 function getSingleRfq(rfqs: EngagementRow["rfqs"]): RfqRow | null {
@@ -158,12 +172,18 @@ async function getBuyerDetails(
     return {
       businessName: `Buyer #${buyerId}`,
       contactName: null,
+      businessType: null,
+      businessLocation: null,
+      city: null,
+      province: null,
     };
   }
 
   const { data: businessProfile } = await supabase
     .from("business_profiles")
-    .select("profile_id, business_name, user_id")
+    .select(
+      "profile_id, business_name, business_type, business_location, city, province, user_id",
+    )
     .eq("profile_id", buyerProfile.profile_id)
     .maybeSingle<BusinessProfileRow>();
 
@@ -171,6 +191,10 @@ async function getBuyerDetails(
     return {
       businessName: `Buyer #${buyerId}`,
       contactName: null,
+      businessType: null,
+      businessLocation: null,
+      city: null,
+      province: null,
     };
   }
 
@@ -183,6 +207,10 @@ async function getBuyerDetails(
   return {
     businessName: businessProfile.business_name ?? `Buyer #${buyerId}`,
     contactName: buyerUser?.name ?? null,
+    businessType: businessProfile.business_type ?? null,
+    businessLocation: businessProfile.business_location ?? null,
+    city: businessProfile.city ?? null,
+    province: businessProfile.province ?? null,
   };
 }
 
@@ -209,7 +237,10 @@ export async function getSupplierRfqEngagementDetail(engagementId: number) {
         requested_product_name,
         quantity,
         unit,
+        target_price_per_unit,
         specifications,
+        preferred_delivery_date,
+        delivery_location,
         deadline,
         status,
         visibility,
@@ -233,7 +264,35 @@ export async function getSupplierRfqEngagementDetail(engagementId: number) {
     return null;
   }
 
-  const rfq = getSingleRfq(engagement.rfqs);
+  const rawRfq = getSingleRfq(engagement.rfqs);
+  let productName: string | null = null;
+  let productMoq: number | null = null;
+
+  if (rawRfq?.product_id != null) {
+    const { data: productRow, error: productRowError } = await supabase
+      .from("products")
+      .select("product_id, product_name, moq")
+      .eq("product_id", rawRfq.product_id)
+      .maybeSingle();
+
+    if (productRowError) {
+      throw new Error(productRowError.message || "Failed to load RFQ product.");
+    }
+
+    productName = productRow?.product_name ?? null;
+    productMoq =
+      typeof productRow?.moq === "number" && Number.isFinite(productRow.moq)
+        ? productRow.moq
+        : null;
+  }
+
+  const rfq = rawRfq
+      ? {
+          ...rawRfq,
+          product_name: productName ?? `RFQ #${rawRfq.rfq_id}`,
+          product_moq: productMoq,
+        }
+      : null;
 
   const { data: match } = await supabase
     .from("request_matches")
@@ -300,6 +359,60 @@ export async function getSupplierRfqEngagementDetail(engagementId: number) {
     latestQuotation = quotation ?? null;
   }
 
+  let purchaseOrder: PurchaseOrderRow | null = null;
+
+  if (latestQuotation?.quote_id != null) {
+    const { data: purchaseOrderRow, error: purchaseOrderError } = await supabase
+      .from("purchase_orders")
+      .select("po_id, quote_id, status, created_at")
+      .eq("quote_id", latestQuotation.quote_id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<PurchaseOrderRow>();
+
+    if (purchaseOrderError) {
+      throw new Error(purchaseOrderError.message || "Failed to load purchase order.");
+    }
+
+    purchaseOrder = purchaseOrderRow ?? null;
+  }
+
+  if (!purchaseOrder) {
+    const { data: engagementQuotations, error: engagementQuotationsError } = await supabase
+      .from("quotations")
+      .select("quote_id")
+      .eq("engagement_id", engagementId)
+      .eq("supplier_id", supplierProfile.supplier_id);
+
+    if (engagementQuotationsError) {
+      throw new Error(
+        engagementQuotationsError.message || "Failed to load engagement quotations.",
+      );
+    }
+
+    const engagementQuoteIds = (engagementQuotations ?? [])
+      .map((quotation) => quotation.quote_id)
+      .filter((quoteId): quoteId is number => Number.isFinite(Number(quoteId)));
+
+    if (engagementQuoteIds.length > 0) {
+      const { data: purchaseOrderFallback, error: purchaseOrderFallbackError } = await supabase
+        .from("purchase_orders")
+        .select("po_id, quote_id, status, created_at")
+        .in("quote_id", engagementQuoteIds)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle<PurchaseOrderRow>();
+
+      if (purchaseOrderFallbackError) {
+        throw new Error(
+          purchaseOrderFallbackError.message || "Failed to load purchase order fallback.",
+        );
+      }
+
+      purchaseOrder = purchaseOrderFallback ?? null;
+    }
+  }
+
   const buyer =
     rfq?.buyer_id != null
       ? await getBuyerDetails(supabase, rfq.buyer_id)
@@ -322,5 +435,6 @@ export async function getSupplierRfqEngagementDetail(engagementId: number) {
     buyer,
     offers: offers ?? [],
     latestQuotation,
+    purchaseOrder,
   };
 }

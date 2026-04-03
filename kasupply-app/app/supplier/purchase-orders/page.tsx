@@ -1,187 +1,364 @@
 import Link from "next/link";
 import { getSupplierPurchaseOrders } from "./data";
 
-function formatCurrency(value: number | null) {
-  if (value === null) return "Not available";
-
-  return new Intl.NumberFormat("en-PH", {
-    style: "currency",
-    currency: "PHP",
-  }).format(value);
+function BellIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-[15px] w-[15px]" fill="none" aria-hidden="true">
+      <path
+        d="M12 4.75a4.25 4.25 0 0 0-4.25 4.25v2.12c0 .48-.16.94-.46 1.31l-1.2 1.53a1 1 0 0 0 .79 1.61h10.24a1 1 0 0 0 .79-1.61l-1.2-1.53a2.1 2.1 0 0 1-.46-1.31V9A4.25 4.25 0 0 0 12 4.75Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10.25 18a1.75 1.75 0 0 0 3.5 0"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="18.2" cy="5.8" r="2.1" fill="#FF6A55" />
+    </svg>
+  );
 }
 
-function toTitleCase(value: string) {
-  return value
-    .split("_")
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
-function getStatusBadgeClasses(status: string) {
-  switch (status) {
-    case "confirmed":
-      return "bg-blue-100 text-blue-800";
-    case "processing":
-      return "bg-amber-100 text-amber-800";
-    case "shipped":
-      return "bg-indigo-100 text-indigo-800";
-    case "completed":
-      return "bg-green-100 text-green-800";
-    case "cancelled":
-      return "bg-red-100 text-red-800";
-    default:
-      return "bg-gray-100 text-gray-700";
-  }
+function MessageIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-[15px] w-[15px]" fill="none" aria-hidden="true">
+      <path
+        d="M7 18.25h8.75A2.25 2.25 0 0 0 18 16V8.25A2.25 2.25 0 0 0 15.75 6H8.25A2.25 2.25 0 0 0 6 8.25V16a2.25 2.25 0 0 0 2.25 2.25Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="m9.25 18.25-2.75 2V16"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }
 
 function SummaryCard({
   title,
   value,
+  accent,
 }: {
   title: string;
   value: number;
+  accent: string;
 }) {
   return (
-    <div className="rounded-xl border bg-white p-4 shadow-sm">
-      <p className="text-sm text-gray-500">{title}</p>
-      <h2 className="mt-2 text-2xl font-bold">{value}</h2>
+    <div className="relative overflow-hidden rounded-[16px] border border-[#EEF2F7] bg-white px-[22px] py-[16px] shadow-[0_2px_8px_rgba(15,23,42,0.02)]">
+      <div className={`absolute inset-y-0 left-0 w-[3px] ${accent}`} />
+      <p className="text-[11px] font-medium uppercase tracking-[0.02em] text-[#A8B0BE]">
+        {title}
+      </p>
+      <p className="mt-[10px] text-[17px] font-semibold text-[#253758]">{value}</p>
     </div>
   );
 }
 
-export default async function SupplierPurchaseOrdersPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{
-    status?: string;
-  }>;
-}) {
-  const resolvedSearchParams = (await searchParams) ?? {};
-  const selectedStatus = String(resolvedSearchParams.status || "").trim().toLowerCase();
+function formatDate(value: string | null) {
+  if (!value) return "Not set";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "Not set";
+  return new Intl.DateTimeFormat("en-PH", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(parsed);
+}
 
-  const { orders, allOrders } = await getSupplierPurchaseOrders(selectedStatus);
+function formatCurrency(value: number | null) {
+  if (value == null || Number.isNaN(value)) return "Not available";
+  return new Intl.NumberFormat("en-PH", {
+    style: "currency",
+    currency: "PHP",
+    maximumFractionDigits: 0,
+  })
+    .format(value)
+    .replace("PHP", "₱");
+}
 
-  const totalOrders = allOrders.length;
-  const confirmedOrders = allOrders.filter((order) => order.status === "confirmed").length;
-  const processingOrders = allOrders.filter((order) => order.status === "processing").length;
-  const shippedOrders = allOrders.filter((order) => order.status === "shipped").length;
-  const completedOrders = allOrders.filter((order) => order.status === "completed").length;
+function getInitials(name: string) {
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+
+  return initials || "PO";
+}
+
+function getInitialsClassName(index: number) {
+  const variants = [
+    "bg-[#EEF9F2] text-[#2E8B57]",
+    "bg-[#FFF1EA] text-[#FF734A]",
+    "bg-[#F7E8FF] text-[#B35BE2]",
+    "bg-[#E9FBFF] text-[#3AA6BD]",
+  ];
+
+  return variants[index % variants.length] ?? variants[0];
+}
+
+function getStatusBadge(status: string) {
+  switch (status) {
+    case "confirmed":
+      return {
+        label: "Confirmed",
+        className: "bg-[#EEF4FF] text-[#5F8EFF]",
+      };
+    case "processing":
+      return {
+        label: "Processing",
+        className: "bg-[#FFF2E9] text-[#FF8B42]",
+      };
+    case "shipped":
+      return {
+        label: "Shipped",
+        className: "bg-[#F8E8FF] text-[#D060FF]",
+      };
+    case "completed":
+      return {
+        label: "Completed",
+        className: "bg-[#ECF8F1] text-[#2A8A57]",
+      };
+    case "cancelled":
+      return {
+        label: "Cancelled",
+        className: "bg-[#FFF1EE] text-[#F16352]",
+      };
+    default:
+      return {
+        label: "Pending",
+        className: "bg-[#EEF1F5] text-[#8793A7]",
+      };
+  }
+}
+
+function getPrimaryAction(status: string) {
+  switch (status) {
+    case "confirmed":
+      return {
+        label: "Mark as Processing",
+        className: "bg-[#233F68] text-white",
+      };
+    case "processing":
+      return {
+        label: "Mark as Shipped",
+        className: "bg-[#233F68] text-white",
+      };
+    default:
+      return null;
+  }
+}
+
+export default async function SupplierPurchaseOrdersPage() {
+  const { orders } = await getSupplierPurchaseOrders();
+
+  const totalOrders = orders.length;
+  const pendingOrders = orders.filter((order) =>
+    ["confirmed", "processing"].includes(order.status),
+  ).length;
+  const inTransitOrders = orders.filter((order) => order.status === "shipped").length;
+  const completedOrders = orders.filter((order) => order.status === "completed").length;
+  const activeOrders = orders.filter((order) =>
+    ["confirmed", "processing", "shipped"].includes(order.status),
+  ).length;
 
   return (
-    <main className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Purchase Orders</h1>
-        <p className="text-gray-600">
-          Manage confirmed buyer orders, set delivery fees, and complete orders once the buyer uploads a receipt.
-        </p>
-      </div>
+    <main className="-m-6 min-h-screen bg-[#F7F9FC]">
+      <section className="border-b border-[#E8EDF4] bg-white">
+        <div className="flex items-center justify-between px-[18px] py-[15px]">
+          <div className="flex items-center gap-2 text-[12px] text-[#A4ACBA]">
+            <span>KaSupply</span>
+            <span className="text-[#CBD2DE]">/</span>
+            <span className="font-semibold text-[#506073]">Purchase Orders</span>
+          </div>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <SummaryCard title="Total Orders" value={totalOrders} />
-        <SummaryCard title="Confirmed" value={confirmedOrders} />
-        <SummaryCard title="Processing" value={processingOrders} />
-        <SummaryCard title="Shipped" value={shippedOrders} />
-        <SummaryCard title="Completed" value={completedOrders} />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-[11px] border border-[#E6ECF3] bg-[#FBFCFE] text-[#B1B8C5]"
+              aria-label="Notifications"
+            >
+              <BellIcon />
+            </button>
+            <button
+              type="button"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-[11px] border border-[#E6ECF3] bg-[#FBFCFE] text-[#B1B8C5]"
+              aria-label="Messages"
+            >
+              <MessageIcon />
+            </button>
+          </div>
+        </div>
       </section>
 
-      <section className="rounded-xl border bg-white p-6 shadow-sm">
-        <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <section className="px-[16px] py-[18px]">
+        <div className="mx-auto max-w-[980px]">
           <div>
-            <h2 className="font-semibold">Purchase Orders List</h2>
-            <p className="text-sm text-gray-500">
-              Review buyer purchase orders, monitor receipt uploads, and open each order for fulfillment details.
+            <h1 className="text-[18px] font-semibold text-[#223654]">Purchase Orders</h1>
+            <p className="mt-[3px] text-[12px] text-[#A0A9B8]">
+              {activeOrders} active orders to fulfill
             </p>
           </div>
 
-          <form method="GET" className="flex gap-2">
-            <select
-              name="status"
-              defaultValue={selectedStatus}
-              className="rounded border px-3 py-2 text-sm"
-            >
-              <option value="">All statuses</option>
-              <option value="confirmed">Confirmed</option>
-              <option value="processing">Processing</option>
-              <option value="shipped">Shipped</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
+          <div className="mt-[18px] grid gap-[14px] md:grid-cols-2 xl:grid-cols-4">
+            <SummaryCard title="Total Orders" value={totalOrders} accent="bg-[#A54BFF]" />
+            <SummaryCard title="Pending Orders" value={pendingOrders} accent="bg-[#3E73FF]" />
+            <SummaryCard title="In Transit" value={inTransitOrders} accent="bg-[#FF8A3D]" />
+            <SummaryCard title="Completed" value={completedOrders} accent="bg-[#2F8C57]" />
+          </div>
 
-            <button
-              type="submit"
-              className="rounded bg-black px-4 py-2 text-sm text-white"
-            >
-              Apply
-            </button>
+          <div className="mt-[18px]">
+            <h2 className="text-[14px] font-semibold text-[#223654]">All Orders</h2>
+          </div>
 
-            <Link
-              href="/supplier/purchase-orders"
-              className="rounded border px-4 py-2 text-sm"
-            >
-              Reset
-            </Link>
-          </form>
-        </div>
+          <div className="mt-[12px] space-y-[12px]">
+            {orders.length === 0 ? (
+              <div className="rounded-[18px] border border-dashed border-[#D8E2EE] bg-white px-[18px] py-[28px] text-center text-[13px] text-[#8FA0B5]">
+                No purchase orders found for this supplier yet.
+              </div>
+            ) : (
+              orders.map((order, index) => {
+                const statusBadge = getStatusBadge(order.status);
+                const primaryAction = getPrimaryAction(order.status);
 
-        {orders.length === 0 ? (
-          <p className="text-sm text-gray-500">No purchase orders found.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full border-collapse text-sm">
-              <thead>
-                <tr className="border-b text-left">
-                  <th className="px-3 py-2 font-medium">PO Number</th>
-                  <th className="px-3 py-2 font-medium">Buyer</th>
-                  <th className="px-3 py-2 font-medium">Product</th>
-                  <th className="px-3 py-2 font-medium">Quantity</th>
-                  <th className="px-3 py-2 font-medium">Total Amount</th>
-                  <th className="px-3 py-2 font-medium">Status</th>
-                  <th className="px-3 py-2 font-medium">Receipt</th>
-                  <th className="px-3 py-2 font-medium">Actions</th>
-                </tr>
-              </thead>
+                return (
+                  <article
+                    key={order.poId}
+                    className="rounded-[18px] border border-[#E6ECF3] bg-white px-[18px] py-[16px] shadow-[0_3px_10px_rgba(15,23,42,0.025)]"
+                  >
+                    <div className="flex items-start justify-between gap-[16px]">
+                      <div className="flex min-w-0 items-start gap-[12px]">
+                        <div
+                          className={`flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[12px] text-[18px] font-medium ${getInitialsClassName(index)}`}
+                        >
+                          {getInitials(order.buyer)}
+                        </div>
 
-              <tbody>
-                {orders.map((order) => (
-                  <tr key={order.poId} className="border-b">
-                    <td className="px-3 py-3 font-medium">{order.poNumber}</td>
-                    <td className="px-3 py-3">{order.buyer}</td>
-                    <td className="px-3 py-3">{order.productName}</td>
-                    <td className="px-3 py-3">{order.quantityLabel}</td>
-                    <td className="px-3 py-3">{formatCurrency(order.totalAmount)}</td>
-                    <td className="px-3 py-3">
-                      <span
-                        className={`rounded-full px-2 py-1 text-xs ${getStatusBadgeClasses(order.status)}`}
-                      >
-                        {toTitleCase(order.status)}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3">
-                      {order.receiptFilePath ? (
-                        <span className="rounded-full bg-green-100 px-2 py-1 text-xs text-green-700">
-                          Uploaded
-                        </span>
-                      ) : (
-                        <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-600">
-                          Pending
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-[8px]">
+                            <p className="text-[15px] font-medium text-[#516074]">
+                              {order.poNumber}
+                            </p>
+                            <span
+                              className={`inline-flex h-[20px] items-center rounded-full px-[8px] text-[9px] font-semibold uppercase tracking-[0.02em] ${statusBadge.className}`}
+                            >
+                              {statusBadge.label}
+                            </span>
+                          </div>
+                          <p className="mt-[2px] text-[13px] font-medium text-[#6C788B]">
+                            {order.buyer}
+                          </p>
+                          <p className="mt-[2px] text-[12px] text-[#A5AFBD]">
+                            Ordered on {formatDate(order.orderDate)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="shrink-0 text-right">
+                        <p className="text-[10px] font-medium uppercase tracking-[0.02em] text-[#B0B8C5]">
+                          Total Amount
+                        </p>
+                        <p className="mt-[4px] text-[15px] font-semibold text-[#243653]">
+                          {formatCurrency(order.totalAmount)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-[14px] grid gap-y-[12px] border-t border-[#EDF1F6] pt-[14px] md:grid-cols-4">
+                      <div>
+                        <p className="text-[10px] font-medium uppercase tracking-[0.02em] text-[#A7AFBD]">
+                          Item
+                        </p>
+                        <p className="mt-[4px] text-[13px] font-medium text-[#243653]">
+                          {order.productName}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-medium uppercase tracking-[0.02em] text-[#A7AFBD]">
+                          Quantity
+                        </p>
+                        <p className="mt-[4px] text-[13px] font-medium text-[#243653]">
+                          {order.quantityLabel}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-medium uppercase tracking-[0.02em] text-[#A7AFBD]">
+                          Deliver By
+                        </p>
+                        <p className="mt-[4px] text-[13px] font-medium text-[#243653]">
+                          {formatDate(order.preferredDeliveryDate ?? order.deadline)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-medium uppercase tracking-[0.02em] text-[#A7AFBD]">
+                          Payment Method
+                        </p>
+                        <p className="mt-[4px] text-[13px] font-medium text-[#243653]">
+                          {order.paymentMethod ?? "Not set"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-[16px] flex items-center gap-[10px]">
+                      {primaryAction ? (
+                        <button
+                          type="button"
+                          className={`inline-flex h-[40px] flex-1 items-center justify-center rounded-[8px] px-[16px] text-[12px] font-medium ${primaryAction.className}`}
+                        >
+                          {primaryAction.label}
+                        </button>
+                      ) : null}
+
                       <Link
                         href={`/supplier/purchase-orders/${order.poId}`}
-                        className="rounded border px-3 py-1 text-xs"
+                        className={`inline-flex h-[40px] items-center justify-center rounded-[8px] border px-[16px] text-[12px] font-medium ${
+                          primaryAction
+                            ? "min-w-[222px] border-[#D9E2EE] bg-white text-[#7B879A]"
+                            : "w-full border-[#E3E8F0] bg-white text-[#9DA8B9]"
+                        }`}
                       >
-                        Open
+                        View Details
                       </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                  </article>
+                );
+              })
+            )}
           </div>
-        )}
+
+          <div className="mt-[14px] flex flex-col gap-[10px] text-[11px] text-[#9EA8B7] md:flex-row md:items-center md:justify-between">
+            <p>
+              {orders.length === 0
+                ? "Showing 0 of 0 results"
+                : `Showing 1-${orders.length} of ${orders.length} results`}
+            </p>
+
+            <div className="flex items-center gap-[14px] text-[12px] text-[#65748B]">
+              <button type="button" className="text-[#A8B0BE]">
+                ← Previous
+              </button>
+              <div className="flex items-center gap-[10px]">
+                <span className="inline-flex h-[28px] w-[28px] items-center justify-center rounded-[8px] bg-[#233F68] text-white">
+                  1
+                </span>
+              </div>
+              <button type="button" className="text-[#223654]">
+                Next →
+              </button>
+            </div>
+          </div>
+        </div>
       </section>
     </main>
   );

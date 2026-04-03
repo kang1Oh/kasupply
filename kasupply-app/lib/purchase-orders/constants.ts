@@ -12,6 +12,14 @@ export const PURCHASE_ORDER_ACTIVE_STATUSES = [
 ] as const;
 
 export const PURCHASE_ORDER_RECEIPTS_BUCKET = "purchase-order-receipts";
+export const ACCEPTED_RECEIPT_TYPES = [
+  "application/pdf",
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+] as const;
+export const MAX_RECEIPT_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 export const PURCHASE_ORDER_RECEIPT_STATUSES = [
   "not_uploaded",
   "pending_review",
@@ -42,7 +50,15 @@ export function formatPurchaseOrderNumber(poId: number) {
   return `PO-${poId}`;
 }
 
-export function buildPurchaseOrderReceiptPath(poId: number, fileName: string) {
+export function formatReceiptFileSizeLimit() {
+  return "10MB";
+}
+
+export function buildPurchaseOrderReceiptPath(
+  poId: number,
+  fileName: string,
+  ownerSegment?: string | null,
+) {
   const fileExt = fileName.split(".").pop() || "jpg";
   const safeExt = fileExt.toLowerCase();
   const baseName = fileName
@@ -51,5 +67,10 @@ export function buildPurchaseOrderReceiptPath(poId: number, fileName: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-  return `${poId}/${baseName || "receipt"}-${Date.now()}.${safeExt}`;
+  const ownerPrefix =
+    typeof ownerSegment === "string" && ownerSegment.trim()
+      ? `${ownerSegment.trim()}/${poId}`
+      : String(poId);
+
+  return `${ownerPrefix}/${baseName || "receipt"}-${Date.now()}.${safeExt}`;
 }

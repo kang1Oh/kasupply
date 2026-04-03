@@ -3,8 +3,23 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { engageWithRfq } from "./actions";
 
+type JoinedRfq = {
+  rfq_id: number;
+  buyer_id: number;
+  category_id: number | null;
+  product_id: number | null;
+  quantity: number | null;
+  unit: string | null;
+  specifications: string | null;
+  deadline: string | null;
+  status: string | null;
+  visibility: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
 function formatDate(value: string | null) {
-  if (!value) return "—";
+  if (!value) return "-";
 
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
@@ -127,6 +142,38 @@ export default async function SupplierBulletinBoardPage({
 
   const safeMatchedRfqs = matchedRfqs ?? [];
 
+  const productIds = Array.from(
+    new Set(
+      safeMatchedRfqs
+        .map((row) => {
+          const rfq = (Array.isArray(row.rfqs) ? row.rfqs[0] : row.rfqs) as JoinedRfq | null;
+          return rfq?.product_id ?? null;
+        })
+        .filter((value): value is number => value !== null),
+    ),
+  );
+
+  const productNameMap = new Map<number, string>();
+
+  if (productIds.length > 0) {
+    const { data: productRows, error: productRowsError } = await supabase
+      .from("products")
+      .select("product_id, product_name")
+      .in("product_id", productIds);
+
+    if (productRowsError) {
+      throw new Error(
+        productRowsError.message || "Failed to load RFQ product names.",
+      );
+    }
+
+    for (const product of productRows ?? []) {
+      if (product.product_id != null && product.product_name) {
+        productNameMap.set(product.product_id, product.product_name);
+      }
+    }
+  }
+
   const selectedMatch =
     viewingId != null
       ? safeMatchedRfqs.find((row) => row.rfq_id === viewingId) ?? null
@@ -134,7 +181,7 @@ export default async function SupplierBulletinBoardPage({
 
   const totalMatches = safeMatchedRfqs.length;
   const highMatches = safeMatchedRfqs.filter(
-    (row) => Number(row.match_score ?? 0) >= 0.8
+    (row) => Number(row.match_score ?? 0) >= 0.8,
   ).length;
   const mediumMatches = safeMatchedRfqs.filter((row) => {
     const score = Number(row.match_score ?? 0);
@@ -146,7 +193,8 @@ export default async function SupplierBulletinBoardPage({
       <div>
         <h1 className="text-2xl font-bold">Sourcing Board</h1>
         <p className="text-gray-600">
-          These are buyer RFQs matched to your supplier profile. Choose one to bid and move it into your RFQ page.
+          These are buyer RFQs matched to your supplier profile. Choose one to
+          bid and move it into your RFQ page.
         </p>
       </div>
 
@@ -171,7 +219,8 @@ export default async function SupplierBulletinBoardPage({
         <div className="mb-4">
           <h2 className="font-semibold">Matched RFQ Opportunities</h2>
           <p className="text-sm text-gray-500">
-            These requests are visible to you because they passed the matching threshold.
+            These requests are visible to you because they passed the matching
+            threshold.
           </p>
         </div>
 
@@ -192,7 +241,9 @@ export default async function SupplierBulletinBoardPage({
               </thead>
               <tbody>
                 {safeMatchedRfqs.map((match) => {
-                  const rfq = Array.isArray(match.rfqs) ? match.rfqs[0] : match.rfqs;
+                  const rfq = (Array.isArray(match.rfqs)
+                    ? match.rfqs[0]
+                    : match.rfqs) as JoinedRfq | null;
 
                   return (
                     <tr key={match.match_id} className="border-b">
@@ -206,7 +257,7 @@ export default async function SupplierBulletinBoardPage({
                       </td>
 
                       <td className="px-3 py-3">
-                        {rfq?.quantity ?? "—"} {rfq?.unit ?? ""}
+                        {rfq?.quantity ?? "-"} {rfq?.unit ?? ""}
                       </td>
 
                       <td className="px-3 py-3">
@@ -216,7 +267,7 @@ export default async function SupplierBulletinBoardPage({
                       <td className="px-3 py-3">
                         {match.match_score != null
                           ? Number(match.match_score).toFixed(2)
-                          : "—"}
+                          : "-"}
                       </td>
 
                       <td className="px-3 py-3">
@@ -226,7 +277,7 @@ export default async function SupplierBulletinBoardPage({
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-2">
                           <Link
-                            href={`/dashboard/supplier/bulletin-board?view=${match.rfq_id}`}
+                            href={`/supplier/bulletin-board?view=${match.rfq_id}`}
                             className="rounded border px-3 py-1 text-xs"
                           >
                             View
@@ -252,98 +303,99 @@ export default async function SupplierBulletinBoardPage({
         )}
       </section>
 
-      {selectedMatch && (() => {
-        const rfq = Array.isArray(selectedMatch.rfqs)
-          ? selectedMatch.rfqs[0]
-          : selectedMatch.rfqs;
+      {selectedMatch &&
+        (() => {
+          const rfq = (Array.isArray(selectedMatch.rfqs)
+            ? selectedMatch.rfqs[0]
+            : selectedMatch.rfqs) as JoinedRfq | null;
 
-        if (!rfq) return null;
+          if (!rfq) return null;
 
-        return (
-          <section className="rounded-xl border bg-white p-6 shadow-sm">
-            <div className="mb-4 flex items-center justify-between gap-4">
-              <div>
-                <h2 className="font-semibold">RFQ Opportunity Details</h2>
-                <p className="text-sm text-gray-500">
-                  Review this matched RFQ before deciding to engage.
-                </p>
+          return (
+            <section className="rounded-xl border bg-white p-6 shadow-sm">
+              <div className="mb-4 flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="font-semibold">RFQ Opportunity Details</h2>
+                  <p className="text-sm text-gray-500">
+                    Review this matched RFQ before deciding to engage.
+                  </p>
+                </div>
+
+                <Link
+                  href="/supplier/bulletin-board"
+                  className="rounded border px-3 py-2 text-sm"
+                >
+                  Close
+                </Link>
               </div>
-
-              <Link
-                href="/dashboard/supplier/bulletin-board"
-                className="rounded border px-3 py-2 text-sm"
-              >
-                Close
-              </Link>
-            </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-lg border p-4">
                 <h3 className="font-medium">{getRfqProductName(rfq) ?? "Unnamed RFQ"}</h3>
 
-                <div className="mt-4 space-y-2 text-sm text-gray-600">
-                  <div>
-                    <span className="font-medium">Quantity:</span>{" "}
-                    {rfq.quantity} {rfq.unit ?? ""}
+                  <div className="mt-4 space-y-2 text-sm text-gray-600">
+                    <div>
+                      <span className="font-medium">Quantity:</span>{" "}
+                      {rfq.quantity} {rfq.unit ?? ""}
+                    </div>
+                    <div>
+                      <span className="font-medium">Deadline:</span>{" "}
+                      {formatDate(rfq.deadline)}
+                    </div>
+                    <div>
+                      <span className="font-medium">Visibility:</span>{" "}
+                      {rfq.visibility ?? "-"}
+                    </div>
+                    <div>
+                      <span className="font-medium">RFQ status:</span>{" "}
+                      {rfq.status ?? "open"}
+                    </div>
                   </div>
-                  <div>
-                    <span className="font-medium">Deadline:</span>{" "}
-                    {formatDate(rfq.deadline)}
-                  </div>
-                  <div>
-                    <span className="font-medium">Visibility:</span>{" "}
-                    {rfq.visibility ?? "—"}
-                  </div>
-                  <div>
-                    <span className="font-medium">RFQ status:</span>{" "}
-                    {rfq.status ?? "open"}
+                </div>
+
+                <div className="rounded-lg border p-4">
+                  <h3 className="font-medium">Matching Details</h3>
+
+                  <div className="mt-4 space-y-2 text-sm text-gray-600">
+                    <div>
+                      <span className="font-medium">Match score:</span>{" "}
+                      {selectedMatch.match_score != null
+                        ? Number(selectedMatch.match_score).toFixed(2)
+                        : "-"}
+                    </div>
+                    <div>
+                      <span className="font-medium">Reason:</span>{" "}
+                      {selectedMatch.match_reason ?? "No reason provided."}
+                    </div>
+                    <div>
+                      <span className="font-medium">Notified at:</span>{" "}
+                      {formatDate(selectedMatch.notified_at)}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-lg border p-4">
-                <h3 className="font-medium">Matching Details</h3>
-
-                <div className="mt-4 space-y-2 text-sm text-gray-600">
-                  <div>
-                    <span className="font-medium">Match score:</span>{" "}
-                    {selectedMatch.match_score != null
-                      ? Number(selectedMatch.match_score).toFixed(2)
-                      : "—"}
-                  </div>
-                  <div>
-                    <span className="font-medium">Reason:</span>{" "}
-                    {selectedMatch.match_reason ?? "No reason provided."}
-                  </div>
-                  <div>
-                    <span className="font-medium">Notified at:</span>{" "}
-                    {formatDate(selectedMatch.notified_at)}
-                  </div>
-                </div>
+              <div className="mt-6 rounded-lg border p-4">
+                <h3 className="font-medium">Specifications</h3>
+                <p className="mt-3 text-sm text-gray-600">
+                  {rfq.specifications ?? "No specifications provided."}
+                </p>
               </div>
-            </div>
 
-            <div className="mt-6 rounded-lg border p-4">
-              <h3 className="font-medium">Specifications</h3>
-              <p className="mt-3 text-sm text-gray-600">
-                {rfq.specifications ?? "No specifications provided."}
-              </p>
-            </div>
-
-            <div className="mt-6">
-              <form action={engageWithRfq}>
-                <input type="hidden" name="rfq_id" value={selectedMatch.rfq_id} />
-                <button
-                  type="submit"
-                  className="rounded bg-black px-4 py-2 text-white"
-                >
-                  Bid This RFQ
-                </button>
-              </form>
-            </div>
-          </section>
-        );
-      })()}
+              <div className="mt-6">
+                <form action={engageWithRfq}>
+                  <input type="hidden" name="rfq_id" value={selectedMatch.rfq_id} />
+                  <button
+                    type="submit"
+                    className="rounded bg-black px-4 py-2 text-white"
+                  >
+                    Bid This RFQ
+                  </button>
+                </form>
+              </div>
+            </section>
+          );
+        })()}
     </main>
   );
 }

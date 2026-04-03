@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ModalShell } from "@/components/modals";
 import { cancelPurchaseOrder, uploadPurchaseOrderReceipt } from "../actions";
 import { getBuyerPurchaseOrderDetail } from "../data";
+import { ReceiptUploadWidget } from "./receipt-upload-widget";
 
 function formatCurrency(value: number | null) {
   if (value === null || Number.isNaN(value)) return "Not available";
@@ -363,74 +364,6 @@ function ReceiptPreview({
   );
 }
 
-function ReceiptUploadForm({
-  poId,
-  mode,
-  reviewNotes,
-  currentFileName,
-}: {
-  poId: number;
-  mode: "first_upload" | "resubmit";
-  reviewNotes?: string | null;
-  currentFileName?: string | null;
-}) {
-  return (
-    <NotificationCard
-      tone={mode === "resubmit" ? "red" : "purple"}
-      title={
-        mode === "resubmit"
-          ? "Payment receipt was rejected. Please upload a clearer or valid receipt."
-          : "Upload your payment receipt"
-      }
-      description={
-        mode === "resubmit"
-          ? "The supplier needs a legible receipt before the order can be completed."
-          : "Once the order is delivered and paid, submit your receipt so the supplier can verify the payment."
-      }
-    >
-      <form action={uploadPurchaseOrderReceipt} className="space-y-3">
-        <input type="hidden" name="poId" value={poId} />
-
-        {reviewNotes ? (
-          <div className="rounded-[12px] border border-[#ffd4d0] bg-white px-3 py-3 text-[13px] text-[#da3b2f]">
-            Supplier notes: {reviewNotes}
-          </div>
-        ) : null}
-
-        {currentFileName ? (
-          <div className="rounded-[12px] border border-[#f1d7d4] bg-white px-3 py-3 text-[13px] text-[#8c97a7]">
-            Previous upload: {currentFileName}
-          </div>
-        ) : null}
-
-        <input
-          type="file"
-          name="receiptFile"
-          accept="application/pdf,image/jpeg,image/jpg,image/png,image/webp"
-          required
-          className="block w-full rounded-[12px] border border-[#d7dee8] bg-white px-3 py-3 text-sm text-[#223654]"
-        />
-
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[12px] text-[#9aa5b6]">
-            PDF, JPG, PNG, or WEBP up to 10MB.
-          </p>
-          <button
-            type="submit"
-            className={`inline-flex h-10 items-center justify-center rounded-[10px] px-4 text-[13px] font-semibold text-white transition ${
-              mode === "resubmit"
-                ? "bg-[#ff4d3d] hover:bg-[#eb3b2b]"
-                : "bg-[#6f35d4] hover:bg-[#5f2abd]"
-            }`}
-          >
-            {mode === "resubmit" ? "Resubmit Receipt" : "Upload Receipt"}
-          </button>
-        </div>
-      </form>
-    </NotificationCard>
-  );
-}
-
 export default async function BuyerPurchaseOrderDetailPage({
   params,
   searchParams,
@@ -440,6 +373,7 @@ export default async function BuyerPurchaseOrderDetailPage({
   }>;
   searchParams?: Promise<{
     modal?: string;
+    receiptError?: string;
   }>;
 }) {
   const resolvedParams = await params;
@@ -451,6 +385,10 @@ export default async function BuyerPurchaseOrderDetailPage({
 
   const order = await getBuyerPurchaseOrderDetail(poId);
   const resolvedSearchParams = (await searchParams) ?? {};
+  const receiptError =
+    typeof resolvedSearchParams.receiptError === "string"
+      ? resolvedSearchParams.receiptError
+      : null;
 
   if (!order) {
     notFound();
@@ -632,6 +570,14 @@ export default async function BuyerPurchaseOrderDetailPage({
           />
         ) : null}
 
+        {receiptError ? (
+          <NotificationCard
+            tone="red"
+            title="Receipt upload failed"
+            description={receiptError}
+          />
+        ) : null}
+
         {order.status === "shipped" && order.receiptStatus === "not_uploaded" ? (
           <>
             <NotificationCard
@@ -639,7 +585,12 @@ export default async function BuyerPurchaseOrderDetailPage({
               title="Order on its way"
               description="This order has been dispatched by the supplier. Once it is delivered and payment is completed, upload the receipt to continue the order."
             />
-            <ReceiptUploadForm poId={order.poId} mode="first_upload" />
+              <ReceiptUploadWidget
+                poId={order.poId}
+                mode="first_upload"
+                existingReceiptFilePath={order.receiptFilePath}
+                submitAction={uploadPurchaseOrderReceipt}
+              />
           </>
         ) : null}
 
@@ -667,11 +618,13 @@ export default async function BuyerPurchaseOrderDetailPage({
                 description="Previously submitted receipt."
               />
             ) : null}
-            <ReceiptUploadForm
-              poId={order.poId}
-              mode="resubmit"
-              reviewNotes={order.receiptReviewNotes}
-              currentFileName={getFileName(order.receiptFilePath)}
+              <ReceiptUploadWidget
+                poId={order.poId}
+                mode="resubmit"
+                reviewNotes={order.receiptReviewNotes}
+                currentFileName={getFileName(order.receiptFilePath)}
+                existingReceiptFilePath={order.receiptFilePath}
+                submitAction={uploadPurchaseOrderReceipt}
             />
           </>
         ) : null}

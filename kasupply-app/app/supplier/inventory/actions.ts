@@ -15,7 +15,15 @@ type ExistingProductRow = {
   image_url: string | null;
 };
 
-function buildProductImagePath(supplierId: number, fileName: string) {
+type ExistingProductImageRow = {
+  image_id: number;
+  product_id: number;
+  storage_path: string;
+  sort_order: number | null;
+  is_cover: boolean | null;
+};
+
+function buildProductImagePath(supplierId: number, fileName: string, index: number) {
   const fileExt = fileName.split(".").pop() || "jpg";
   const safeExt = fileExt.toLowerCase();
   const baseName = fileName
@@ -25,7 +33,8 @@ function buildProductImagePath(supplierId: number, fileName: string) {
     .replace(/^-+|-+$/g, "");
 
   const safeBaseName = baseName || "product-image";
-  return `${supplierId}/${safeBaseName}-${Date.now()}.${safeExt}`;
+  const uniqueSuffix = `${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}`;
+  return `${supplierId}/${safeBaseName}-${uniqueSuffix}.${safeExt}`;
 }
 
 async function getCurrentSupplierId() {
@@ -73,6 +82,58 @@ async function getCurrentSupplierId() {
   return supplierProfile.supplier_id;
 }
 
+function getImageFiles(formData: FormData) {
+  return formData
+    .getAll("image_file")
+    .filter((value): value is File => value instanceof File && value.size > 0);
+}
+
+async function uploadProductImages(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  supplierId: number,
+  imageFiles: File[],
+) {
+  const uploadedPaths: string[] = [];
+
+  for (const [index, imageFile] of imageFiles.entries()) {
+    if (!imageFile.type.startsWith("image/")) {
+      throw new Error("Product image must be a valid image file.");
+    }
+
+    const imagePath = buildProductImagePath(supplierId, imageFile.name, index);
+    const { error: imageUploadError } = await supabase.storage
+      .from("product-images")
+      .upload(imagePath, imageFile, {
+        upsert: true,
+        contentType: imageFile.type,
+      });
+
+    if (imageUploadError) {
+      if (uploadedPaths.length > 0) {
+        await supabase.storage.from("product-images").remove(uploadedPaths);
+      }
+      throw new Error(imageUploadError.message || "Failed to upload product image.");
+    }
+
+    uploadedPaths.push(imagePath);
+  }
+
+  return uploadedPaths;
+}
+
+function dedupeOrderedPaths(paths: string[]) {
+  const seen = new Set<string>();
+  const uniquePaths: string[] = [];
+
+  for (const path of paths) {
+    if (!path || seen.has(path)) continue;
+    seen.add(path);
+    uniquePaths.push(path);
+  }
+
+  return uniquePaths;
+}
+
 export async function createInventoryItem(formData: FormData) {
   const supabase = await createClient();
   const supplier_id = await getCurrentSupplierId();
@@ -86,8 +147,9 @@ export async function createInventoryItem(formData: FormData) {
   const max_capacity = Number(formData.get("max_capacity"));
   const lead_time = String(formData.get("lead_time") || "").trim();
   const stock_available = Number(formData.get("stock_available"));
-  const is_published = formData.get("is_published") === "on";
-  const image_file = formData.get("image_file") as File | null;
+  const visibility = String(formData.get("visibility") || "").trim().toLowerCase();
+  const is_published = visibility === "visible";
+  const imageFiles = getImageFiles(formData);
 
   if (!product_name) throw new Error("Product name is required.");
   if (!category_id || Number.isNaN(category_id)) throw new Error("Category is required.");
@@ -98,28 +160,13 @@ export async function createInventoryItem(formData: FormData) {
   if (!lead_time) throw new Error("Lead time is required.");
   if (Number.isNaN(stock_available) || stock_available < 0) throw new Error("Stock available must be a valid number.");
 
-  let image_url: string | null = null;
+  const uploadedPaths = imageFiles.length > 0
+    ? await uploadProductImages(supabase, supplier_id, imageFiles)
+    : [];
+  const uniqueUploadedPaths = dedupeOrderedPaths(uploadedPaths);
+  const image_url = uniqueUploadedPaths[0] ?? null;
 
-  if (image_file && image_file.size > 0) {
-    if (!image_file.type.startsWith("image/")) {
-      throw new Error("Product image must be a valid image file.");
-    }
-
-    image_url = buildProductImagePath(supplier_id, image_file.name);
-
-    const { error: imageUploadError } = await supabase.storage
-      .from("product-images")
-      .upload(image_url, image_file, {
-        upsert: true,
-        contentType: image_file.type,
-      });
-
-    if (imageUploadError) {
-      throw new Error(imageUploadError.message || "Failed to upload product image.");
-    }
-  }
-
-  const { error: insertError } = await supabase.from("products").insert({
+  const { data: createdProduct, error: insertError } = await supabase.from("products").insert({
     supplier_id,
     category_id,
     product_name,
@@ -134,17 +181,34 @@ export async function createInventoryItem(formData: FormData) {
     is_published,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
-  });
+  }).select("product_id").single();
 
   if (insertError) {
-    if (image_url) {
-      await supabase.storage.from("product-images").remove([image_url]);
+    if (uploadedPaths.length > 0) {
+      await supabase.storage.from("product-images").remove(uploadedPaths);
     }
     throw new Error(insertError.message || "Failed to create product.");
   }
 
+  if (uniqueUploadedPaths.length > 0) {
+    const { error: productImagesInsertError } = await supabase.from("product_images").insert(
+      uniqueUploadedPaths.map((path, index) => ({
+        product_id: createdProduct.product_id,
+        storage_path: path,
+        sort_order: index,
+        is_cover: index === 0,
+      })),
+    );
+
+      if (productImagesInsertError) {
+        await supabase.from("products").delete().eq("product_id", createdProduct.product_id);
+        await supabase.storage.from("product-images").remove(uniqueUploadedPaths);
+        throw new Error(productImagesInsertError.message || "Failed to save product images.");
+      }
+    }
+
   revalidatePath("/supplier/inventory");
-  redirect("/supplier/inventory");
+  redirect(`/supplier/inventory?modal=added&added=${createdProduct.product_id}`);
 }
 
 export async function updateInventoryItem(formData: FormData) {
@@ -161,8 +225,13 @@ export async function updateInventoryItem(formData: FormData) {
   const max_capacity = Number(formData.get("max_capacity"));
   const lead_time = String(formData.get("lead_time") || "").trim();
   const stock_available = Number(formData.get("stock_available"));
-  const is_published = formData.get("is_published") === "on";
-  const image_file = formData.get("image_file") as File | null;
+  const visibility = String(formData.get("visibility") || "").trim().toLowerCase();
+  const is_published = visibility === "visible";
+  const imageFiles = getImageFiles(formData);
+  const existingImageIds = formData
+    .getAll("existing_image_ids")
+    .map((value) => String(value))
+    .filter(Boolean);
 
   if (!product_id || Number.isNaN(product_id)) throw new Error("Invalid product.");
   if (!product_name) throw new Error("Product name is required.");
@@ -185,29 +254,34 @@ export async function updateInventoryItem(formData: FormData) {
     throw new Error("Product not found.");
   }
 
-  let nextImageUrl = existingProduct.image_url;
-  let uploadedReplacementPath: string | null = null;
+  const { data: existingProductImages, error: existingProductImagesError } = await supabase
+    .from("product_images")
+    .select("image_id, product_id, storage_path, sort_order, is_cover")
+    .eq("product_id", product_id)
+    .order("sort_order", { ascending: true });
 
-  if (image_file && image_file.size > 0) {
-    if (!image_file.type.startsWith("image/")) {
-      throw new Error("Product image must be a valid image file.");
-    }
-
-    uploadedReplacementPath = buildProductImagePath(supplier_id, image_file.name);
-
-    const { error: imageUploadError } = await supabase.storage
-      .from("product-images")
-      .upload(uploadedReplacementPath, image_file, {
-        upsert: true,
-        contentType: image_file.type,
-      });
-
-    if (imageUploadError) {
-      throw new Error(imageUploadError.message || "Failed to upload product image.");
-    }
-
-    nextImageUrl = uploadedReplacementPath;
+  if (existingProductImagesError) {
+    throw new Error(existingProductImagesError.message || "Failed to load current product images.");
   }
+
+  const safeExistingProductImages = (existingProductImages as ExistingProductImageRow[] | null) ?? [];
+  const existingImageMap = new Map(
+    safeExistingProductImages.map((image) => [String(image.image_id), image]),
+  );
+  const keptExistingImages = existingImageIds
+    .map((imageId) => existingImageMap.get(imageId))
+    .filter((image): image is ExistingProductImageRow => Boolean(image));
+  const removedExistingImages = safeExistingProductImages.filter(
+    (image) => !existingImageIds.includes(String(image.image_id)),
+  );
+  const uploadedPaths = imageFiles.length > 0
+    ? await uploadProductImages(supabase, supplier_id, imageFiles)
+    : [];
+  const orderedImageUrls = dedupeOrderedPaths([
+    ...keptExistingImages.map((image) => image.storage_path),
+    ...uploadedPaths,
+  ]);
+  const nextImageUrl = orderedImageUrls[0] ?? null;
 
   const { error: updateError } = await supabase
     .from("products")
@@ -229,24 +303,44 @@ export async function updateInventoryItem(formData: FormData) {
     .eq("supplier_id", supplier_id);
 
   if (updateError) {
-    if (uploadedReplacementPath) {
-      await supabase.storage.from("product-images").remove([uploadedReplacementPath]);
+    if (uploadedPaths.length > 0) {
+      await supabase.storage.from("product-images").remove(uploadedPaths);
     }
     throw new Error(updateError.message || "Failed to update product.");
   }
 
-  if (
-    uploadedReplacementPath &&
-    existingProduct.image_url &&
-    existingProduct.image_url !== uploadedReplacementPath
-  ) {
+  const { error: deleteExistingRowsError } = await supabase
+    .from("product_images")
+    .delete()
+    .eq("product_id", product_id);
+
+  if (deleteExistingRowsError) {
+    throw new Error(deleteExistingRowsError.message || "Failed to refresh product images.");
+  }
+
+  if (orderedImageUrls.length > 0) {
+    const { error: insertReplacementRowsError } = await supabase.from("product_images").insert(
+      orderedImageUrls.map((path, index) => ({
+        product_id,
+        storage_path: path,
+        sort_order: index,
+        is_cover: index === 0,
+      })),
+    );
+
+    if (insertReplacementRowsError) {
+      throw new Error(insertReplacementRowsError.message || "Failed to save product image order.");
+    }
+  }
+
+  if (removedExistingImages.length > 0) {
     await supabase.storage
       .from("product-images")
-      .remove([existingProduct.image_url]);
+      .remove(removedExistingImages.map((image) => image.storage_path));
   }
 
   revalidatePath("/supplier/inventory");
-  redirect("/supplier/inventory");
+  redirect("/supplier/inventory?modal=saved");
 }
 
 export async function deleteInventoryItem(formData: FormData) {
@@ -270,6 +364,11 @@ export async function deleteInventoryItem(formData: FormData) {
     throw new Error("Product not found.");
   }
 
+  const { data: existingProductImages } = await supabase
+    .from("product_images")
+    .select("storage_path")
+    .eq("product_id", product_id);
+
   const { error: deleteError } = await supabase
     .from("products")
     .delete()
@@ -280,10 +379,18 @@ export async function deleteInventoryItem(formData: FormData) {
     throw new Error(deleteError.message || "Failed to delete product.");
   }
 
+  const imagePaths = new Set<string>();
   if (existingProduct.image_url) {
+    imagePaths.add(existingProduct.image_url);
+  }
+  for (const image of existingProductImages ?? []) {
+    if (image.storage_path) imagePaths.add(image.storage_path);
+  }
+
+  if (imagePaths.size > 0) {
     await supabase.storage
       .from("product-images")
-      .remove([existingProduct.image_url]);
+      .remove(Array.from(imagePaths));
   }
 
   revalidatePath("/supplier/inventory");

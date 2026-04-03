@@ -91,7 +91,11 @@ export async function updatePurchaseOrderStatus(formData: FormData) {
   const { supabase, supplierId } = await getCurrentSupplierId();
 
   const poId = Number(formData.get("po_id"));
-  const nextStatus = String(formData.get("next_status") || "").trim().toLowerCase();
+  const nextStatus = String(
+    formData.get("next_status") || formData.get("status") || "",
+  )
+    .trim()
+    .toLowerCase();
 
   if (!poId || Number.isNaN(poId)) {
     throw new Error("Invalid purchase order.");
@@ -103,12 +107,18 @@ export async function updatePurchaseOrderStatus(formData: FormData) {
 
   const { data: order, error: orderError } = await supabase
     .from("purchase_orders")
-    .select("po_id, quote_id, status, receipt_file_url, receipt_status")
-    .eq("po_id", poId)
+    .select(
+      "po_id, supplier_id, quote_id, status, receipt_file_url, receipt_status",
+    )
     .eq("supplier_id", supplierId)
-    .single();
+    .eq("po_id", poId)
+    .maybeSingle();
 
-  if (orderError || !order) {
+  if (orderError) {
+    throw new Error(orderError.message || "Failed to load purchase order.");
+  }
+
+  if (!order) {
     throw new Error("Purchase order not found.");
   }
 
@@ -129,12 +139,13 @@ export async function updatePurchaseOrderStatus(formData: FormData) {
   }
 
   if (nextStatus === "completed") {
-    if (!order.receipt_file_url) {
-      throw new Error("The buyer must upload a receipt before the order can be completed.");
-    }
+    const receiptPath =
+      typeof order.receipt_file_url === "string" && order.receipt_file_url.trim().length > 0
+        ? order.receipt_file_url
+        : null;
 
-    if (order.receipt_status !== "approved") {
-      throw new Error("The buyer receipt must be approved before the order can be completed.");
+    if (!receiptPath) {
+      throw new Error("The buyer must upload a receipt before the order can be completed.");
     }
   }
 
@@ -145,8 +156,7 @@ export async function updatePurchaseOrderStatus(formData: FormData) {
       completed_at: nextStatus === "completed" ? new Date().toISOString() : null,
       updated_at: new Date().toISOString(),
     })
-    .eq("po_id", poId)
-    .eq("supplier_id", supplierId);
+    .eq("po_id", poId);
 
   if (updateError) {
     throw new Error(updateError.message || "Failed to update purchase order status.");

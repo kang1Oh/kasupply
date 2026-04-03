@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { AccountConfirmModal } from "@/components/modals";
+import { AccountConfirmModal, TrashCanModalIcon } from "@/components/modals";
 
 type BuyerAccountActionsProps = {
   logoutLabel?: string;
@@ -36,28 +36,6 @@ function LogoutModalIcon() {
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function DeleteModalIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-[30px] w-[30px]" aria-hidden="true">
-      <path
-        d="M5.5 7.5h13M9 7.5V5.75A1.75 1.75 0 0 1 10.75 4h2.5A1.75 1.75 0 0 1 15 5.75V7.5m-7.75 0 .7 10.2A2 2 0 0 0 9.95 19.5h4.1a2 2 0 0 0 2-1.8l.7-10.2"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M10 10.5v5m4-5v5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
       />
     </svg>
   );
@@ -218,7 +196,7 @@ export function BuyerAccountActions({
 
       <AccountConfirmModal
         isOpen={isDeleteOpen}
-        icon={<DeleteModalIcon />}
+        icon={<TrashCanModalIcon size={50} />}
         title="Delete account?"
         description="This action is permanent and cannot be undone. All your data will be removed."
         cancelLabel="Cancel"

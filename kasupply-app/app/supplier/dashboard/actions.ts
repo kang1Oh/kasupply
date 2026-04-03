@@ -284,6 +284,7 @@ export async function getSupplierDashboardData(): Promise<SupplierDashboardData>
     },
     bulletinBoardItems: safeBoardRows.map((row) => {
       const rfq = getJoinedRfq(row.rfqs);
+      const product = Array.isArray(rfq?.products) ? rfq.products[0] : rfq?.products;
 
       return {
         matchId: row.match_id,

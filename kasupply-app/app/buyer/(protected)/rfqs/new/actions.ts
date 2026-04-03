@@ -318,6 +318,12 @@ export async function createRFQ(formData: FormData) {
     throw new Error("Target price per unit is required.");
   }
 
+  const parsedTargetPricePerUnit = Number(targetPricePerUnit);
+
+  if (!Number.isFinite(parsedTargetPricePerUnit) || parsedTargetPricePerUnit <= 0) {
+    throw new Error("Target price per unit must be a valid number.");
+  }
+
   if (!preferredDeliveryDate) {
     throw new Error("Preferred delivery date is required.");
   }
@@ -360,7 +366,7 @@ export async function createRFQ(formData: FormData) {
       quantity,
       unit: productRow.unit,
       specifications: specifications || null,
-      target_price_per_unit: Number(targetPricePerUnit),
+      target_price_per_unit: parsedTargetPricePerUnit,
       preferred_delivery_date: preferredDeliveryDate,
       delivery_location: deliveryLocation,
       deadline,

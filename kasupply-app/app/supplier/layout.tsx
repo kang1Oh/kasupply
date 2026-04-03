@@ -1,33 +1,30 @@
-import Link from "next/link";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getUserOnboardingStatus } from "@/lib/auth/get-user-onboarding-status";
-import { LogoutButton } from "@/components/logout-button";
-
-function getSupplierNavItems() {
-  return {
-    top: [
-      { href: "/supplier/dashboard", label: "Dashboard" },
-      { href: "/supplier/inventory", label: "Inventory" },
-      { href: "/supplier/rfq", label: "RFQ" },
-      { href: "/supplier/purchase-orders", label: "Purchase Orders" },
-      { href: "/supplier/messages", label: "Messages" },
-    ],
-    bottom: [
-      { href: "/supplier/account-settings", label: "Account Settings" },
-    ],
-  };
-}
+import { SupplierSidebar } from "@/components/supplier-sidebar";
 
 function SupplierLayoutFallback() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="grid min-h-screen md:grid-cols-[260px_1fr]">
-        <aside className="border-r bg-white p-4">
-          <h2 className="text-xl font-bold">KaSupply</h2>
-          <p className="text-sm text-gray-500">Loading...</p>
+    <div className="min-h-screen bg-[#F5F7FB]">
+      <div className="flex min-h-screen">
+        <aside className="h-screen w-[230px] shrink-0 bg-[#1E3A5F] px-4 py-4 text-white">
+          <div className="animate-pulse">
+            <div className="h-10 w-32 rounded-xl bg-white/15" />
+            <div className="mt-6 space-y-2">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="h-11 rounded-lg bg-white/10"
+                />
+              ))}
+            </div>
+            <div className="mt-[280px] h-14 rounded-xl bg-white/10" />
+          </div>
         </aside>
-        <main className="p-6">Loading supplier panel...</main>
+
+        <main className="flex-1 p-6">
+          <div className="h-24 animate-pulse rounded-2xl bg-white shadow-sm" />
+        </main>
       </div>
     </div>
   );
@@ -60,47 +57,15 @@ async function SupplierLayoutContent({
     redirect("/onboarding/supplier-site-images");
   }
 
-  const navItems = getSupplierNavItems();
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="grid min-h-screen md:grid-cols-[260px_1fr]">
-        <aside className="flex h-screen flex-col border-r bg-white p-4">
-          <div>
-            <h2 className="text-xl font-bold">KaSupply</h2>
-            <p className="text-sm text-gray-500 capitalize">supplier panel</p>
-          </div>
+    <div className="min-h-screen bg-[#F5F7FB]">
+      <div className="flex min-h-screen">
+        <SupplierSidebar
+          businessName={status.businessProfile?.business_name ?? "Supplier"}
+          businessType={status.businessProfile?.business_type ?? "Supplier"}
+        />
 
-          <nav className="mt-8 space-y-2">
-            {navItems.top.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="block rounded-lg px-3 py-2 text-sm hover:bg-gray-100"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-
-          <div className="mt-auto border-t pt-4">
-            {navItems.bottom.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="block rounded-lg px-3 py-2 text-sm hover:bg-gray-100"
-              >
-                {item.label}
-              </Link>
-            ))}
-
-            <div className="mt-3 px-3">
-              <LogoutButton />
-            </div>
-          </div>
-        </aside>
-
-        <main className="p-6">{children}</main>
+        <main className="min-w-0 flex-1 p-6">{children}</main>
       </div>
     </div>
   );
