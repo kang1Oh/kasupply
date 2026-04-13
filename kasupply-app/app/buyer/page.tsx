@@ -40,7 +40,7 @@ export default async function BuyerPage({ searchParams }: BuyerPageProps) {
     );
 
     return {
-      id: supplier.supplierId,
+      supplierId: supplier.supplierId,
       profileId: supplier.profileId,
       name: supplier.businessName,
       initials: getInitials(supplier.businessName),

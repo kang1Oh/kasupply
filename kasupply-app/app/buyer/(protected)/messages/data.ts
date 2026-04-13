@@ -2,18 +2,9 @@ import { createClient } from "@/lib/supabase/server";
 
 type RawRecord = Record<string, unknown>;
 
-type ConversationTable = "conversation" | "conversations";
-type EngagementTable = "rfq_engagement" | "rfq_engagements";
-type RfqTable = "rfq" | "rfqs";
-
 type SupplierProfileRow = {
   supplier_id: number;
   profile_id: number;
-};
-
-type CurrentBusinessProfileRow = {
-  profile_id: number;
-  business_name: string | null;
 };
 
 type BuyerProfileRow = {
@@ -88,7 +79,9 @@ function isMissingRelationError(error: { code?: string; message?: string } | nul
 
 async function runFirstAvailable<T>(
   tables: string[],
-  runner: (table: string) => Promise<{ data: T | null; error: { code?: string; message?: string } | null }>,
+  runner: (
+    table: string,
+  ) => Promise<{ data: T | null; error: { code?: string; message?: string } | null }>,
 ) {
   let lastError: { code?: string; message?: string } | null = null;
 
@@ -114,7 +107,9 @@ async function runFirstAvailable<T>(
 
 async function runFirstAvailableOrEmpty<T>(
   tables: string[],
-  runner: (table: string) => Promise<{ data: T | null; error: { code?: string; message?: string } | null }>,
+  runner: (
+    table: string,
+  ) => Promise<{ data: T | null; error: { code?: string; message?: string } | null }>,
 ) {
   try {
     return await runFirstAvailable<T>(tables, runner);
@@ -131,7 +126,7 @@ async function runFirstAvailableOrEmpty<T>(
   }
 }
 
-async function getCurrentSupplierContext() {
+async function getCurrentBuyerContext() {
   const supabase = await createClient();
 
   const {
@@ -157,59 +152,42 @@ async function getCurrentSupplierContext() {
     .from("business_profiles")
     .select("profile_id, business_name")
     .eq("user_id", appUser.user_id)
-    .single<CurrentBusinessProfileRow>();
+    .single<{ profile_id: number; business_name: string | null }>();
 
   if (businessProfileError || !businessProfile) {
     throw new Error("Business profile not found.");
   }
 
-  const { data: supplierProfile, error: supplierProfileError } = await supabase
-    .from("supplier_profiles")
-    .select("supplier_id, profile_id")
+  const { data: buyerProfile, error: buyerProfileError } = await supabase
+    .from("buyer_profiles")
+    .select("buyer_id, profile_id")
     .eq("profile_id", businessProfile.profile_id)
-    .single<SupplierProfileRow>();
+    .single<BuyerProfileRow>();
 
-  if (supplierProfileError || !supplierProfile) {
-    throw new Error("Supplier profile not found.");
+  if (buyerProfileError || !buyerProfile) {
+    throw new Error("Buyer profile not found.");
   }
 
   return {
     supabase,
     appUser,
-    supplierProfile,
-    supplierInitials: getInitials(businessProfile.business_name ?? appUser.name ?? "Supplier"),
+    buyerProfile,
+    buyerBusinessName: businessProfile.business_name ?? appUser.name ?? "Buyer",
   };
 }
 
 function formatLocation(profile: BusinessProfileRow | null) {
   if (!profile) return "Location not available";
 
-  const parts = [
-    profile.business_location,
-    profile.city,
-    profile.province,
-    profile.region,
-  ].filter((value): value is string => Boolean(value && value.trim()));
+  const parts = [profile.city, profile.province, profile.region].filter(
+    (value): value is string => Boolean(value && value.trim()),
+  );
 
   return parts.length > 0 ? parts.join(", ") : "Location not available";
 }
 
-function formatTimestamp(value: string | null) {
-  if (!value) return "";
-
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "";
-
-  return new Intl.DateTimeFormat("en-PH", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(parsed);
-}
-
 function formatBusinessType(value: string | null) {
-  if (!value) return "Buyer";
+  if (!value) return "Supplier";
   return value
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
@@ -222,9 +200,35 @@ function getInitials(value: string | null) {
     .split(/\s+/)
     .filter(Boolean);
 
-  if (parts.length === 0) return "BY";
+  if (parts.length === 0) return "KS";
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
+}
+
+function formatChatTimestamp(value: string | null) {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return new Intl.DateTimeFormat("en-PH", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(parsed);
+}
+
+function formatSidebarTimestamp(value: string | null) {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  const diffMs = Date.now() - parsed.getTime();
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  if (diffHours < 1) return "now";
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return "Yesterday";
+  return new Intl.DateTimeFormat("en-PH", {
+    month: "short",
+    day: "numeric",
+  }).format(parsed);
 }
 
 function formatQuantityLabel(quantity: number | null, unit: string | null) {
@@ -236,7 +240,18 @@ function formatQuantityLabel(quantity: number | null, unit: string | null) {
 
 function formatPriceLabel(value: number | null, unit: string | null) {
   if (value == null || Number.isNaN(value)) return null;
-  return `Target ₱${value.toLocaleString("en-PH")} / ${unit ?? "unit"}`;
+  return `Target PHP ${value.toLocaleString("en-PH")} / ${unit ?? "unit"}`;
+}
+
+function formatDateLabel(value: string | null) {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return new Intl.DateTimeFormat("en-PH", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(parsed);
 }
 
 function buildConversationName(
@@ -244,8 +259,8 @@ function buildConversationName(
   fallbackId: number | null,
 ) {
   if (businessProfile?.business_name) return businessProfile.business_name;
-  if (fallbackId !== null) return `Buyer #${fallbackId}`;
-  return "Unknown conversation";
+  if (fallbackId !== null) return `Supplier #${fallbackId}`;
+  return "Unknown supplier";
 }
 
 export type MessageItem = {
@@ -260,7 +275,7 @@ export type MessageItem = {
 
 export type ConversationListItem = {
   id: number;
-  buyerId: number | null;
+  supplierId: number | null;
   name: string;
   initials: string;
   subtitle: string;
@@ -269,42 +284,40 @@ export type ConversationListItem = {
   latestMessageTimeLabel: string;
   unreadCount: number;
   hasUnread: boolean;
+  isOnline: boolean;
   engagementId: number | null;
   rfqId: number | null;
   rfqReference: string | null;
-  location: string;
-  contactPerson: string | null;
-  phone: string | null;
-  email: string | null;
   rfqTitle: string | null;
   rfqQuantityLabel: string | null;
   rfqTargetPriceLabel: string | null;
   rfqDeadlineLabel: string | null;
   rfqHref: string | null;
-  poId: number | null;
-  poHref: string | null;
+  contactPerson: string | null;
+  location: string;
 };
 
-export type SupplierMessagesData = {
+export type BuyerMessagesData = {
   currentUserId: string;
-  supplierInitials: string;
+  buyerInitials: string;
   filter: "all" | "unread";
   query: string;
   conversations: ConversationListItem[];
   selectedConversation: ConversationListItem | null;
+  draftConversation: ConversationListItem | null;
   messages: MessageItem[];
-  conversationTable: ConversationTable;
-  engagementTable: EngagementTable | null;
-  rfqTable: RfqTable | null;
 };
 
-export async function getSupplierMessagesData(params?: {
+export async function getBuyerMessagesData(params?: {
   conversationId?: number | null;
+  supplierId?: number | null;
+  engagementId?: number | null;
   filter?: string | null;
   query?: string | null;
 }) {
-  const { supabase, appUser, supplierProfile, supplierInitials } =
-    await getCurrentSupplierContext();
+  const { supabase, appUser, buyerProfile, buyerBusinessName } =
+    await getCurrentBuyerContext();
+  const currentUserId = appUser.user_id;
 
   const filter = params?.filter === "unread" ? "unread" : "all";
   const query = String(params?.query || "").trim().toLowerCase();
@@ -315,7 +328,7 @@ export async function getSupplierMessagesData(params?: {
       const result = await supabase
         .from(table)
         .select("*")
-        .eq("supplier_id", supplierProfile.supplier_id)
+        .eq("buyer_id", buyerProfile.buyer_id)
         .order("updated_at", { ascending: false });
 
       return {
@@ -325,46 +338,50 @@ export async function getSupplierMessagesData(params?: {
     },
   );
 
-  const conversationTable = conversationsResult.table as ConversationTable;
   const conversationRows = conversationsResult.data ?? [];
-
   const conversationIds = conversationRows
     .map((row) => readFirstNumber(row, ["conversation_id", "id"]))
     .filter((value): value is number => value !== null);
 
-  const buyerIds = Array.from(
+  const supplierIds = Array.from(
     new Set(
-      conversationRows
-        .map((row) => readFirstNumber(row, ["buyer_id"]))
-        .filter((value): value is number => value !== null),
+      [
+        ...conversationRows
+          .map((row) => readFirstNumber(row, ["supplier_id"]))
+          .filter((value): value is number => value !== null),
+        ...(params?.supplierId != null ? [params.supplierId] : []),
+      ],
     ),
   );
 
   const engagementIds = Array.from(
     new Set(
-      conversationRows
-        .map((row) => readFirstNumber(row, ["engagement_id", "rfq_engagement_id"]))
-        .filter((value): value is number => value !== null),
+      [
+        ...conversationRows
+          .map((row) => readFirstNumber(row, ["engagement_id", "rfq_engagement_id"]))
+          .filter((value): value is number => value !== null),
+        ...(params?.engagementId != null ? [params.engagementId] : []),
+      ],
     ),
   );
 
-  const buyerProfileMap = new Map<number, BuyerProfileRow>();
+  const supplierProfileMap = new Map<number, SupplierProfileRow>();
   const businessProfileMap = new Map<number, BusinessProfileRow>();
   const userMap = new Map<string, UserRow>();
 
-  if (buyerIds.length > 0) {
-    const { data: buyerProfiles } = await supabase
-      .from("buyer_profiles")
-      .select("buyer_id, profile_id")
-      .in("buyer_id", buyerIds);
+  if (supplierIds.length > 0) {
+    const { data: supplierProfiles } = await supabase
+      .from("supplier_profiles")
+      .select("supplier_id, profile_id")
+      .in("supplier_id", supplierIds);
 
-    for (const buyerProfile of (buyerProfiles as BuyerProfileRow[] | null) ?? []) {
-      buyerProfileMap.set(buyerProfile.buyer_id, buyerProfile);
+    for (const supplierProfile of (supplierProfiles as SupplierProfileRow[] | null) ?? []) {
+      supplierProfileMap.set(supplierProfile.supplier_id, supplierProfile);
     }
 
     const profileIds = Array.from(
       new Set(
-        ((buyerProfiles as BuyerProfileRow[] | null) ?? [])
+        ((supplierProfiles as SupplierProfileRow[] | null) ?? [])
           .map((row) => row.profile_id)
           .filter((value): value is number => typeof value === "number"),
       ),
@@ -374,7 +391,7 @@ export async function getSupplierMessagesData(params?: {
       const { data: businessProfiles } = await supabase
         .from("business_profiles")
         .select(
-          "profile_id, user_id, business_name, business_location, city, province, region, contact_number",
+          "profile_id, user_id, business_name, business_type, city, province, region, contact_number",
         )
         .in("profile_id", profileIds);
 
@@ -414,21 +431,16 @@ export async function getSupplierMessagesData(params?: {
         ).data ?? []
       : [];
 
-  const messageRows = allMessages as RawRecord[];
   const messagesByConversation = new Map<number, RawRecord[]>();
-
-  for (const message of messageRows) {
+  for (const message of allMessages as RawRecord[]) {
     const conversationId = readFirstNumber(message, ["conversation_id"]);
     if (conversationId === null) continue;
-    const existing = messagesByConversation.get(conversationId) ?? [];
-    existing.push(message);
-    messagesByConversation.set(conversationId, existing);
+    const current = messagesByConversation.get(conversationId) ?? [];
+    current.push(message);
+    messagesByConversation.set(conversationId, current);
   }
 
-  let engagementTable: EngagementTable | null = null;
-  let rfqTable: RfqTable | null = null;
   const rfqByEngagement = new Map<number, number>();
-
   if (engagementIds.length > 0) {
     const engagementResult = await runFirstAvailable<RawRecord[]>(
       ["rfq_engagement", "rfq_engagements"],
@@ -445,8 +457,6 @@ export async function getSupplierMessagesData(params?: {
       },
     );
 
-    engagementTable = engagementResult.table as EngagementTable;
-
     for (const engagement of engagementResult.data ?? []) {
       const engagementId = readFirstNumber(engagement, ["engagement_id"]);
       const rfqId = readFirstNumber(engagement, ["rfq_id"]);
@@ -454,45 +464,9 @@ export async function getSupplierMessagesData(params?: {
         rfqByEngagement.set(engagementId, rfqId);
       }
     }
-
-    const rfqIds = Array.from(new Set(Array.from(rfqByEngagement.values())));
-
-    if (rfqIds.length > 0) {
-      const rfqResult = await runFirstAvailable<RawRecord[]>(
-        ["rfq", "rfqs"],
-        async (table) => {
-          const result = await supabase
-            .from(table)
-            .select("*")
-            .in("rfq_id", rfqIds);
-
-          return {
-            data: (result.data as RawRecord[] | null) ?? null,
-            error: result.error,
-          };
-        },
-      );
-
-      rfqTable = rfqResult.table as RfqTable;
-      const rfqMap = new Map<number, RawRecord>();
-      for (const rfq of rfqResult.data ?? []) {
-        const rfqId = readFirstNumber(rfq, ["rfq_id"]);
-        if (rfqId !== null) {
-          rfqMap.set(rfqId, rfq);
-        }
-      }
-
-      for (const [engagementId, rfqId] of Array.from(rfqByEngagement.entries())) {
-        const rfq = rfqMap.get(rfqId);
-        if (!rfq) continue;
-        rfqByEngagement.set(
-          engagementId,
-          readFirstNumber(rfq, ["rfq_id"]) ?? rfqId,
-        );
-      }
-    }
   }
 
+  const rfqIds = Array.from(new Set(Array.from(rfqByEngagement.values())));
   const rfqDetailMap = new Map<
     number,
     {
@@ -503,7 +477,6 @@ export async function getSupplierMessagesData(params?: {
     }
   >();
 
-  const rfqIds = Array.from(new Set(Array.from(rfqByEngagement.values())));
   if (rfqIds.length > 0) {
     const { data: rfqs } = await supabase
       .from("rfqs")
@@ -547,77 +520,33 @@ export async function getSupplierMessagesData(params?: {
         (productId !== null ? productNameById.get(productId) ?? null : null) ??
         requestedName ??
         `RFQ-${rfqId}`;
-      const quantity = readFirstNumber(rfq, ["quantity"]);
-      const unit = readFirstString(rfq, ["unit"]);
-      const targetPrice = readFirstNumber(rfq, ["target_price_per_unit"]);
-      const deadline = readFirstString(rfq, ["deadline"]);
 
       rfqDetailMap.set(rfqId, {
         title,
-        quantityLabel: formatQuantityLabel(quantity, unit),
-        targetPriceLabel: formatPriceLabel(targetPrice, unit),
-        deadlineLabel: deadline ? new Intl.DateTimeFormat("en-PH", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }).format(new Date(deadline)) : null,
+        quantityLabel: formatQuantityLabel(
+          readFirstNumber(rfq, ["quantity"]),
+          readFirstString(rfq, ["unit"]),
+        ),
+        targetPriceLabel: formatPriceLabel(
+          readFirstNumber(rfq, ["target_price_per_unit"]),
+          readFirstString(rfq, ["unit"]),
+        ),
+        deadlineLabel: formatDateLabel(readFirstString(rfq, ["deadline"])),
       });
-    }
-  }
-
-  const poIdByEngagement = new Map<number, number>();
-  if (engagementIds.length > 0) {
-    const { data: quotations } = await supabase
-      .from("quotations")
-      .select("quote_id, engagement_id")
-      .in("engagement_id", engagementIds);
-
-    const quoteIdByEngagement = new Map<number, number>();
-    const quoteIds: number[] = [];
-    for (const quotation of (quotations as RawRecord[] | null) ?? []) {
-      const quoteId = readFirstNumber(quotation, ["quote_id"]);
-      const engagementId = readFirstNumber(quotation, ["engagement_id"]);
-      if (quoteId !== null && engagementId !== null) {
-        quoteIdByEngagement.set(engagementId, quoteId);
-        quoteIds.push(quoteId);
-      }
-    }
-
-    if (quoteIds.length > 0) {
-      const { data: purchaseOrders } = await supabase
-        .from("purchase_orders")
-        .select("po_id, quote_id")
-        .in("quote_id", quoteIds);
-
-      const poByQuoteId = new Map<number, number>();
-      for (const po of (purchaseOrders as RawRecord[] | null) ?? []) {
-        const poId = readFirstNumber(po, ["po_id"]);
-        const quoteId = readFirstNumber(po, ["quote_id"]);
-        if (poId !== null && quoteId !== null) {
-          poByQuoteId.set(quoteId, poId);
-        }
-      }
-
-      for (const [engagementId, quoteId] of Array.from(quoteIdByEngagement.entries())) {
-        const poId = poByQuoteId.get(quoteId);
-        if (poId != null) {
-          poIdByEngagement.set(engagementId, poId);
-        }
-      }
     }
   }
 
   const conversationItems = conversationRows
     .map((conversation) => {
     const id = readFirstNumber(conversation, ["conversation_id", "id"]) ?? 0;
-    const buyerId = readFirstNumber(conversation, ["buyer_id"]);
+    const supplierId = readFirstNumber(conversation, ["supplier_id"]);
     const engagementId = readFirstNumber(conversation, ["engagement_id", "rfq_engagement_id"]);
     const rfqId = engagementId !== null ? rfqByEngagement.get(engagementId) ?? null : null;
-    const buyerProfile =
-      buyerId !== null ? buyerProfileMap.get(buyerId) ?? null : null;
+    const supplierProfile =
+      supplierId !== null ? supplierProfileMap.get(supplierId) ?? null : null;
     const businessProfile =
-      buyerProfile?.profile_id != null
-        ? businessProfileMap.get(buyerProfile.profile_id) ?? null
+      supplierProfile?.profile_id != null
+        ? businessProfileMap.get(supplierProfile.profile_id) ?? null
         : null;
     const contactUser =
       businessProfile?.user_id != null
@@ -625,18 +554,24 @@ export async function getSupplierMessagesData(params?: {
         : null;
     const threadMessages = messagesByConversation.get(id) ?? [];
     const latestMessage = threadMessages[threadMessages.length - 1] ?? null;
+    const latestMessageAt =
+      readFirstString(latestMessage ?? {}, ["created_at", "sent_at"]) ??
+      readFirstString(conversation, ["updated_at", "created_at"]);
     const unreadCount = threadMessages.filter((message) => {
       const senderId = readFirstString(message, ["sender_id", "sent_by", "user_id"]);
       const readAt = readFirstString(message, ["read_at"]);
       const isRead = readFirstBoolean(message, ["is_read"]);
-      return senderId !== appUser.user_id && !readAt && isRead !== true;
+      return senderId !== currentUserId && !readAt && isRead !== true;
     }).length;
-    const rfqDetails =
-      rfqId !== null ? rfqDetailMap.get(rfqId) ?? null : null;
-    const subtitle = [formatBusinessType(businessProfile?.business_type ?? null), businessProfile?.city ? `${businessProfile.city}, ${businessProfile.province ?? ""}`.replace(/,\s*$/, "") : null]
-      .filter((value): value is string => Boolean(value && value.trim()))
+    const rfqDetails = rfqId !== null ? rfqDetailMap.get(rfqId) ?? null : null;
+    const location = formatLocation(businessProfile);
+    const subtitle = [
+      formatBusinessType(businessProfile?.business_type ?? null),
+      location !== "Location not available" ? location : null,
+    ]
+      .filter((value): value is string => Boolean(value))
       .join(" · ");
-    const poId = engagementId !== null ? poIdByEngagement.get(engagementId) ?? null : null;
+    const name = buildConversationName(businessProfile, supplierId);
 
       if (threadMessages.length === 0) {
         return null;
@@ -644,53 +579,50 @@ export async function getSupplierMessagesData(params?: {
 
       return {
         id,
-        buyerId,
-        name: buildConversationName(businessProfile, buyerId),
-        initials: getInitials(buildConversationName(businessProfile, buyerId)),
-        subtitle: subtitle || "Buyer",
+        supplierId,
+        name,
+        initials: getInitials(name),
+        subtitle: subtitle || "Supplier",
         latestMessage:
-          readFirstString(latestMessage ?? {}, ["message_text", "content", "message", "body", "text"]) ??
-          "No messages yet.",
-        latestMessageAt:
-          readFirstString(latestMessage ?? {}, ["created_at", "sent_at"]) ??
-          readFirstString(conversation, ["updated_at", "created_at"]),
-        latestMessageTimeLabel: formatTimestamp(
-          readFirstString(latestMessage ?? {}, ["created_at", "sent_at"]) ??
-            readFirstString(conversation, ["updated_at", "created_at"]),
-        ),
+          readFirstString(latestMessage ?? {}, [
+            "message_text",
+            "content",
+            "message",
+            "body",
+            "text",
+          ]) ?? "No messages yet.",
+        latestMessageAt,
+        latestMessageTimeLabel: formatSidebarTimestamp(latestMessageAt),
         unreadCount,
         hasUnread: unreadCount > 0,
+        isOnline:
+          latestMessageAt != null &&
+          Date.now() - new Date(latestMessageAt).getTime() < 1000 * 60 * 60 * 24,
         engagementId,
         rfqId,
         rfqReference: rfqId !== null ? `RFQ-${rfqId}` : null,
-        location: formatLocation(businessProfile),
-        contactPerson: contactUser?.name ?? null,
-        phone: businessProfile?.contact_number ?? null,
-        email: contactUser?.email ?? null,
         rfqTitle: rfqDetails?.title ?? null,
         rfqQuantityLabel: rfqDetails?.quantityLabel ?? null,
         rfqTargetPriceLabel: rfqDetails?.targetPriceLabel ?? null,
         rfqDeadlineLabel: rfqDetails?.deadlineLabel ?? null,
-        rfqHref: engagementId !== null ? `/supplier/rfq/${engagementId}` : null,
-        poId,
-        poHref: poId !== null ? `/supplier/purchase-orders/${poId}` : null,
+        rfqHref: rfqId !== null ? `/buyer/rfqs/${rfqId}` : null,
+        contactPerson: contactUser?.name ?? null,
+        location,
       } satisfies ConversationListItem;
     })
     .filter((conversation): conversation is ConversationListItem => conversation !== null);
 
   const searchedConversations = conversationItems.filter((conversation) => {
     if (!query) return true;
-    const haystack = [
+    return [
       conversation.name,
+      conversation.subtitle,
       conversation.latestMessage,
-      conversation.contactPerson ?? "",
-      conversation.email ?? "",
       conversation.rfqReference ?? "",
     ]
       .join(" ")
-      .toLowerCase();
-
-    return haystack.includes(query);
+      .toLowerCase()
+      .includes(query);
   });
 
   const filteredConversations =
@@ -698,21 +630,92 @@ export async function getSupplierMessagesData(params?: {
       ? searchedConversations.filter((conversation) => conversation.hasUnread)
       : searchedConversations;
 
+  const requestedConversationId = params?.conversationId ?? null;
+  const requestedSupplierId = params?.supplierId ?? null;
+  const requestedEngagementId = params?.engagementId ?? null;
+
+  const matchingRequestedConversation =
+    requestedSupplierId !== null
+      ? filteredConversations.find((conversation) => {
+          const sameSupplier = conversation.supplierId === requestedSupplierId;
+          const sameEngagement =
+            requestedEngagementId == null ||
+            conversation.engagementId === requestedEngagementId;
+          return sameSupplier && sameEngagement;
+        }) ??
+        filteredConversations.find(
+          (conversation) => conversation.supplierId === requestedSupplierId,
+        ) ??
+        null
+      : null;
+
   const selectedConversation =
     filteredConversations.find(
-      (conversation) => conversation.id === (params?.conversationId ?? null),
+      (conversation) => conversation.id === requestedConversationId,
     ) ??
-    filteredConversations[0] ??
-    null;
+    matchingRequestedConversation ??
+    (requestedSupplierId !== null ? null : filteredConversations[0] ?? null);
+
+  const draftSupplierId = requestedSupplierId;
+  const draftEngagementId = requestedEngagementId;
+  const draftRfqId =
+    draftEngagementId !== null ? rfqByEngagement.get(draftEngagementId) ?? null : null;
+  const draftRfqDetails =
+    draftRfqId !== null ? rfqDetailMap.get(draftRfqId) ?? null : null;
+  const draftSupplierProfile =
+    draftSupplierId !== null ? supplierProfileMap.get(draftSupplierId) ?? null : null;
+  const draftBusinessProfile =
+    draftSupplierProfile?.profile_id != null
+      ? businessProfileMap.get(draftSupplierProfile.profile_id) ?? null
+      : null;
+  const draftContactUser =
+    draftBusinessProfile?.user_id != null
+      ? userMap.get(draftBusinessProfile.user_id) ?? null
+      : null;
+  const draftLocation = formatLocation(draftBusinessProfile);
+  const draftSubtitle = [
+    formatBusinessType(draftBusinessProfile?.business_type ?? null),
+    draftLocation !== "Location not available" ? draftLocation : null,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(" · ");
+  const draftConversation =
+    selectedConversation == null && draftSupplierId !== null
+      ? ({
+          id: 0,
+          supplierId: draftSupplierId,
+          name: buildConversationName(draftBusinessProfile, draftSupplierId),
+          initials: getInitials(
+            buildConversationName(draftBusinessProfile, draftSupplierId),
+          ),
+          subtitle: draftSubtitle || "Supplier",
+          latestMessage: "Start a conversation with this supplier.",
+          latestMessageAt: null,
+          latestMessageTimeLabel: "",
+          unreadCount: 0,
+          hasUnread: false,
+          isOnline: false,
+          engagementId: draftEngagementId,
+          rfqId: draftRfqId,
+          rfqReference: draftRfqId !== null ? `RFQ-${draftRfqId}` : null,
+          rfqTitle: draftRfqDetails?.title ?? null,
+          rfqQuantityLabel: draftRfqDetails?.quantityLabel ?? null,
+          rfqTargetPriceLabel: draftRfqDetails?.targetPriceLabel ?? null,
+          rfqDeadlineLabel: draftRfqDetails?.deadlineLabel ?? null,
+          rfqHref: draftRfqId !== null ? `/buyer/rfqs/${draftRfqId}` : null,
+          contactPerson: draftContactUser?.name ?? null,
+          location: draftLocation,
+        } satisfies ConversationListItem)
+      : null;
 
   const selectedMessages =
     selectedConversation != null
       ? (messagesByConversation.get(selectedConversation.id) ?? []).map((message) => {
           const senderId = readFirstString(message, ["sender_id", "sent_by", "user_id"]);
-          const sentAt =
-            readFirstString(message, ["created_at", "sent_at"]) ?? null;
+          const sentAt = readFirstString(message, ["created_at", "sent_at"]) ?? null;
           const content =
-            readFirstString(message, ["message_text", "content", "message", "body", "text"]) ?? "";
+            readFirstString(message, ["message_text", "content", "message", "body", "text"]) ??
+            "";
           const readAt = readFirstString(message, ["read_at"]);
           const isRead = readFirstBoolean(message, ["is_read"]);
 
@@ -721,23 +724,21 @@ export async function getSupplierMessagesData(params?: {
             senderId,
             content,
             sentAt,
-            sentAtLabel: formatTimestamp(sentAt),
-            isOwnMessage: senderId === appUser.user_id,
+            sentAtLabel: formatChatTimestamp(sentAt),
+            isOwnMessage: senderId === currentUserId,
             isRead: Boolean(readAt) || isRead === true,
           } satisfies MessageItem;
         })
       : [];
 
   return {
-    currentUserId: appUser.user_id,
-    supplierInitials,
+    currentUserId,
+    buyerInitials: getInitials(buyerBusinessName),
     filter,
     query,
     conversations: filteredConversations,
     selectedConversation,
+    draftConversation,
     messages: selectedMessages,
-    conversationTable,
-    engagementTable,
-    rfqTable,
-  } satisfies SupplierMessagesData;
+  } satisfies BuyerMessagesData;
 }

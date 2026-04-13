@@ -343,6 +343,11 @@ export function BuyerRfqDetailPage({
   const profileHref = primaryEngagement
     ? `/buyer/search/${primaryEngagement.supplierId}`
     : "/buyer/search";
+  const messageSupplierHref = primaryEngagement
+    ? primaryEngagement.conversationId
+      ? `/buyer/messages?conversation=${primaryEngagement.conversationId}`
+      : `/buyer/messages?supplierId=${primaryEngagement.supplierId}&engagementId=${primaryEngagement.engagementId}`
+    : "/buyer/messages";
   const purchaseOrderHref =
     acceptedQuote != null
       ? `/buyer/purchase-orders?rfqId=${data.rfq.rfqId}&quoteId=${acceptedQuote.quoteId}`
@@ -414,12 +419,22 @@ export function BuyerRfqDetailPage({
             <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[#223654]">
               Supplier Info
             </h2>
-            <Link
-              href={profileHref}
-              className="inline-flex h-9 items-center justify-center rounded-[10px] border border-[#d9e2ee] bg-white px-4 text-[13px] font-medium text-[#223654] transition hover:bg-[#f8fafc]"
-            >
-              View Profile
-            </Link>
+            <div className="flex flex-wrap items-center gap-2">
+              {primaryEngagement ? (
+                <Link
+                  href={messageSupplierHref}
+                  className="inline-flex h-9 items-center justify-center rounded-[10px] border border-[#d9e2ee] bg-white px-4 text-[13px] font-medium text-[#223654] transition hover:bg-[#f8fafc]"
+                >
+                  Message Supplier
+                </Link>
+              ) : null}
+              <Link
+                href={profileHref}
+                className="inline-flex h-9 items-center justify-center rounded-[10px] border border-[#d9e2ee] bg-white px-4 text-[13px] font-medium text-[#223654] transition hover:bg-[#f8fafc]"
+              >
+                View Profile
+              </Link>
+            </div>
           </div>
 
           <div className="flex items-center gap-4">

@@ -1,8 +1,23 @@
 import { redirect } from "next/navigation";
 import { getBuyerAccessRedirect } from "@/lib/auth/buyer-access";
 import { getUserOnboardingStatus } from "@/lib/auth/get-user-onboarding-status";
+import { createClient } from "@/lib/supabase/server";
+import { ensureBuyerConversationForSupplier } from "@/lib/messages/ensure-buyer-conversation";
+import { getBuyerMessagesData } from "./data";
+import { BuyerMessagesClient } from "./messages-client";
 
-export default async function BuyerMessagesPage() {
+export default async function BuyerMessagesPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{
+    conversation?: string;
+    conversationId?: string;
+    supplierId?: string;
+    engagementId?: string;
+    filter?: string;
+    q?: string;
+  }>;
+}) {
   const status = await getUserOnboardingStatus();
   const redirectPath = getBuyerAccessRedirect(status, {
     requirement: "profile",
@@ -14,21 +29,58 @@ export default async function BuyerMessagesPage() {
     redirect(redirectPath);
   }
 
-  return (
-    <main className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[#223654]">Messages</h1>
-        <p className="mt-1 text-sm text-[#8b95a5]">
-          Buyer conversations and inbox will appear here.
-        </p>
-      </div>
+  const resolvedSearchParams = (await searchParams) ?? {};
+  const supabase = await createClient();
+  const supplierId = resolvedSearchParams.supplierId
+    ? Number(resolvedSearchParams.supplierId)
+    : null;
+  const engagementId = resolvedSearchParams.engagementId
+    ? Number(resolvedSearchParams.engagementId)
+    : null;
+  const rawConversationId =
+    resolvedSearchParams.conversationId ?? resolvedSearchParams.conversation ?? null;
+  let conversationId = rawConversationId ? Number(rawConversationId) : null;
 
-      <section className="rounded-2xl border border-[#edf1f7] bg-white p-6 shadow-[0_10px_28px_rgba(15,23,42,0.04)]">
-        <h2 className="text-lg font-semibold text-[#223654]">Inbox</h2>
-        <p className="mt-2 text-sm text-[#8b95a5]">
-          View supplier conversations, respond to inquiries, and keep procurement discussions organized.
-        </p>
-      </section>
-    </main>
-  );
+  if ((!conversationId || Number.isNaN(conversationId)) && supplierId && !Number.isNaN(supplierId)) {
+    if (!status.appUser) {
+      redirect("/login?source=buyer-messages");
+    }
+
+    const { data: businessProfile, error: businessProfileError } = await supabase
+      .from("business_profiles")
+      .select("profile_id")
+      .eq("user_id", status.appUser.user_id)
+      .single();
+
+    if (businessProfileError || !businessProfile) {
+      throw new Error("Business profile not found.");
+    }
+
+    const { data: buyerProfile, error: buyerProfileError } = await supabase
+      .from("buyer_profiles")
+      .select("buyer_id")
+      .eq("profile_id", businessProfile.profile_id)
+      .single<{ buyer_id: number }>();
+
+    if (buyerProfileError || !buyerProfile) {
+      throw new Error("Buyer profile not found.");
+    }
+
+    conversationId = await ensureBuyerConversationForSupplier(supabase, {
+      buyerId: buyerProfile.buyer_id,
+      supplierId,
+      initiatedBy: status.appUser.user_id,
+      engagementId: engagementId && !Number.isNaN(engagementId) ? engagementId : null,
+    });
+  }
+
+  const data = await getBuyerMessagesData({
+    conversationId: conversationId && !Number.isNaN(conversationId) ? conversationId : null,
+    supplierId: supplierId && !Number.isNaN(supplierId) ? supplierId : null,
+    engagementId: engagementId && !Number.isNaN(engagementId) ? engagementId : null,
+    filter: resolvedSearchParams.filter ?? null,
+    query: resolvedSearchParams.q ?? null,
+  });
+
+  return <BuyerMessagesClient initialData={data} />;
 }

@@ -242,7 +242,7 @@ export function BuyerMarketplaceHome({
         <div className="grid gap-4 md:grid-cols-2">
           {visibleRecommendedSuppliers.map((supplier) => (
             <BuyerSupplierCard
-              key={`recommended-${supplier.id}`}
+              key={`recommended-${supplier.supplierId}`}
               supplier={supplier}
             />
           ))}
@@ -308,7 +308,7 @@ export function BuyerMarketplaceHome({
 
         <div className="grid gap-4 md:grid-cols-2">
           {filteredSuppliers.slice(0, visibleCount).map((supplier) => (
-            <BuyerSupplierCard key={supplier.id} supplier={supplier} />
+            <BuyerSupplierCard key={supplier.supplierId} supplier={supplier} />
           ))}
         </div>
 

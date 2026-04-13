@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { ensureSupplierConversationForEngagement } from "@/lib/messages/ensure-conversation";
 
 type SupplierProfileRow = {
   supplier_id: number;
@@ -54,6 +55,7 @@ async function getCurrentSupplierContext() {
   return {
     supabase,
     appUserId: String(appUser.user_id),
+    authUserId: authUser.id,
     supplierProfile,
   };
 }
@@ -70,7 +72,7 @@ function revalidateRfqPaths(returnTo: string) {
 }
 
 export async function markEngagementViewed(formData: FormData) {
-  const { supabase, supplierProfile } = await getCurrentSupplierContext();
+  const { supabase, supplierProfile, appUserId } = await getCurrentSupplierContext();
   const returnTo = getReturnTo(formData);
 
   const engagement_id = Number(formData.get("engagement_id"));
@@ -78,6 +80,12 @@ export async function markEngagementViewed(formData: FormData) {
   if (!engagement_id || Number.isNaN(engagement_id)) {
     throw new Error("Invalid engagement.");
   }
+
+  await ensureSupplierConversationForEngagement(supabase, {
+    supplierId: supplierProfile.supplier_id,
+    engagementId: engagement_id,
+    initiatedBy: appUserId,
+  });
 
   const { error } = await supabase
     .from("rfq_engagements")
@@ -97,7 +105,7 @@ export async function markEngagementViewed(formData: FormData) {
 }
 
 export async function markEngagementInterested(formData: FormData) {
-  const { supabase, supplierProfile } = await getCurrentSupplierContext();
+  const { supabase, supplierProfile, appUserId } = await getCurrentSupplierContext();
   const returnTo = getReturnTo(formData);
 
   const engagement_id = Number(formData.get("engagement_id"));
@@ -105,6 +113,12 @@ export async function markEngagementInterested(formData: FormData) {
   if (!engagement_id || Number.isNaN(engagement_id)) {
     throw new Error("Invalid engagement.");
   }
+
+  await ensureSupplierConversationForEngagement(supabase, {
+    supplierId: supplierProfile.supplier_id,
+    engagementId: engagement_id,
+    initiatedBy: appUserId,
+  });
 
   const { error } = await supabase
     .from("rfq_engagements")
@@ -218,6 +232,12 @@ export async function submitNegotiationOffer(formData: FormData) {
     throw new Error("RFQ engagement not found.");
   }
 
+  await ensureSupplierConversationForEngagement(supabase, {
+    supplierId: supplierProfile.supplier_id,
+    engagementId: engagement_id,
+    initiatedBy: appUserId,
+  });
+
   const { data: lastOffer } = await supabase
     .from("negotiation_offers")
     .select("offer_round")
@@ -267,7 +287,7 @@ export async function submitNegotiationOffer(formData: FormData) {
 }
 
 export async function submitFinalQuotation(formData: FormData) {
-  const { supabase, supplierProfile } = await getCurrentSupplierContext();
+  const { supabase, supplierProfile, appUserId } = await getCurrentSupplierContext();
   const returnTo = getReturnTo(formData);
 
   const engagement_id = Number(formData.get("engagement_id"));
@@ -314,6 +334,12 @@ export async function submitFinalQuotation(formData: FormData) {
   if (engagementError || !engagement) {
     throw new Error("RFQ engagement not found.");
   }
+
+  await ensureSupplierConversationForEngagement(supabase, {
+    supplierId: supplierProfile.supplier_id,
+    engagementId: engagement_id,
+    initiatedBy: appUserId,
+  });
 
   let finalQuoteId = engagement.final_quote_id ?? null;
 

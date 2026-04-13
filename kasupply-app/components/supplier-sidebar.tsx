@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
+import { Menu, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useState } from "react";
 
@@ -15,107 +16,55 @@ type NavItem = {
   href: string;
   label: string;
   icon: ReactNode;
+  badge?: string | null;
+  badgeClassName?: string;
 };
 
-function DashboardIcon() {
+function SidebarNavIcon({
+  src,
+  alt,
+}: {
+  src: string;
+  alt: string;
+}) {
   return (
-    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
-      <rect x="4.25" y="4.25" width="6" height="6" rx="1.2" stroke="currentColor" strokeWidth="1.8" />
-      <rect x="13.75" y="4.25" width="6" height="6" rx="1.2" stroke="currentColor" strokeWidth="1.8" />
-      <rect x="4.25" y="13.75" width="6" height="6" rx="1.2" stroke="currentColor" strokeWidth="1.8" />
-      <rect x="13.75" y="13.75" width="6" height="6" rx="1.2" stroke="currentColor" strokeWidth="1.8" />
-    </svg>
+    <Image
+      src={src}
+      alt={alt}
+      width={18}
+      height={18}
+      className="h-[18px] w-[18px]"
+    />
   );
 }
 
-function InventoryIcon() {
+function SidebarPanelIcon({
+  src,
+  alt,
+  size = 20,
+}: {
+  src: string;
+  alt: string;
+  size?: number;
+}) {
   return (
-    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
-      <path d="M12 3.75 19.25 7.5v9L12 20.25 4.75 16.5v-9L12 3.75Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M4.75 7.5 12 11.25 19.25 7.5M12 11.25v9" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function RfqIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
-      <path d="M7.5 3.75h6l4 4v12a1.5 1.5 0 0 1-1.5 1.5h-8A2.25 2.25 0 0 1 5.75 19V5.5A1.75 1.75 0 0 1 7.5 3.75Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M13.5 3.75V8h4M9 12h6M9 16h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function PurchaseOrdersIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
-      <path d="M6.75 4.25h10.5A1.75 1.75 0 0 1 19 6v12a1.75 1.75 0 0 1-1.75 1.75H6.75A1.75 1.75 0 0 1 5 18V6a1.75 1.75 0 0 1 1.75-1.75Z" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M8.5 8h7M8.5 11.5h7M8.5 15h4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M7 2.75v3M17 2.75v3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function MessageIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
-      <path d="M5.5 6.25A2.25 2.25 0 0 1 7.75 4h8.5a2.25 2.25 0 0 1 2.25 2.25v7A2.25 2.25 0 0 1 16.25 15.5H9.5L5.75 18v-2.5A2.25 2.25 0 0 1 3.5 13.25v-7A2.25 2.25 0 0 1 5.75 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function UserIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
-      <path d="M12 12.25a3.75 3.75 0 1 0-3.75-3.75A3.75 3.75 0 0 0 12 12.25Z" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M5.5 19.25a6.5 6.5 0 0 1 13 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function SidebarHeaderIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" fill="none" aria-hidden="true">
-      <rect x="4.5" y="2.75" width="15" height="18.5" rx="2.5" stroke="currentColor" strokeWidth="1.8" />
-      <rect x="7.25" y="5.75" width="4.5" height="12.5" rx="1.1" stroke="currentColor" strokeWidth="1.8" />
-    </svg>
+    <Image
+      src={src}
+      alt={alt}
+      width={size}
+      height={size}
+      className="object-contain"
+    />
   );
 }
 
 function ChevronPanelIcon({ collapsed }: { collapsed: boolean }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-[17px] w-[17px]"
-      fill="none"
-      aria-hidden="true"
-    >
-      <rect
-        x="4.5"
-        y="2.75"
-        width="15"
-        height="18.5"
-        rx="2.5"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      />
-      <rect
-        x="7.25"
-        y="5.75"
-        width="4.5"
-        height="12.5"
-        rx="1.1"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      />
-      <path
-        d={collapsed ? "M15.5 12h-2.5m0 0 1.3-1.3M13 12l1.3 1.3" : "M14 12h2.5m0 0-1.3-1.3M16.5 12l-1.3 1.3"}
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <SidebarPanelIcon
+      src={collapsed ? "/icons/collapsed-panel.svg" : "/icons/sidebar-panel.svg"}
+      alt={collapsed ? "Collapsed sidebar" : "Expanded sidebar"}
+      size={collapsed ? 28 : 20}
+    />
   );
 }
 
@@ -126,7 +75,7 @@ function getInitials(name: string) {
   return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
 }
 
-function normalizeBusinessType(value: string) {
+function formatBusinessType(value: string) {
   return value
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
@@ -147,15 +96,48 @@ export function SupplierSidebar({
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   const navItems: NavItem[] = [
-    { href: "/supplier/dashboard", label: "Dashboard", icon: <DashboardIcon /> },
-    { href: "/supplier/inventory", label: "Inventory", icon: <InventoryIcon /> },
-    { href: "/supplier/rfq", label: "RFQs", icon: <RfqIcon /> },
-    { href: "/supplier/purchase-orders", label: "Purchase Orders", icon: <PurchaseOrdersIcon /> },
-    { href: "/supplier/messages", label: "Messages", icon: <MessageIcon /> },
-    { href: "/supplier/account-settings", label: "Account Setting", icon: <UserIcon /> },
+    {
+      href: "/supplier/dashboard",
+      label: "Dashboard",
+      icon: <SidebarNavIcon src="/icons/dashboard-icon.svg" alt="Dashboard" />,
+    },
+    {
+      href: "/supplier/inventory",
+      label: "Inventory",
+      icon: <SidebarNavIcon src="/icons/inventory-icon.svg" alt="Inventory" />,
+      badge: "2 low",
+      badgeClassName: "bg-[#FFEEE2] text-[#E9781B]",
+    },
+    {
+      href: "/supplier/rfq",
+      label: "RFQs",
+      icon: <SidebarNavIcon src="/icons/rfq-icon.svg" alt="RFQs" />,
+      badge: "3",
+      badgeClassName: "bg-[#FFE8EC] text-[#F25F88]",
+    },
+    {
+      href: "/supplier/purchase-orders",
+      label: "Purchase Orders",
+      icon: <SidebarNavIcon src="/icons/po-icon.svg" alt="Purchase Orders" />,
+      badge: "2",
+      badgeClassName: "bg-[#E8F8EE] text-[#2E8B57]",
+    },
+    {
+      href: "/supplier/messages",
+      label: "Messages",
+      icon: <SidebarNavIcon src="/icons/messages-icon.svg" alt="Messages" />,
+      badge: "2",
+      badgeClassName: "bg-[#FFE8EC] text-[#F25F88]",
+    },
+    {
+      href: "/supplier/account-settings",
+      label: "Account Setting",
+      icon: <SidebarNavIcon src="/icons/user-icon.svg" alt="Account Setting" />,
+    },
   ];
 
   async function handleLogout() {
@@ -164,6 +146,7 @@ export function SupplierSidebar({
 
     try {
       await supabase.auth.signOut();
+      setMobileOpen(false);
       router.push("/login");
       router.refresh();
     } finally {
@@ -172,11 +155,30 @@ export function SupplierSidebar({
   }
 
   return (
-    <aside
-      className={`flex h-screen shrink-0 flex-col bg-[#1E3A5F] text-white transition-[width] duration-300 ease-out ${
-        collapsed ? "w-[72px]" : "w-[230px]"
-      }`}
-    >
+    <>
+      <button
+        type="button"
+        onClick={() => setMobileOpen(true)}
+        className="fixed left-4 top-4 z-40 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#D9E3F0] bg-white text-[#1E3A5F] shadow-[0_10px_30px_rgba(15,23,42,0.12)] lg:hidden"
+        aria-label="Open sidebar"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+
+      {mobileOpen ? (
+        <button
+          type="button"
+          className="fixed inset-0 z-40 bg-[#0F172A]/40 lg:hidden"
+          onClick={() => setMobileOpen(false)}
+          aria-label="Close sidebar overlay"
+        />
+      ) : null}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex h-screen flex-col bg-[#1E3A5F] text-white shadow-[0_20px_60px_rgba(15,23,42,0.35)] transition-transform duration-300 ease-out lg:sticky lg:top-0 lg:z-auto lg:translate-x-0 lg:shadow-none ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        } ${collapsed ? "w-[76px]" : "w-[248px]"}`}
+      >
       <div
         className={`border-b border-white/10 transition-all duration-300 ${
           collapsed ? "px-3 py-3" : "px-4 py-5"
@@ -200,7 +202,7 @@ export function SupplierSidebar({
                 />
               </div>
               <div className="min-w-0">
-                <p className="truncate text-[22px] font-semibold leading-none tracking-[-0.02em]">
+                <p className="truncate text-[20px] font-semibold leading-none tracking-[-0.02em]">
                   KaSupply
                 </p>
                 <p className="mt-1 text-[11px] text-white/88">Supplier Portal</p>
@@ -208,17 +210,26 @@ export function SupplierSidebar({
             </div>
           ) : null}
 
-          <button
-            type="button"
-            onClick={() => setCollapsed((current) => !current)}
-            className={`inline-flex items-center justify-center rounded-[9px] border border-white/18 bg-white/6 text-white/70 transition hover:bg-white/10 hover:text-white ${
-              collapsed ? "h-10 w-10" : "mt-0.5 h-9 w-9"
-            }`}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            <ChevronPanelIcon collapsed={collapsed} />
-          </button>
+          <div className={`flex items-center ${collapsed ? "justify-center" : "gap-2"}`}>
+            <button
+              type="button"
+              onClick={() => setCollapsed((current) => !current)}
+              className="mt-0.5 hidden h-9 w-9 items-center justify-center rounded-[9px] bg-white/6 text-white/70 transition hover:bg-white/10 hover:text-white lg:inline-flex"
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              <ChevronPanelIcon collapsed={collapsed} />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMobileOpen(false)}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-[9px] border border-white/18 bg-white/6 text-white/80 transition hover:bg-white/10 hover:text-white lg:hidden"
+              aria-label="Close sidebar"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -231,6 +242,7 @@ export function SupplierSidebar({
               <li key={item.href}>
                 <a
                   href={item.href}
+                  onClick={() => setMobileOpen(false)}
                   className={`relative flex items-center text-[13px] font-medium transition ${
                     isActive
                       ? "bg-white/12 text-white"
@@ -242,7 +254,14 @@ export function SupplierSidebar({
                     <span className="absolute inset-y-0 left-0 w-[3px] rounded-r-full bg-[#FF7A00]" />
                   ) : null}
                   <span className="shrink-0 text-white/90">{item.icon}</span>
-                  {!collapsed ? <span>{item.label}</span> : null}
+                  {!collapsed ? <span className="flex-1">{item.label}</span> : null}
+                  {!collapsed && item.badge ? (
+                    <span
+                      className={`inline-flex min-w-[24px] items-center justify-center rounded-full px-2 py-1 text-[10px] font-semibold ${item.badgeClassName ?? "bg-white/15 text-white"}`}
+                    >
+                      {item.badge}
+                    </span>
+                  ) : null}
                 </a>
               </li>
             );
@@ -259,7 +278,7 @@ export function SupplierSidebar({
           }`}
         >
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#DDF2E5] text-[11px] font-semibold text-[#2B6C4A]">
-            {getInitials(businessName)}
+            {collapsed ? getInitials(businessName) : getInitials(businessName)}
           </div>
 
           {!collapsed ? (
@@ -272,9 +291,9 @@ export function SupplierSidebar({
               </p>
               <p
                 className="truncate text-[10px] text-white/70"
-                title={normalizeBusinessType(businessType)}
+                title={formatBusinessType(businessType)}
               >
-                {normalizeBusinessType(businessType)}
+                {formatBusinessType(businessType)}
               </p>
             </div>
           ) : null}
@@ -283,16 +302,20 @@ export function SupplierSidebar({
             type="button"
             onClick={handleLogout}
             disabled={isSigningOut}
-            className={`inline-flex items-center justify-center rounded-[9px] border border-white/14 bg-white/6 text-white/70 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60 ${
+            className={`inline-flex items-center justify-center rounded-[9px] bg-white/6 text-white/70 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60 ${
               collapsed ? "h-8 w-8" : "h-8 w-8"
             }`}
             aria-label="Log out"
             title="Log out"
           >
-            <SidebarHeaderIcon />
+            <SidebarPanelIcon
+              src="/icons/sidebar-panel.svg"
+              alt="Sidebar panel"
+            />
           </button>
         </div>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }

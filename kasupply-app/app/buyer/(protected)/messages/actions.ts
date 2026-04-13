@@ -1,12 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { createClient as createSupabaseAdminClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { ensureBuyerConversationForSupplier } from "@/lib/messages/ensure-buyer-conversation";
 
-type SupplierProfileRow = {
-  supplier_id: number;
+type BuyerProfileRow = {
+  buyer_id: number;
   profile_id: number;
 };
 
@@ -37,7 +37,7 @@ function isMissingTableOrColumnError(error: { code?: string; message?: string } 
   );
 }
 
-async function getCurrentSupplierContext() {
+async function getCurrentBuyerContext() {
   const supabase = await createClient();
 
   const {
@@ -69,69 +69,56 @@ async function getCurrentSupplierContext() {
     throw new Error("Business profile not found.");
   }
 
-  const { data: supplierProfile, error: supplierProfileError } = await supabase
-    .from("supplier_profiles")
-    .select("supplier_id, profile_id")
+  const { data: buyerProfile, error: buyerProfileError } = await supabase
+    .from("buyer_profiles")
+    .select("buyer_id, profile_id")
     .eq("profile_id", businessProfile.profile_id)
-    .single<SupplierProfileRow>();
+    .single<BuyerProfileRow>();
 
-  if (supplierProfileError || !supplierProfile) {
-    throw new Error("Supplier profile not found.");
+  if (buyerProfileError || !buyerProfile) {
+    throw new Error("Buyer profile not found.");
   }
 
   return {
     supabase,
     appUserId: String(appUser.user_id),
-    supplierProfile,
+    conversationInitiatorId: String(appUser.user_id),
+    buyerProfile,
   };
 }
 
-async function validateSupplierConversationOwnership(
+async function validateBuyerConversationOwnership(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  supplierId: number,
+  buyerId: number,
   conversationId: number,
 ) {
-  const tables = ["conversation", "conversations"];
-  let lastError: { code?: string; message?: string } | null = null;
-
-  for (const table of tables) {
+  for (const table of ["conversation", "conversations"]) {
     const byConversationId = await supabase
       .from(table)
       .select("*")
-      .eq("supplier_id", supplierId)
+      .eq("buyer_id", buyerId)
       .eq("conversation_id", conversationId)
       .maybeSingle();
 
-    if (!byConversationId.error) {
-      return;
-    }
-
+    if (!byConversationId.error) return;
     if (!isMissingTableOrColumnError(byConversationId.error)) {
       throw new Error(byConversationId.error.message || "Failed to validate conversation.");
     }
 
-    lastError = byConversationId.error;
-
     const byId = await supabase
       .from(table)
       .select("*")
-      .eq("supplier_id", supplierId)
+      .eq("buyer_id", buyerId)
       .eq("id", conversationId)
       .maybeSingle();
 
-    if (!byId.error) {
-      return;
+    if (!byId.error) return;
+    if (!isMissingTableOrColumnError(byId.error)) {
+      throw new Error(byId.error.message || "Failed to validate conversation.");
     }
-
-    if (isMissingTableOrColumnError(byId.error)) {
-      lastError = byId.error;
-      continue;
-    }
-
-    throw new Error(byId.error.message || "Failed to validate conversation.");
   }
 
-  throw new Error(lastError?.message || "Conversation not found.");
+  throw new Error("Conversation not found.");
 }
 
 async function insertMessage(
@@ -154,46 +141,17 @@ async function insertMessage(
       content,
       created_at: new Date().toISOString(),
     },
-    {
-      conversation_id: conversationId,
-      sender_id: senderId,
-      message: content,
-      created_at: new Date().toISOString(),
-    },
-    {
-      conversation_id: conversationId,
-      sender_id: senderId,
-      body: content,
-      created_at: new Date().toISOString(),
-    },
-    {
-      conversation_id: conversationId,
-      user_id: senderId,
-      content,
-      created_at: new Date().toISOString(),
-    },
-    {
-      conversation_id: conversationId,
-      user_id: senderId,
-      message: content,
-      created_at: new Date().toISOString(),
-    },
   ];
 
   let lastError: { code?: string; message?: string } | null = null;
 
   for (const payload of payloads) {
     const result = await databaseClient.from("messages").insert(payload);
-
-    if (!result.error) {
-      return;
-    }
-
+    if (!result.error) return;
     if (isMissingTableOrColumnError(result.error)) {
       lastError = result.error;
       continue;
     }
-
     throw new Error(result.error.message || "Failed to send message.");
   }
 
@@ -202,128 +160,106 @@ async function insertMessage(
 
 async function touchConversation(
   databaseClient: Awaited<ReturnType<typeof createClient>> | ReturnType<typeof createAdminClient>,
-  supplierId: number,
+  buyerId: number,
   conversationId: number,
 ) {
   for (const table of ["conversation", "conversations"]) {
     const byConversationId = await databaseClient
       .from(table)
       .update({ updated_at: new Date().toISOString() })
-      .eq("supplier_id", supplierId)
+      .eq("buyer_id", buyerId)
       .eq("conversation_id", conversationId);
 
-    if (!byConversationId.error) {
-      return;
-    }
-
-    if (!isMissingTableOrColumnError(byConversationId.error)) {
-      return;
-    }
+    if (!byConversationId.error) return;
+    if (!isMissingTableOrColumnError(byConversationId.error)) return;
 
     const byId = await databaseClient
       .from(table)
       .update({ updated_at: new Date().toISOString() })
-      .eq("supplier_id", supplierId)
+      .eq("buyer_id", buyerId)
       .eq("id", conversationId);
 
-    if (!byId.error) {
-      return;
-    }
-
-    if (!isMissingTableOrColumnError(byId.error)) {
-      return;
-    }
+    if (!byId.error) return;
+    if (!isMissingTableOrColumnError(byId.error)) return;
   }
 }
 
-export async function sendSupplierMessage(formData: FormData) {
-  const { supabase, appUserId, supplierProfile } =
-    await getCurrentSupplierContext();
+export async function markBuyerConversationRead(conversationId: number) {
+  const { supabase, appUserId, buyerProfile } = await getCurrentBuyerContext();
   const adminSupabase = createAdminClient();
   const databaseClient = adminSupabase ?? supabase;
 
-  const conversationId = Number(formData.get("conversation_id"));
-  const message = String(formData.get("message") || "").trim();
-  const filter = String(formData.get("filter") || "all").trim();
-  const query = String(formData.get("query") || "").trim();
+  await validateBuyerConversationOwnership(supabase, buyerProfile.buyer_id, conversationId);
 
-  if (!conversationId || Number.isNaN(conversationId)) {
-    throw new Error("Invalid conversation.");
-  }
+  const { error } = await databaseClient
+    .from("messages")
+    .update({
+      read_at: new Date().toISOString(),
+      is_read: true,
+    })
+    .eq("conversation_id", conversationId)
+    .neq("sender_id", appUserId)
+    .is("read_at", null);
 
-  if (!message) {
-    throw new Error("Message cannot be empty.");
-  }
-
-  await validateSupplierConversationOwnership(
-    supabase,
-    supplierProfile.supplier_id,
-    conversationId,
-  );
-
-  try {
-    await insertMessage(databaseClient, conversationId, appUserId, message);
-    await touchConversation(databaseClient, supplierProfile.supplier_id, conversationId);
-  } catch (error) {
-    if (
-      !adminSupabase &&
-      error instanceof Error &&
-      /row-level security policy/i.test(error.message)
-    ) {
+  if (error && !isMissingTableOrColumnError(error)) {
+    if (!adminSupabase && /row-level security policy/i.test(error.message || "")) {
       throw new Error(
-        "Sending messages is blocked by Supabase RLS. Add SUPABASE_SERVICE_ROLE_KEY to .env.local or run sql/messages_policies.sql in your Supabase SQL editor.",
+        "Message read updates are blocked by Supabase RLS. Add SUPABASE_SERVICE_ROLE_KEY to .env.local or run sql/messages_policies.sql in your Supabase SQL editor.",
       );
     }
 
-    throw error;
+    throw new Error(error.message || "Failed to mark messages as read.");
   }
 
-  revalidatePath("/supplier/messages");
-
-  const nextUrl = new URLSearchParams({
-    conversation: String(conversationId),
-  });
-
-  if (filter === "unread") {
-    nextUrl.set("filter", "unread");
-  }
-
-  if (query) {
-    nextUrl.set("q", query);
-  }
-
-  redirect(`/supplier/messages?${nextUrl.toString()}`);
+  revalidatePath("/buyer/messages");
+  return { ok: true };
 }
 
-export async function sendSupplierMessageInline(params: {
-  conversationId: number;
+export async function sendBuyerMessageInline(params: {
+  conversationId?: number | null;
+  supplierId?: number | null;
+  engagementId?: number | null;
   message: string;
 }) {
-  const { supabase, appUserId, supplierProfile } =
-    await getCurrentSupplierContext();
+  const { supabase, appUserId, conversationInitiatorId, buyerProfile } =
+    await getCurrentBuyerContext();
   const adminSupabase = createAdminClient();
   const databaseClient = adminSupabase ?? supabase;
 
-  const conversationId = Number(params.conversationId);
+  const explicitConversationId =
+    params.conversationId != null ? Number(params.conversationId) : null;
+  const supplierId = params.supplierId != null ? Number(params.supplierId) : null;
+  const engagementId = params.engagementId != null ? Number(params.engagementId) : null;
   const message = String(params.message || "").trim();
-
-  if (!conversationId || Number.isNaN(conversationId)) {
-    throw new Error("Invalid conversation.");
-  }
 
   if (!message) {
     throw new Error("Message cannot be empty.");
   }
 
-  await validateSupplierConversationOwnership(
-    supabase,
-    supplierProfile.supplier_id,
-    conversationId,
-  );
+  let conversationId =
+    explicitConversationId && !Number.isNaN(explicitConversationId)
+      ? explicitConversationId
+      : null;
 
+  if (conversationId == null && supplierId && !Number.isNaN(supplierId)) {
+    conversationId = await ensureBuyerConversationForSupplier(supabase, {
+      buyerId: buyerProfile.buyer_id,
+      supplierId,
+      initiatedBy: conversationInitiatorId,
+      engagementId: engagementId && !Number.isNaN(engagementId) ? engagementId : null,
+    });
+  }
+
+  if (conversationId == null) {
+    throw new Error(
+      `Unable to create a conversation for buyer ${buyerProfile.buyer_id} and supplier ${supplierId ?? "unknown"}.`,
+    );
+  }
+
+  await validateBuyerConversationOwnership(supabase, buyerProfile.buyer_id, conversationId);
   try {
     await insertMessage(databaseClient, conversationId, appUserId, message);
-    await touchConversation(databaseClient, supplierProfile.supplier_id, conversationId);
+    await touchConversation(databaseClient, buyerProfile.buyer_id, conversationId);
   } catch (error) {
     if (
       !adminSupabase &&
@@ -338,7 +274,6 @@ export async function sendSupplierMessageInline(params: {
     throw error;
   }
 
-  revalidatePath("/supplier/messages");
-
-  return { ok: true };
+  revalidatePath("/buyer/messages");
+  return { ok: true, conversationId };
 }

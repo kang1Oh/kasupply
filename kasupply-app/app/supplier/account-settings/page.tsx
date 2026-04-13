@@ -78,7 +78,7 @@ function HeaderActionIcon({
   return (
     <button
       type="button"
-      className="inline-flex h-8 w-8 items-center justify-center rounded-[10px] border border-[#E6EBF3] bg-[#FBFCFE] text-[#B4BECF] transition hover:border-[#D7E0EC] hover:text-[#7D8CA3]"
+      className="inline-flex h-9 w-9 items-center justify-center rounded-[11px] border border-[#E6EBF3] bg-[#FBFCFE] text-[#B4BECF] transition hover:border-[#D7E0EC] hover:text-[#7D8CA3]"
     >
       {children}
     </button>
@@ -368,7 +368,7 @@ export default async function SupplierAccountSettingsPage({
 
           <div className="flex items-center gap-[8px]">
             <HeaderActionIcon>
-              <svg viewBox="0 0 24 24" className="h-[14px] w-[14px]" fill="none" aria-hidden="true">
+              <svg viewBox="0 0 24 24" className="h-[15px] w-[15px]" fill="none" aria-hidden="true">
                 <path
                   d="M12 4.75a4.25 4.25 0 0 0-4.25 4.25v2.12c0 .48-.16.94-.46 1.31l-1.2 1.53a1 1 0 0 0 .79 1.61h10.24a1 1 0 0 0 .79-1.61l-1.2-1.53a2.1 2.1 0 0 1-.46-1.31V9A4.25 4.25 0 0 0 12 4.75Z"
                   stroke="currentColor"
@@ -386,7 +386,7 @@ export default async function SupplierAccountSettingsPage({
               </svg>
             </HeaderActionIcon>
             <HeaderActionIcon>
-              <svg viewBox="0 0 24 24" className="h-[14px] w-[14px]" fill="none" aria-hidden="true">
+              <svg viewBox="0 0 24 24" className="h-[15px] w-[15px]" fill="none" aria-hidden="true">
                 <path
                   d="M7.25 7.25h9.5a2 2 0 0 1 2 2v6.02a2 2 0 0 1-2 2h-5.08l-2.92 2.48c-.65.55-1.65.09-1.65-.76v-1.72H7.25a2 2 0 0 1-2-2V9.25a2 2 0 0 1 2-2Z"
                   stroke="currentColor"

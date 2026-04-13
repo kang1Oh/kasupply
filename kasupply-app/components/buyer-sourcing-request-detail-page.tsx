@@ -453,14 +453,16 @@ export function BuyerSourcingRequestDetailPage({
                         >
                           View Supplier
                         </Link>
-                        {engagement.conversationId ? (
-                          <Link
-                            href={`/buyer/messages?conversation=${engagement.conversationId}`}
-                            className="text-[13px] font-medium text-[#223654] transition hover:text-[#294773]"
-                          >
-                            Open Conversation
-                          </Link>
-                        ) : null}
+                        <Link
+                          href={
+                            engagement.conversationId
+                              ? `/buyer/messages?conversation=${engagement.conversationId}`
+                              : `/buyer/messages?supplierId=${engagement.supplierId}&engagementId=${engagement.engagementId}`
+                          }
+                          className="text-[13px] font-medium text-[#223654] transition hover:text-[#294773]"
+                        >
+                          Open Conversation
+                        </Link>
                       </div>
 
                       <div className="flex flex-wrap gap-3">

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CheckMarkModalIcon, ModalShell, TrashCanModalIcon } from "@/components/modals";
@@ -452,11 +453,19 @@ export default async function SupplierInventoryPage({ searchParams }: { searchPa
               <span className="text-[#CBD2DE]">/</span>
               <span className="font-semibold text-[#506073]">Inventory</span>
             </div>
-            <div className="flex items-center gap-2">
-              <button type="button" className="inline-flex h-9 w-9 items-center justify-center rounded-[11px] border border-[#E6ECF3] bg-[#FBFCFE] text-[#B1B8C5]">
+            <div className="flex items-center gap-[8px]">
+              <button
+                type="button"
+                aria-label="Notifications"
+                className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-[11px] border border-[#E2E8F0] bg-[#F9FBFD] text-[#A6B0BF] transition hover:border-[#D6DFEA] hover:text-[#4D5E75]"
+              >
                 <svg viewBox="0 0 24 24" className="h-[15px] w-[15px]" aria-hidden="true"><path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5m6 0a3 3 0 1 1-6 0m6 0H9" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </button>
-              <button type="button" className="inline-flex h-9 w-9 items-center justify-center rounded-[11px] border border-[#E6ECF3] bg-[#FBFCFE] text-[#B1B8C5]">
+              <button
+                type="button"
+                aria-label="Messages"
+                className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-[11px] border border-[#E2E8F0] bg-[#F9FBFD] text-[#A6B0BF] transition hover:border-[#D6DFEA] hover:text-[#4D5E75]"
+              >
                 <svg viewBox="0 0 24 24" className="h-[15px] w-[15px]" aria-hidden="true"><path d="M7 18.5A2.5 2.5 0 0 1 4.5 16V8A2.5 2.5 0 0 1 7 5.5h10A2.5 2.5 0 0 1 19.5 8v8a2.5 2.5 0 0 1-2.5 2.5H11l-4 3v-3H7Z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </button>
             </div>
@@ -479,25 +488,39 @@ export default async function SupplierInventoryPage({ searchParams }: { searchPa
             </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-[18px] border border-[#EDF1F6] border-l-[3px] border-l-[#2F6CF6] bg-white px-[18px] py-[18px] shadow-[0_8px_20px_rgba(15,23,42,0.03)]"><p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[#A0A8B7]">Total Products</p><p className="mt-3 text-[22px] font-semibold leading-none text-[#27344C]">{totalProducts}</p></div>
-              <div className="rounded-[18px] border border-[#EDF1F6] border-l-[3px] border-l-[#23A05A] bg-white px-[18px] py-[18px] shadow-[0_8px_20px_rgba(15,23,42,0.03)]"><p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[#A0A8B7]">In Stock</p><p className="mt-3 text-[22px] font-semibold leading-none text-[#27344C]">{inStockProducts}</p></div>
-              <div className="rounded-[18px] border border-[#EDF1F6] border-l-[3px] border-l-[#FF8B2B] bg-white px-[18px] py-[18px] shadow-[0_8px_20px_rgba(15,23,42,0.03)]"><p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[#A0A8B7]">Low Stock</p><p className="mt-3 text-[22px] font-semibold leading-none text-[#27344C]">{lowStockProducts}</p></div>
-              <div className="rounded-[18px] border border-[#EDF1F6] border-l-[3px] border-l-[#FF4D4F] bg-white px-[18px] py-[18px] shadow-[0_8px_20px_rgba(15,23,42,0.03)]"><p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[#A0A8B7]">Out of Stock</p><p className="mt-3 text-[22px] font-semibold leading-none text-[#27344C]">{outOfStockProducts}</p></div>
+              <div className="rounded-[18px] border border-[#EDF1F6] border-l-[3px] border-l-[#2F6CF6] bg-white px-[18px] py-[18px] shadow-[0_8px_20px_rgba(15,23,42,0.03)]"><p className="text-[11px] font-normal uppercase tracking-[0.04em] text-[#A0A8B7]">Total Products</p><p className="mt-3 text-[24px] font-semibold leading-none text-[#27344C]">{totalProducts}</p></div>
+              <div className="rounded-[18px] border border-[#EDF1F6] border-l-[3px] border-l-[#23A05A] bg-white px-[18px] py-[18px] shadow-[0_8px_20px_rgba(15,23,42,0.03)]"><p className="text-[11px] font-normal uppercase tracking-[0.04em] text-[#A0A8B7]">In Stock</p><p className="mt-3 text-[24px] font-semibold leading-none text-[#27344C]">{inStockProducts}</p></div>
+              <div className="rounded-[18px] border border-[#EDF1F6] border-l-[3px] border-l-[#FF8B2B] bg-white px-[18px] py-[18px] shadow-[0_8px_20px_rgba(15,23,42,0.03)]"><p className="text-[11px] font-normal uppercase tracking-[0.04em] text-[#A0A8B7]">Low Stock</p><p className="mt-3 text-[24px] font-semibold leading-none text-[#27344C]">{lowStockProducts}</p></div>
+              <div className="rounded-[18px] border border-[#EDF1F6] border-l-[3px] border-l-[#FF4D4F] bg-white px-[18px] py-[18px] shadow-[0_8px_20px_rgba(15,23,42,0.03)]"><p className="text-[11px] font-normal uppercase tracking-[0.04em] text-[#A0A8B7]">Out of Stock</p><p className="mt-3 text-[24px] font-semibold leading-none text-[#27344C]">{outOfStockProducts}</p></div>
             </div>
 
             <div className="mt-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-              <form method="GET" className="flex flex-col gap-3 md:flex-row md:items-center">
+              <form method="GET" className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <input type="hidden" name="status" value={selectedStatus} />
-                <label className="relative block md:w-[285px]">
+                <label className="relative block sm:w-[330px]">
                   <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#C1C9D6]">
                     <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" aria-hidden="true"><path d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
                   </span>
-                  <input name="search" defaultValue={searchText} placeholder="Search Products..." className="h-[38px] w-full rounded-xl border border-[#E0E6EF] bg-white pl-10 pr-4 text-[13px] text-[#334155] outline-none placeholder:text-[#C1C9D6]" />
+                  <input name="search" defaultValue={searchText} placeholder="Search Products..." className="h-[42px] w-full rounded-[10px] border border-[#D8E0EA] bg-white pl-10 pr-4 text-[13px] text-[#334155] outline-none placeholder:text-[#C1C9D6]" />
                 </label>
-                <select name="category" defaultValue={selectedCategory} className="h-[38px] rounded-xl border border-[#E0E6EF] bg-white px-4 text-[13px] text-[#64748B] outline-none md:w-[120px]">
-                  <option value="">All Categories</option>
-                  {safeCategories.map((category) => <option key={category.category_id} value={category.category_id}>{category.category_name}</option>)}
-                </select>
+                <div className="relative sm:w-[158px]">
+                  <select name="category" defaultValue={selectedCategory} className="h-[42px] w-full appearance-none rounded-[10px] border border-[#D8E0EA] bg-white px-4 pr-10 text-[13px] text-[#344054] outline-none">
+                    <option value="">All Categories</option>
+                    {safeCategories.map((category) => <option key={category.category_id} value={category.category_id}>{category.category_name}</option>)}
+                  </select>
+                  <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-[#98A2B3]">
+                    <svg viewBox="0 0 20 20" className="h-4 w-4" aria-hidden="true">
+                      <path
+                        d="m5 7.5 5 5 5-5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </span>
+                </div>
                 <button type="submit" className="hidden">Apply</button>
               </form>
 
@@ -508,7 +531,7 @@ export default async function SupplierInventoryPage({ searchParams }: { searchPa
                   ["low-stock", "Low stock"],
                   ["out-of-stock", "Out of stock"],
                 ].map(([value, label]) => (
-                  <Link key={value} href={buildInventoryHref({ search: searchText, category: selectedCategory, status: value, page: 1 })} className={`inline-flex h-[28px] items-center justify-center rounded-full px-4 text-[12px] font-medium transition ${selectedStatus === value ? "bg-[#233F68] text-white" : "text-[#A0A8B7] hover:text-[#64748B]"}`}>
+                  <Link key={value} href={buildInventoryHref({ search: searchText, category: selectedCategory, status: value, page: 1 })} className={`inline-flex h-[28px] items-center justify-center rounded-full px-4 text-[12px] font-normal transition ${selectedStatus === value ? "bg-[#233F68] text-white" : "text-[#A0A8B7] hover:text-[#64748B]"}`}>
                     {label}
                   </Link>
                 ))}
@@ -516,34 +539,34 @@ export default async function SupplierInventoryPage({ searchParams }: { searchPa
             </div>
 
             <div className="mt-5 overflow-hidden rounded-[22px] border border-[#E6EBF2] bg-white shadow-[0_10px_25px_rgba(15,23,42,0.03)]">
-              <div className="overflow-x-auto">
-                <table className="min-w-[1400px] w-full table-fixed border-collapse">
+              <div className="overflow-hidden">
+                <table className="w-full table-fixed border-collapse">
                   <colgroup>
-                    <col className="w-[60px]" />
-                    <col className="w-[170px]" />
-                    <col className="w-[170px]" />
-                    <col className="w-[86px]" />
-                    <col className="w-[90px]" />
-                    <col className="w-[92px]" />
-                    <col className="w-[102px]" />
-                    <col className="w-[96px]" />
-                    <col className="w-[104px]" />
-                    <col className="w-[110px]" />
-                    <col className="w-[96px]" />
+                    <col className="w-[5%]" />
+                    <col className="w-[16%]" />
+                    <col className="w-[14%]" />
+                    <col className="w-[7%]" />
+                    <col className="w-[8%]" />
+                    <col className="w-[8%]" />
+                    <col className="w-[9%]" />
+                    <col className="w-[8%]" />
+                    <col className="w-[7%]" />
+                    <col className="w-[9%]" />
+                    <col className="w-[9%]" />
                   </colgroup>
                   <thead>
                     <tr className="bg-[#F0F0F0] text-left">
-                      <th className="px-4 py-4 text-center text-[11px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">#</th>
-                      <th className="px-4 py-4 text-[11px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Product</th>
-                      <th className="px-4 py-4 text-[11px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Description</th>
-                      <th className="px-4 py-4 text-[11px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Stock</th>
-                      <th className="px-4 py-4 text-[11px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Price</th>
-                      <th className="px-4 py-4 text-[11px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Min Qty</th>
-                      <th className="px-4 py-4 text-[11px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Max Capacity</th>
-                      <th className="px-4 py-4 text-[11px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Lead Time</th>
-                      <th className="px-4 py-4 text-center text-[11px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Visibility</th>
-                      <th className="px-4 py-4 text-center text-[11px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Status</th>
-                      <th className="px-4 py-4 text-center text-[11px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Actions</th>
+                      <th className="px-3 py-4 text-center text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">#</th>
+                      <th className="px-3 py-4 text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Product</th>
+                      <th className="px-3 py-4 text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Description</th>
+                      <th className="px-3 py-4 text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Stock</th>
+                      <th className="px-3 py-4 text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Price</th>
+                      <th className="px-3 py-4 text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Min Qty</th>
+                      <th className="px-3 py-4 text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Max Capacity</th>
+                      <th className="px-3 py-4 text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Lead Time</th>
+                      <th className="px-3 py-4 text-center text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Visibility</th>
+                      <th className="px-3 py-4 text-center text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Status</th>
+                      <th className="pl-3 pr-6 py-4 text-center text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -562,42 +585,42 @@ export default async function SupplierInventoryPage({ searchParams }: { searchPa
                           ? "bg-[#EAF1FF] text-[#3E73F7] border border-[#D6E3FF]"
                           : "bg-[#F5F6F7] text-[#A4ACBA] border border-[#E2E8F0]";
                         return (
-                          <tr key={product.product_id} className="border-t border-[#EEF2F7] text-[13px] text-[#66748B]">
-                            <td className="px-4 py-3.5 align-middle text-center font-medium text-[#B6BFCC]">{String((safePage - 1) * pageSize + index + 1).padStart(2, "0")}</td>
-                            <td className="px-4 py-3.5 align-middle">
-                              <div className="flex items-center gap-3">
+                          <tr key={product.product_id} className="border-t border-[#EEF2F7] text-[12px] text-[#66748B]">
+                            <td className="px-3 py-3.5 align-middle text-center font-medium text-[#B6BFCC]">{String((safePage - 1) * pageSize + index + 1).padStart(2, "0")}</td>
+                            <td className="px-3 py-3.5 align-middle">
+                              <div className="flex items-center gap-2.5">
                                 {imageSrcMap.get(product.product_id) ? (
-                                  <img src={imageSrcMap.get(product.product_id) ?? ""} alt={product.product_name} className="h-11 w-11 rounded-xl border border-[#EDF2F7] object-cover" />
+                                  <img src={imageSrcMap.get(product.product_id) ?? ""} alt={product.product_name} className="h-10 w-10 rounded-[10px] border border-[#EDF2F7] object-cover" />
                                 ) : (
-                                  <div className={`flex h-11 w-11 items-center justify-center rounded-xl text-[18px] ${status === "out-of-stock" ? "bg-[#C28A35]" : "bg-[#E9F7EA]"}`}>
+                                  <div className={`flex h-10 w-10 items-center justify-center rounded-[10px] text-[16px] ${status === "out-of-stock" ? "bg-[#C28A35]" : "bg-[#E9F7EA]"}`}>
                                     <span role="img" aria-label="product">{status === "out-of-stock" ? "🫚" : "🌿"}</span>
                                   </div>
                                 )}
                                 <div className="min-w-0">
-                                  <p className="truncate text-[13px] font-semibold text-[#39455C]">{product.product_name}</p>
+                                  <p className="truncate text-[12px] font-semibold text-[#39455C]">{product.product_name}</p>
                                   <span className="mt-1 inline-flex rounded-full bg-[#F6F7F8] px-2.5 py-0.5 text-[10px] text-[#A0A8B7]">{categoryLabel}</span>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-4 py-3.5 align-middle text-[13px] leading-6 text-[#66748B]">
-                              <p className="line-clamp-2 max-w-[150px]">{product.description?.trim() || "No description added yet."}</p>
+                            <td className="px-3 py-3.5 align-middle text-[12px] leading-5 text-[#66748B]">
+                              <p className="line-clamp-2">{product.description?.trim() || "No description added yet."}</p>
                             </td>
-                            <td className="px-4 py-3.5 align-middle font-medium text-[#66748B]">{product.stock_available} {product.unit}</td>
-                            <td className="px-4 py-3.5 align-middle font-medium text-[#66748B]">{formatCurrency(Number(product.price_per_unit))}<span className="text-[#96A0AF]">/{product.unit}</span></td>
-                            <td className="px-4 py-3.5 align-middle font-medium text-[#66748B]">{product.moq} {product.unit}</td>
-                            <td className="px-4 py-3.5 align-middle font-medium text-[#66748B]">{product.max_capacity.toLocaleString()}</td>
-                            <td className="px-4 py-3.5 align-middle font-medium text-[#66748B]">{product.lead_time}</td>
-                            <td className="px-4 py-3.5 align-middle text-center">
-                              <span className={`inline-flex rounded-full px-3 py-1 text-[11px] font-medium whitespace-nowrap ${visibilityClassName}`}>{visibilityLabel}</span>
+                            <td className="px-3 py-3.5 align-middle font-medium text-[#66748B]">{product.stock_available} {product.unit}</td>
+                            <td className="px-3 py-3.5 align-middle font-medium text-[#66748B]">{formatCurrency(Number(product.price_per_unit))}<span className="text-[#96A0AF]">/{product.unit}</span></td>
+                            <td className="px-3 py-3.5 align-middle font-medium text-[#66748B]">{product.moq} {product.unit}</td>
+                            <td className="px-3 py-3.5 align-middle font-medium text-[#66748B]">{product.max_capacity.toLocaleString()}</td>
+                            <td className="px-3 py-3.5 align-middle font-medium text-[#66748B]">{product.lead_time}</td>
+                            <td className="px-3 py-3.5 align-middle text-center">
+                              <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-medium whitespace-nowrap ${visibilityClassName}`}>{visibilityLabel}</span>
                             </td>
-                            <td className="px-4 py-3.5 align-middle text-center"><span className={`inline-flex rounded-full px-3 py-1 text-[11px] font-medium whitespace-nowrap ${statusClassName}`}>{statusLabel}</span></td>
-                            <td className="px-4 py-3.5 align-middle">
-                              <div className="flex items-center justify-center gap-2">
-                                <Link href={buildInventoryHref({ search: searchText, category: selectedCategory, status: selectedStatus, page: safePage, edit: product.product_id })} className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E7EBF2] bg-[#F8FAFC] text-[#A4AEBE] transition hover:border-[#D6DDE8] hover:text-[#6B7890]">
-                                  <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true"><path d="m4 20 4.2-.9L18.4 8.9a1.8 1.8 0 0 0 0-2.5l-.8-.8a1.8 1.8 0 0 0-2.5 0L4.9 15.8 4 20Z" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /><path d="m13.5 7.5 3 3" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                            <td className="px-3 py-3.5 align-middle text-center"><span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-medium whitespace-nowrap ${statusClassName}`}>{statusLabel}</span></td>
+                            <td className="pl-3 pr-6 py-3.5 align-middle">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <Link href={buildInventoryHref({ search: searchText, category: selectedCategory, status: selectedStatus, page: safePage, edit: product.product_id })} aria-label="Edit product" className="block h-[32px] w-[40px] shrink-0 transition hover:opacity-90">
+                                  <Image src="/icons/inventory-edit.svg" alt="" width={40} height={32} className="h-[32px] w-[40px]" />
                                 </Link>
-                                <Link href={buildInventoryHref({ search: searchText, category: selectedCategory, status: selectedStatus, page: safePage, deleteId: product.product_id })} className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#FFE2DE] bg-[#FFF8F7] text-[#FF7D73] transition hover:border-[#FFD3CC] hover:text-[#FF5A53]">
-                                  <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true"><path d="M4 7h16m-6-3h-4l-1 1H6m2 2v11a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V7M10 11v5m4-5v5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                                <Link href={buildInventoryHref({ search: searchText, category: selectedCategory, status: selectedStatus, page: safePage, deleteId: product.product_id })} aria-label="Delete product" className="block h-[32px] w-[40px] shrink-0 transition hover:opacity-90">
+                                  <Image src="/icons/inventory-delete.svg" alt="" width={40} height={32} className="h-[32px] w-[40px]" />
                                 </Link>
                               </div>
                             </td>

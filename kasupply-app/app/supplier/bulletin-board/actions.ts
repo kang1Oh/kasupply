@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { ensureSupplierConversationForEngagement } from "@/lib/messages/ensure-conversation";
 
 type SupplierProfileRow = {
   supplier_id: number;
@@ -53,12 +54,14 @@ async function getCurrentSupplierContext() {
 
   return {
     supabase,
+    appUserId: String(appUser.user_id),
+    authUserId: authUser.id,
     supplierProfile,
   };
 }
 
 export async function engageWithRfq(formData: FormData) {
-  const { supabase, supplierProfile } = await getCurrentSupplierContext();
+  const { supabase, supplierProfile, appUserId } = await getCurrentSupplierContext();
 
   const rfq_id = Number(formData.get("rfq_id"));
 
@@ -94,6 +97,12 @@ export async function engageWithRfq(formData: FormData) {
   }
 
   if (existingEngagement) {
+    await ensureSupplierConversationForEngagement(supabase, {
+      supplierId: supplierProfile.supplier_id,
+      engagementId: existingEngagement.engagement_id,
+      initiatedBy: appUserId,
+    });
+
     revalidatePath("/supplier/bulletin-board");
     revalidatePath("/supplier/rfq");
     redirect(`/supplier/rfq/${existingEngagement.engagement_id}`);
@@ -118,6 +127,12 @@ export async function engageWithRfq(formData: FormData) {
   if (insertError || !insertedEngagement) {
     throw new Error(insertError?.message || "Failed to engage with RFQ.");
   }
+
+  await ensureSupplierConversationForEngagement(supabase, {
+    supplierId: supplierProfile.supplier_id,
+    engagementId: insertedEngagement.engagement_id,
+    initiatedBy: appUserId,
+  });
 
   revalidatePath("/supplier/bulletin-board");
   revalidatePath("/supplier/rfq");

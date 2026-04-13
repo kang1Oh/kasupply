@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Bell, ChevronRight, MessageSquare } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { getUserOnboardingStatus } from "@/lib/auth/get-user-onboarding-status";
@@ -113,49 +114,6 @@ type RfqCard = {
   showDecline: boolean;
   sortTime: number;
 };
-
-function BellIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-[15px] w-[15px]" fill="none" aria-hidden="true">
-      <path
-        d="M12 4.75a4.25 4.25 0 0 0-4.25 4.25v2.12c0 .48-.16.94-.46 1.31l-1.2 1.53a1 1 0 0 0 .79 1.61h10.24a1 1 0 0 0 .79-1.61l-1.2-1.53a2.1 2.1 0 0 1-.46-1.31V9A4.25 4.25 0 0 0 12 4.75Z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.7"
-      />
-      <path
-        d="M10.25 18a1.75 1.75 0 0 0 3.5 0"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.7"
-      />
-      <circle cx="18.2" cy="5.8" r="2.1" fill="#FF6A55" />
-    </svg>
-  );
-}
-
-function MessageIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-[15px] w-[15px]" fill="none" aria-hidden="true">
-      <path
-        d="M7 18.25h8.75A2.25 2.25 0 0 0 18 16V8.25A2.25 2.25 0 0 0 15.75 6H8.25A2.25 2.25 0 0 0 6 8.25V16a2.25 2.25 0 0 0 2.25 2.25Z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.7"
-      />
-      <path
-        d="m9.25 18.25-2.75 2V16"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.7"
-      />
-    </svg>
-  );
-}
 
 function ClockIcon() {
   return (
@@ -517,25 +475,27 @@ export default async function SupplierRfqPage({
 
   return (
     <main className="-m-6 min-h-screen bg-[#F7F9FC]">
-      <header className="border-b border-[#DFE7F1] bg-white">
-        <div className="flex items-center justify-between px-[18px] py-[10px]">
-          <div className="flex items-center gap-[8px] text-[12px] text-[#9AA5B5]">
-            <span>KaSupply</span>
-            <span>›</span>
-            <span className="font-medium text-[#516074]">RFQs</span>
+      <header className="border-b border-[#DCE5F1] bg-white">
+        <div className="flex items-center justify-between px-[18px] py-[15px]">
+          <div className="flex items-center gap-[8px] text-[12px]">
+            <span className="font-medium text-[#A5AEBB]">KaSupply</span>
+            <ChevronRight className="h-[14px] w-[14px] text-[#B6BEC9]" />
+            <span className="font-semibold text-[#2B4368]">RFQs</span>
           </div>
           <div className="flex items-center gap-[8px]">
             <button
               type="button"
-              className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-[10px] border border-[#E1E7EF] bg-[#FAFBFD] text-[#B0B9C8]"
+              aria-label="Notifications"
+              className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-[11px] border border-[#E2E8F0] bg-[#F9FBFD] text-[#A6B0BF] transition hover:border-[#D6DFEA] hover:text-[#4D5E75]"
             >
-              <BellIcon />
+              <Bell className="h-[15px] w-[15px]" strokeWidth={1.8} />
             </button>
             <button
               type="button"
-              className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-[10px] border border-[#E1E7EF] bg-[#FAFBFD] text-[#B0B9C8]"
+              aria-label="Messages"
+              className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-[11px] border border-[#E2E8F0] bg-[#F9FBFD] text-[#A6B0BF] transition hover:border-[#D6DFEA] hover:text-[#4D5E75]"
             >
-              <MessageIcon />
+              <MessageSquare className="h-[15px] w-[15px]" strokeWidth={1.8} />
             </button>
           </div>
         </div>

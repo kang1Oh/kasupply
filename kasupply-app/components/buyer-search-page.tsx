@@ -360,7 +360,7 @@ function toHomepageSupplier(supplier: SupplierSearchItem): BuyerHomepageSupplier
   ).slice(0, 3);
 
   return {
-    id: supplier.supplierId,
+    supplierId: supplier.supplierId,
     profileId: supplier.profileId,
     name: supplier.businessName,
     initials: getInitials(supplier.businessName || "Supplier"),

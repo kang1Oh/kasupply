@@ -3,7 +3,7 @@
 import Link from "next/link";
 
 export type BuyerHomepageSupplier = {
-  id: number;
+  supplierId: number;
   profileId: number;
   name: string;
   initials: string;
@@ -151,13 +151,13 @@ export function BuyerSupplierCard({
 
       <div className="mt-3 grid grid-cols-[1fr_1fr_40px] gap-2">
         <Link
-          href={`/buyer/search/${supplier.id}`}
+          href={`/buyer/search/${supplier.supplierId}`}
           className="inline-flex min-h-[38px] items-center justify-center rounded-[7px] bg-[#223f68] px-4 py-2 text-[11px] font-medium text-white transition hover:bg-[#1d3454]"
         >
           View Details
         </Link>
         <Link
-          href={`/buyer/messages?supplierId=${supplier.id}`}
+          href={`/buyer/messages?supplierId=${supplier.supplierId}`}
           className="inline-flex min-h-[38px] items-center justify-center rounded-[7px] border border-[#d9e2ee] px-4 py-2 text-[11px] font-medium text-[#94a3b8] transition hover:bg-[#f8fafc] hover:text-[#223654]"
         >
           Send Message
