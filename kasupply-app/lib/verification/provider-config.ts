@@ -23,8 +23,8 @@ export function getVerificationReadiness() {
 
   return {
     snapshot,
-    canRunBuyerDocumentLive: snapshot.gemini || snapshot.vision,
-    canRunSupplierDocumentLive: snapshot.gemini || snapshot.vision,
+    canRunBuyerDocumentLive: snapshot.gemini && snapshot.vision,
+    canRunSupplierDocumentLive: snapshot.gemini && snapshot.vision,
     canRunSiteVerificationLive: snapshot.gemini && snapshot.maps,
     isAnyProviderConfigured: snapshot.gemini || snapshot.maps || snapshot.vision,
   };

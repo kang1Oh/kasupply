@@ -7,6 +7,7 @@ import {
   safeQueueDocumentVerification,
   safeSyncSupplierVerificationProfile,
 } from "@/lib/verification/onboarding";
+import { getSupplierDocumentRequirements } from "@/lib/supplier-requirements";
 
 type ExistingDocumentRow = {
   doc_id: number;
@@ -64,6 +65,17 @@ export async function uploadSupplierDocument(formData: FormData) {
 
   if (docTypeError || !existingDocumentType) {
     throw new Error("Invalid document type.");
+  }
+
+  const documentRequirements = await getSupplierDocumentRequirements(supabase);
+  const allowedDocumentIds = new Set(
+    documentRequirements
+      .filter((requirement) => requirement.isActive && requirement.showInOnboarding)
+      .map((requirement) => requirement.docTypeId)
+  );
+
+  if (!allowedDocumentIds.has(doc_type_id)) {
+    throw new Error("This document type is not currently available for supplier onboarding.");
   }
 
   const { data: existingDocument } = await supabase

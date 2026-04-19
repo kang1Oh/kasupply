@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getSupplierCertificationRequirements } from "@/lib/supplier-requirements";
 import {
   saveSupplierCertificationUpdates,
   saveSupplierPermitUpdates,
@@ -63,11 +64,6 @@ type SupplierCertificationRow = {
         certification_type_name: string | null;
       }[]
     | null;
-};
-
-type CertificationTypeRow = {
-  cert_type_id: number;
-  certification_type_name: string | null;
 };
 
 function HeaderActionIcon({
@@ -310,16 +306,7 @@ export default async function SupplierAccountSettingsPage({
     );
   }
 
-  const { data: certificationTypes, error: certificationTypesError } = await supabase
-    .from("certification_types")
-    .select("cert_type_id, certification_type_name")
-    .order("certification_type_name", { ascending: true });
-
-  if (certificationTypesError) {
-    throw new Error(
-      certificationTypesError.message || "Failed to load certification types.",
-    );
-  }
+  const certificationRequirements = await getSupplierCertificationRequirements(supabase);
 
   const permitRows = await Promise.all(
     ((businessDocuments as BusinessDocumentRow[] | null) ?? []).map(async (document) => ({
@@ -349,10 +336,11 @@ export default async function SupplierAccountSettingsPage({
     ),
   );
 
-  const certificationTypeOptions = ((certificationTypes as CertificationTypeRow[] | null) ?? [])
-    .map((type) => ({
-      certTypeId: type.cert_type_id,
-      label: type.certification_type_name?.trim() || "Certification",
+  const certificationTypeOptions = certificationRequirements
+    .filter((requirement) => requirement.isActive && requirement.allowPostOnboardingSubmission)
+    .map((requirement) => ({
+      certTypeId: requirement.certTypeId,
+      label: requirement.label,
     }))
     .filter((type) => type.label);
 

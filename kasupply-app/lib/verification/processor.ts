@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { runBuyerDtiLiveVerification } from "@/lib/verification/buyer-dti";
 import { getDocumentVerificationBlueprint } from "@/lib/verification/document-rules";
 import { getVerificationReadiness } from "@/lib/verification/provider-config";
 import {
@@ -46,6 +47,7 @@ type BusinessDocumentRow = {
 
 type BusinessProfileRow = {
   profile_id: number;
+  business_name?: string | null;
   business_location: string;
   city: string;
   province: string;
@@ -91,6 +93,10 @@ function buildDocumentMockSummary(
           "The document has been routed to manual review.",
         ],
   };
+}
+
+function isBuyerDtiDocument(documentTypeName: string) {
+  return getDocumentVerificationBlueprint(documentTypeName)?.code === "dti";
 }
 
 function buildSiteMockSummary(addressLabel: string): SiteVerificationSummary {
@@ -160,6 +166,80 @@ async function processDocumentVerificationRun(run: VerificationRunRow) {
 
   const documentTypeName = readDocumentTypeName(document);
   const readiness = getVerificationReadiness();
+
+  if (run.kind === "buyer_document" && isBuyerDtiDocument(documentTypeName)) {
+    const { data: businessProfile, error: businessProfileError } = await supabase
+      .from("business_profiles")
+      .select("profile_id, business_name, business_location, city, province, region")
+      .eq("profile_id", run.profile_id)
+      .maybeSingle<BusinessProfileRow>();
+
+    if (businessProfileError) {
+      throw new Error(
+        businessProfileError.message ||
+          "Failed to load business profile for buyer document verification."
+      );
+    }
+
+    if (!businessProfile) {
+      throw new Error("Business profile not found for buyer document verification.");
+    }
+
+    if (readiness.canRunBuyerDocumentLive) {
+      const liveResult = await runBuyerDtiLiveVerification({
+        filePath: document.file_url,
+        businessContext: {
+          businessName: businessProfile.business_name ?? null,
+          businessLocation: businessProfile.business_location ?? null,
+          city: businessProfile.city ?? null,
+          province: businessProfile.province ?? null,
+          region: businessProfile.region ?? null,
+        },
+      });
+
+      const { error: liveUpdateError } = await supabase
+        .from("business_documents")
+        .update({
+          status: liveResult.summary.status,
+          ocr_extracted_data: liveResult.ocrRawText,
+          ocr_raw_text: liveResult.ocrRawText,
+          ocr_extracted_fields: liveResult.summary.extractedFields,
+          metadata_analysis: liveResult.metadataAnalysis,
+          verification_analysis: liveResult.verificationAnalysis,
+          verification_score: liveResult.summary.score,
+          manual_review_required: liveResult.summary.manualReviewRequired,
+          review_notes: liveResult.reviewNotes,
+          verified_at: liveResult.verifiedAt,
+        })
+        .eq("doc_id", document.doc_id);
+
+      if (liveUpdateError) {
+        throw new Error(
+          liveUpdateError.message || "Failed to update live buyer verification result."
+        );
+      }
+
+      if (liveResult.summary.status === "approved") {
+        await completeVerificationRun(run.run_id, {
+          mode: "live",
+          target: "business_document",
+          summary: liveResult.summary,
+          documentTypeName,
+        });
+      } else {
+        await markVerificationRunReviewRequired(run.run_id, {
+          mode: "live",
+          target: "business_document",
+          summary: liveResult.summary,
+          documentTypeName,
+        });
+      }
+
+      await syncBuyerVerificationProfileFromDocuments(run.profile_id);
+      return;
+    }
+  }
+
   const summary = buildDocumentMockSummary(documentTypeName);
   const reviewNotes = summary.notes.join(" ");
 

@@ -124,6 +124,9 @@ export function BuyerDocumentsForm({
                 <p className="mt-2 text-sm text-[#9aa5b4]">
                   PDF, JPG, JPEG, PNG, DOC, DOCX formats, up to 10MB
                 </p>
+                <p className="mt-1 text-xs text-[#7f8897]">
+                  JPG or PNG is recommended for the fastest automated QR-based review.
+                </p>
 
                 {selectedFileName ? (
                   <p className="mt-3 text-sm font-medium text-[#223654]">

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getUserOnboardingStatus } from "@/lib/auth/get-user-onboarding-status";
+import { getSupplierDocumentRequirements } from "@/lib/supplier-requirements";
 import { SupplierDocumentsStepForm } from "./supplier-documents-step-form";
 
 type DocumentTypeRow = {
@@ -14,16 +15,6 @@ type UploadedDocumentRow = {
   doc_type_id: number;
   status: string | null;
 };
-
-const REQUIRED_DOCUMENT_NAMES = [
-  "DTI Business Registration Certificate",
-  "Mayor's Permit",
-  "BIR Certificate",
-];
-
-const REQUIRED_DOCUMENT_ORDER = new Map(
-  REQUIRED_DOCUMENT_NAMES.map((name, index) => [name, index])
-);
 
 function SupplierDocumentsPageFallback() {
   return (
@@ -60,15 +51,6 @@ async function SupplierDocumentsPageContent() {
 
   const supabase = await createClient();
 
-  const { data: documentTypes, error: documentTypesError } = await supabase
-    .from("document_types")
-    .select("doc_type_id, document_type_name")
-    .order("document_type_name", { ascending: true });
-
-  if (documentTypesError) {
-    throw new Error(documentTypesError.message || "Failed to load document types.");
-  }
-
   const businessProfileId = status.businessProfile?.profile_id;
 
   if (!businessProfileId) {
@@ -84,22 +66,25 @@ async function SupplierDocumentsPageContent() {
     throw new Error(uploadedDocumentsError.message || "Failed to load uploaded documents.");
   }
 
-  const safeDocumentTypes = (documentTypes as DocumentTypeRow[] | null) ?? [];
   const safeUploadedDocuments = (uploadedDocuments as UploadedDocumentRow[] | null) ?? [];
-
-  const requiredDocumentTypes = safeDocumentTypes.filter((docType) =>
-    REQUIRED_DOCUMENT_NAMES.includes(docType.document_type_name)
-  )
-  .sort((left, right) => {
-    const leftOrder = REQUIRED_DOCUMENT_ORDER.get(left.document_type_name) ?? 999;
-    const rightOrder = REQUIRED_DOCUMENT_ORDER.get(right.document_type_name) ?? 999;
-
-    return leftOrder - rightOrder;
-  });
-
-  const optionalDocumentTypes = safeDocumentTypes.filter(
-    (docType) => !REQUIRED_DOCUMENT_NAMES.includes(docType.document_type_name)
+  const documentRequirements = await getSupplierDocumentRequirements(supabase);
+  const activeDocumentRequirements = documentRequirements.filter(
+    (requirement) => requirement.isActive && requirement.showInOnboarding
   );
+
+  const requiredDocumentTypes: DocumentTypeRow[] = activeDocumentRequirements
+    .filter((requirement) => requirement.isRequired)
+    .map((requirement) => ({
+      doc_type_id: requirement.docTypeId,
+      document_type_name: requirement.label,
+    }));
+
+  const optionalDocumentTypes: DocumentTypeRow[] = activeDocumentRequirements
+    .filter((requirement) => !requirement.isRequired)
+    .map((requirement) => ({
+      doc_type_id: requirement.docTypeId,
+      document_type_name: requirement.label,
+    }));
 
   return (
     <div className="min-h-svh bg-[#fafbfd] p-6 md:p-10">

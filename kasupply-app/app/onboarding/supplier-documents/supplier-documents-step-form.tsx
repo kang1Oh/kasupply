@@ -166,7 +166,7 @@ export function SupplierDocumentsStepForm({
           </div>
 
           <div className="flex items-center gap-3">
-            <StepIndicator number={1} label="Profile Setup" />
+            <StepIndicator number={1} label="Profile Setup" active />
             <div className="h-px flex-1 bg-[#1f3d67]" />
             <StepIndicator number={2} label="Verification" active />
             <div className="h-px flex-1 bg-[#e5e7eb]" />
@@ -188,38 +188,41 @@ export function SupplierDocumentsStepForm({
             </div>
           </div>
 
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#7d8595]">
-              Optional documents
-            </p>
-            <p className="mt-1 text-sm text-[#c0c5cf]">
-              Additional certifications like Halal, ISO, GAP, Organic, or Fair Trade help boost your visibility to buyers
-            </p>
+          {optionalDocumentTypes.length > 0 ? (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#7d8595]">
+                Optional documents
+              </p>
+              <p className="mt-1 text-sm text-[#c0c5cf]">
+                Upload any extra supplier documents your current onboarding policy marks as
+                optional.
+              </p>
 
-            <div className="mt-3 space-y-3">
-              {visibleOptionalDocuments.map((docType) => (
-                <DocumentCard
-                  key={docType.doc_type_id}
-                  docType={docType}
-                  uploaded={uploadedMap.get(docType.doc_type_id)}
-                  optional
-                />
-              ))}
+              <div className="mt-3 space-y-3">
+                {visibleOptionalDocuments.map((docType) => (
+                  <DocumentCard
+                    key={docType.doc_type_id}
+                    docType={docType}
+                    uploaded={uploadedMap.get(docType.doc_type_id)}
+                    optional
+                  />
+                ))}
+              </div>
+
+              {hasMoreOptional ? (
+                <button
+                  type="button"
+                  onClick={() => setVisibleOptionalCount((current) => current + 1)}
+                  className="mt-3 flex h-10 w-full items-center gap-2 rounded-[14px] border border-[#e4e9f1] bg-white px-4 text-sm text-[#8a94a6] transition hover:border-[#cfd8e3]"
+                >
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full border border-[#c7d0dc] text-xs">
+                    +
+                  </span>
+                  Add Optional Document
+                </button>
+              ) : null}
             </div>
-
-            {hasMoreOptional ? (
-              <button
-                type="button"
-                onClick={() => setVisibleOptionalCount((current) => current + 1)}
-                className="mt-3 flex h-10 w-full items-center gap-2 rounded-[14px] border border-[#e4e9f1] bg-white px-4 text-sm text-[#8a94a6] transition hover:border-[#cfd8e3]"
-              >
-                <span className="flex h-5 w-5 items-center justify-center rounded-full border border-[#c7d0dc] text-xs">
-                  +
-                </span>
-                Add Certification
-              </button>
-            ) : null}
-          </div>
+          ) : null}
         </div>
       </section>
 

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentAppUser } from "@/lib/auth/get-current-app-user";
+import { getSupplierDocumentRequirements } from "@/lib/supplier-requirements";
 
 type BuyerProfileRow = {
   buyer_id: number;
@@ -61,12 +62,6 @@ const REQUIRED_SITE_IMAGE_TYPES = [
   "signage",
   "operational_setup",
   "location_map",
-];
-
-const REQUIRED_SUPPLIER_DOCUMENTS = [
-  "DTI Business Registration Certificate",
-  "Mayor's Permit",
-  "BIR Certificate",
 ];
 
 function normalizeDocumentName(value: string) {
@@ -183,13 +178,22 @@ export async function getUserOnboardingStatus() {
   let supplierDocumentsErrorMessage: string | null = null;
   let buyerVerificationStatus: string | null = null;
   let supplierVerificationState: string | null = null;
+  const supplierDocumentRequirements = businessProfile
+    ? await getSupplierDocumentRequirements(supabase)
+    : [];
+  const activeSupplierDocumentRequirements = supplierDocumentRequirements.filter(
+    (requirement) => requirement.isActive && requirement.showInOnboarding
+  );
+  const requiredSupplierDocumentRequirements = activeSupplierDocumentRequirements.filter(
+    (requirement) => requirement.isRequired
+  );
 
   let requiredDocumentsChecklist: Array<{
     name: string;
     uploaded: boolean;
     status: string | null;
-  }> = REQUIRED_SUPPLIER_DOCUMENTS.map((name) => ({
-    name,
+  }> = requiredSupplierDocumentRequirements.map((requirement) => ({
+    name: requirement.label,
     uploaded: false,
     status: null,
   }));
@@ -292,18 +296,18 @@ export async function getUserOnboardingStatus() {
       }
     }
 
-    requiredDocumentsChecklist = REQUIRED_SUPPLIER_DOCUMENTS.map((name) => {
-      const existing = uploadedDocumentNames.get(normalizeDocumentName(name));
+    requiredDocumentsChecklist = requiredSupplierDocumentRequirements.map((requirement) => {
+      const existing = uploadedDocumentNames.get(normalizeDocumentName(requirement.label));
       return {
-        name,
+        name: requirement.label,
         uploaded: existing?.uploaded ?? false,
         status: existing?.status ?? null,
       };
     });
 
-    hasSubmittedRequiredSupplierDocuments = requiredDocumentsChecklist.every(
-      (doc) => doc.uploaded
-    );
+    hasSubmittedRequiredSupplierDocuments =
+      requiredDocumentsChecklist.length === 0 ||
+      requiredDocumentsChecklist.every((doc) => doc.uploaded);
 
     const { data: siteImageData } = await supabase
       .from("site_showcase_images")

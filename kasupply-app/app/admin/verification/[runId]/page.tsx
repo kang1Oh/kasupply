@@ -2,10 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdminUser } from "@/lib/auth/require-admin";
 import { createClient } from "@/lib/supabase/server";
-import {
-  retryProfileVerificationAction,
-  retryVerificationRunAction,
-} from "@/app/admin/dashboard/actions";
 
 type VerificationDetailPageProps = {
   params: Promise<{
@@ -362,27 +358,6 @@ export default async function VerificationDetailPage({
             <p className="mt-2 text-sm text-[#6b7280]">
               Inspect the stored verification artifacts, business context, and retry history for this automated run.
             </p>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <form action={retryVerificationRunAction}>
-              <input type="hidden" name="run_id" value={data.run.run_id} />
-              <button
-                type="submit"
-                className="rounded-lg border border-[#223654] px-4 py-2.5 text-sm font-semibold text-[#223654] transition hover:bg-[#f7f9fc]"
-              >
-                Retry This Run
-              </button>
-            </form>
-            <form action={retryProfileVerificationAction}>
-              <input type="hidden" name="profile_id" value={data.run.profile_id} />
-              <button
-                type="submit"
-                className="rounded-lg bg-[#eef4ff] px-4 py-2.5 text-sm font-semibold text-[#1d4ed8] transition hover:bg-[#dbeafe]"
-              >
-                Retry Latest For Profile
-              </button>
-            </form>
           </div>
         </div>
       </section>

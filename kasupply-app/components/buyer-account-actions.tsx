@@ -187,8 +187,8 @@ export function BuyerAccountActions({
         icon={<LogoutModalIcon />}
         title="Log out?"
         description="Are you sure you want to log out of your account?"
-        cancelLabel="Stay"
-        confirmLabel={isPending ? "Discarding..." : "Discard"}
+        cancelLabel="Cancel"
+        confirmLabel={isPending ? "Logging out..." : "Log Out"}
         onCancel={() => setIsLoggingOutOpen(false)}
         onConfirm={handleLogout}
         isSubmitting={isPending}

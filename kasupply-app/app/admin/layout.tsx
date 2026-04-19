@@ -1,19 +1,26 @@
-import Link from "next/link";
 import { Suspense } from "react";
 import { requireAdminUser } from "@/lib/auth/require-admin";
-import { LogoutButton } from "@/components/logout-button";
-
-const NAV_ITEMS = [{ href: "/admin/dashboard", label: "Dashboard" }];
+import { AdminSidebar } from "@/components/admin/admin-sidebar";
 
 function AdminLayoutFallback() {
   return (
-    <div className="min-h-screen bg-[#f6f8fb]">
-      <div className="grid min-h-screen md:grid-cols-[270px_1fr]">
-        <aside className="border-r border-[#e6edf6] bg-white p-5">
-          <div className="h-7 w-28 rounded-md bg-[#eef3f9]" />
-          <div className="mt-2 h-4 w-20 rounded-md bg-[#f3f6fb]" />
+    <div className="min-h-screen bg-[#F5F7FB]">
+      <div className="flex min-h-screen">
+        <aside className="h-screen w-[230px] shrink-0 bg-[#1E3A5F] px-4 py-4 text-white">
+          <div className="animate-pulse">
+            <div className="h-10 w-32 rounded-xl bg-white/15" />
+            <div className="mt-6 space-y-2">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <div key={index} className="h-11 rounded-lg bg-white/10" />
+              ))}
+            </div>
+            <div className="mt-[280px] h-14 rounded-xl bg-white/10" />
+          </div>
         </aside>
-        <main className="p-6">Loading admin workspace...</main>
+
+        <main className="flex-1 p-6">
+          <div className="h-24 animate-pulse rounded-2xl bg-white shadow-sm" />
+        </main>
       </div>
     </div>
   );
@@ -24,37 +31,18 @@ async function AdminLayoutContent({
 }: {
   children: React.ReactNode;
 }) {
-  await requireAdminUser();
+  const adminUser = await requireAdminUser();
 
   return (
-    <div className="min-h-screen bg-[#f6f8fb]">
-      <div className="grid min-h-screen md:grid-cols-[270px_1fr]">
-        <aside className="flex h-screen flex-col border-r border-[#e6edf6] bg-white p-5">
-          <div>
-            <h2 className="text-xl font-bold text-[#223654]">KaSupply</h2>
-            <p className="text-sm text-[#8b95a5]">admin panel</p>
-          </div>
+    <div className="min-h-screen bg-[#F5F7FB]">
+      <div className="flex min-h-screen">
+        <AdminSidebar
+          name={adminUser.name}
+          email={adminUser.email}
+          role={adminUser.roles?.role_name ?? "Admin"}
+        />
 
-          <nav className="mt-8 space-y-2">
-            {NAV_ITEMS.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="block rounded-lg px-3 py-2 text-sm text-[#334155] transition hover:bg-[#f4f7fb]"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-
-          <div className="mt-auto border-t border-[#eef2f7] pt-4">
-            <div className="px-3">
-              <LogoutButton />
-            </div>
-          </div>
-        </aside>
-
-        <main className="p-6">{children}</main>
+        <main className="min-w-0 flex-1 p-6">{children}</main>
       </div>
     </div>
   );

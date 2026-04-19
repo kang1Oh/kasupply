@@ -7,6 +7,7 @@ import {
   safeQueueDocumentVerification,
   safeSyncSupplierVerificationProfile,
 } from "@/lib/verification/onboarding";
+import { getSupplierCertificationRequirements } from "@/lib/supplier-requirements";
 
 type SupplierProfileRow = {
   supplier_id: number;
@@ -222,6 +223,17 @@ export async function uploadSupplierCertification(formData: FormData) {
 
   if (certTypeError || !certType) {
     throw new Error("Invalid certification type.");
+  }
+
+  const certificationRequirements = await getSupplierCertificationRequirements(supabase);
+  const allowedCertificationIds = new Set(
+    certificationRequirements
+      .filter((requirement) => requirement.isActive && requirement.allowPostOnboardingSubmission)
+      .map((requirement) => requirement.certTypeId)
+  );
+
+  if (!allowedCertificationIds.has(cert_type_id)) {
+    throw new Error("This certification type is not currently available for supplier profiles.");
   }
 
   const fileExt = file.name.split(".").pop() || "pdf";
