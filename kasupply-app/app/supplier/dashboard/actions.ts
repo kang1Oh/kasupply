@@ -961,7 +961,7 @@ export async function getSupplierDashboardData(): Promise<SupplierDashboardData>
 }
 
 export async function openMatchedRfq(formData: FormData) {
-  const { supabase, supplierProfile } = await getCurrentSupplierContext();
+  const { supabase, supplierProfile, appUser } = await getCurrentSupplierContext();
 
   const rfqId = Number(formData.get("rfq_id"));
   const matchId = Number(formData.get("match_id"));

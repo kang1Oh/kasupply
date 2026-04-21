@@ -8,9 +8,12 @@ import { getCurrentBuyerContext } from "@/lib/buyer/rfq-workflows";
 import {
   PURCHASE_ORDER_RECEIPTS_BUCKET,
   buildPurchaseOrderReceiptPath,
+  isPurchaseOrderPaymentMethod,
+  normalizePurchaseOrderPaymentMethod,
 } from "@/lib/purchase-orders/constants";
 import {
   getCurrentBuyerReceiptUploadInfo,
+  getBuyerPurchaseOrderDetail,
   getPurchaseOrderCreationDraft,
 } from "./data";
 
@@ -111,8 +114,29 @@ function buildBuyerPurchaseOrderHref(
   return query ? `/buyer/purchase-orders/${poId}?${query}` : `/buyer/purchase-orders/${poId}`;
 }
 
-function redirectReceiptError(poId: number, message: string): never {
-  redirect(buildBuyerPurchaseOrderHref(poId, { receiptError: message }));
+function buildBuyerPurchaseOrderReviewHref(
+  poId: number,
+  params: Record<string, string | null | undefined> = {},
+) {
+  const searchParams = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params)) {
+    if (!value) continue;
+    searchParams.set(key, value);
+  }
+
+  const query = searchParams.toString();
+  return query
+    ? `/buyer/purchase-orders/${poId}/review?${query}`
+    : `/buyer/purchase-orders/${poId}/review`;
+}
+
+function redirectReceiptError(
+  poId: number,
+  message: string,
+  step?: string | null,
+): never {
+  redirect(buildBuyerPurchaseOrderHref(poId, { receiptError: message, step }));
 }
 
 function revalidatePurchaseOrderPaths(params: {
@@ -128,6 +152,20 @@ function revalidatePurchaseOrderPaths(params: {
     revalidatePath(`/buyer/rfqs/${params.rfqId}`);
     revalidatePath(`/buyer/sourcing-board/${params.rfqId}`);
   }
+}
+
+function isMissingSupplierReviewsTableError(message: string | null | undefined) {
+  const normalizedMessage = String(message ?? "").toLowerCase();
+
+  if (!normalizedMessage.includes("supplier_reviews")) {
+    return false;
+  }
+
+  return (
+    normalizedMessage.includes("does not exist") ||
+    normalizedMessage.includes("schema cache") ||
+    normalizedMessage.includes("could not find the table")
+  );
 }
 
 async function getPurchaseOrderRfqId(
@@ -166,6 +204,7 @@ export async function createPurchaseOrder(formData: FormData) {
   const rfqId = Number(formData.get("rfqId")?.toString() ?? "");
   const quoteId = Number(formData.get("quoteId")?.toString() ?? "");
   const paymentMethod = String(formData.get("paymentMethod") || "").trim();
+  const normalizedPaymentMethod = normalizePurchaseOrderPaymentMethod(paymentMethod);
   const termsAndConditions = String(formData.get("termsAndConditions") || "").trim();
   const additionalNotes = String(formData.get("additionalNotes") || "").trim();
 
@@ -175,6 +214,10 @@ export async function createPurchaseOrder(formData: FormData) {
 
   if (!paymentMethod) {
     throw new Error("Payment method is required.");
+  }
+
+  if (!normalizedPaymentMethod || !isPurchaseOrderPaymentMethod(normalizedPaymentMethod)) {
+    throw new Error("Select a valid payment method.");
   }
 
   const draft = await getPurchaseOrderCreationDraft(rfqId, quoteId);
@@ -197,7 +240,7 @@ export async function createPurchaseOrder(formData: FormData) {
       quantity: draft.quantity,
       total_amount: draft.totalAmount,
       status: "confirmed",
-      payment_method: paymentMethod,
+      payment_method: normalizedPaymentMethod,
       terms_and_conditions: termsAndConditions || null,
       additional_notes: additionalNotes || null,
       confirmed_at: new Date().toISOString(),
@@ -252,13 +295,14 @@ export async function uploadPurchaseOrderReceipt(formData: FormData) {
 
   const poId = Number(formData.get("poId")?.toString() ?? "");
   const receiptFile = formData.get("receiptFile") as File | null;
+  const redirectStep = String(formData.get("redirectStep") || "").trim() || null;
 
   if (!poId || Number.isNaN(poId)) {
     redirect("/buyer/purchase-orders");
   }
 
   if (!receiptFile || receiptFile.size === 0) {
-    redirectReceiptError(poId, "Receipt file is required.");
+    redirectReceiptError(poId, "Receipt file is required.", redirectStep);
   }
 
   const allowedTypes = new Set([
@@ -273,27 +317,33 @@ export async function uploadPurchaseOrderReceipt(formData: FormData) {
     redirectReceiptError(
       poId,
       "Please upload a PDF, JPG, JPEG, PNG, or WEBP receipt file.",
+      redirectStep,
     );
   }
 
   if (receiptFile.size > 10 * 1024 * 1024) {
-    redirectReceiptError(poId, "The receipt file must be 10MB or smaller.");
+    redirectReceiptError(poId, "The receipt file must be 10MB or smaller.", redirectStep);
   }
 
   const uploadInfo = await getCurrentBuyerReceiptUploadInfo(poId);
 
   if (!uploadInfo) {
-    redirectReceiptError(poId, "Purchase order not found.");
+    redirectReceiptError(poId, "Purchase order not found.", redirectStep);
   }
 
   if (uploadInfo.status === "completed" || uploadInfo.status === "cancelled") {
-    redirectReceiptError(poId, "This purchase order can no longer accept a receipt upload.");
+    redirectReceiptError(
+      poId,
+      "This purchase order can no longer accept a receipt upload.",
+      redirectStep,
+    );
   }
 
   if (uploadInfo.status !== "shipped") {
     redirectReceiptError(
       poId,
       "Receipt upload becomes available after the supplier marks the order as shipped.",
+      redirectStep,
     );
   }
 
@@ -301,7 +351,11 @@ export async function uploadPurchaseOrderReceipt(formData: FormData) {
     uploadInfo.existingReceiptFilePath &&
     !["rejected", "not_uploaded"].includes(uploadInfo.receiptStatus)
   ) {
-    redirectReceiptError(poId, "This receipt is already waiting for supplier review.");
+    redirectReceiptError(
+      poId,
+      "This receipt is already waiting for supplier review.",
+      redirectStep,
+    );
   }
 
   const nextReceiptPath = buildPurchaseOrderReceiptPath(
@@ -322,6 +376,7 @@ export async function uploadPurchaseOrderReceipt(formData: FormData) {
       redirectReceiptError(
         poId,
         "Receipt file upload is blocked by the purchase-order-receipts storage policy. Run purchase-order-receipts-storage-policy.sql in Supabase SQL editor or configure SUPABASE_SERVICE_ROLE_KEY in .env.local.",
+        redirectStep,
       );
     }
 
@@ -329,15 +384,18 @@ export async function uploadPurchaseOrderReceipt(formData: FormData) {
       poId,
       uploadError.message ||
         "Failed to upload receipt. Configure a service-role key or update the bucket RLS policy for buyer uploads.",
+      redirectStep,
     );
   }
 
   const { data: updatedOrder, error: updateError } = await databaseClient
     .from("purchase_orders")
     .update({
+      status: "completed",
       receipt_file_url: nextReceiptPath,
       receipt_status: "pending_review",
       receipt_review_notes: null,
+      completed_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
     .eq("po_id", poId)
@@ -356,10 +414,15 @@ export async function uploadPurchaseOrderReceipt(formData: FormData) {
       redirectReceiptError(
         poId,
         "Buyer receipt upload is blocked by the purchase_orders UPDATE policy. Update the Supabase RLS policy for buyer receipt uploads or add SUPABASE_SERVICE_ROLE_KEY to .env.local.",
+        redirectStep,
       );
     }
 
-    redirectReceiptError(poId, updateError?.message || "Failed to attach receipt to this order.");
+    redirectReceiptError(
+      poId,
+      updateError?.message || "Failed to attach receipt to this order.",
+      redirectStep,
+    );
   }
 
   if (
@@ -380,7 +443,7 @@ export async function uploadPurchaseOrderReceipt(formData: FormData) {
     rfqId,
   });
 
-  redirect(`/buyer/purchase-orders/${poId}`);
+  redirect(buildBuyerPurchaseOrderHref(poId, { step: redirectStep }));
 }
 
 export async function cancelPurchaseOrder(formData: FormData) {
@@ -437,4 +500,105 @@ export async function cancelPurchaseOrder(formData: FormData) {
   });
 
   redirect(`/buyer/purchase-orders/${poId}`);
+}
+
+export async function submitPurchaseOrderReview(formData: FormData) {
+  const supabase = await createClient();
+  const adminSupabase = createAdminClient();
+  const databaseClient = adminSupabase ?? supabase;
+  const buyerContext = await getCurrentBuyerContext();
+
+  if (!buyerContext) {
+    throw new Error("Buyer profile not found.");
+  }
+
+  const poId = Number(formData.get("poId")?.toString() ?? "");
+
+  if (!poId || Number.isNaN(poId)) {
+    throw new Error("Invalid purchase order.");
+  }
+
+  const overallRating = Number(formData.get("overallRating")?.toString() ?? "");
+  const productQualityRating = Number(formData.get("productQualityRating")?.toString() ?? "");
+  const deliveryRating = Number(formData.get("deliveryRating")?.toString() ?? "");
+  const communicationRating = Number(formData.get("communicationRating")?.toString() ?? "");
+  const valueForMoneyRating = Number(formData.get("valueForMoneyRating")?.toString() ?? "");
+  const reviewText = String(formData.get("reviewText") || "").trim();
+
+  if (!Number.isInteger(overallRating) || overallRating < 1 || overallRating > 5) {
+    throw new Error("Overall rating is required.");
+  }
+
+  const normalizeOptionalRating = (value: number) =>
+    Number.isInteger(value) && value >= 1 && value <= 5 ? value : null;
+
+  const order = await getBuyerPurchaseOrderDetail(poId);
+
+  if (!order || order.supplierId == null) {
+    throw new Error("Purchase order not found.");
+  }
+
+  if (order.status !== "completed") {
+    throw new Error("Only completed orders can be reviewed.");
+  }
+
+  if (!order.receiptFilePath) {
+    throw new Error("You can only review orders with a completed receipt upload.");
+  }
+
+  const timestamp = new Date().toISOString();
+
+  const { error: upsertError } = await databaseClient
+    .from("supplier_reviews")
+    .upsert(
+      {
+        purchase_order_id: poId,
+        supplier_id: order.supplierId,
+        buyer_id: buyerContext.buyerId,
+        overall_rating: overallRating,
+        product_quality_rating: normalizeOptionalRating(productQualityRating),
+        delivery_rating: normalizeOptionalRating(deliveryRating),
+        communication_rating: normalizeOptionalRating(communicationRating),
+        value_for_money_rating: normalizeOptionalRating(valueForMoneyRating),
+        review_text: reviewText || null,
+        updated_at: timestamp,
+      },
+      {
+        onConflict: "purchase_order_id,buyer_id",
+      },
+    );
+
+  if (upsertError) {
+    if (isMissingSupplierReviewsTableError(upsertError.message)) {
+      redirect(
+        buildBuyerPurchaseOrderReviewHref(poId, {
+          error:
+            "Supplier reviews are not available yet because Supabase has not refreshed the supplier_reviews table. Refresh your local Supabase instance or rerun sql/supplier_reviews_schema.sql, then try again.",
+        }),
+      );
+    }
+
+    if (!adminSupabase && /row-level security policy/i.test(upsertError.message ?? "")) {
+      redirect(
+        buildBuyerPurchaseOrderReviewHref(poId, {
+          error:
+            "Review submission is blocked by Supabase RLS. Run sql/supplier_reviews_schema.sql or configure SUPABASE_SERVICE_ROLE_KEY in .env.local.",
+        }),
+      );
+    }
+
+    redirect(
+      buildBuyerPurchaseOrderReviewHref(poId, {
+        error: upsertError.message || "Failed to submit review.",
+      }),
+    );
+  }
+
+  revalidatePath(`/buyer/purchase-orders/${poId}`);
+  revalidatePath(`/buyer/purchase-orders/${poId}/review`);
+  revalidatePath("/buyer/purchase-orders");
+  revalidatePath(`/buyer/search/${order.supplierId}`);
+  revalidatePath(`/buyer/suppliers/${order.supplierId}`);
+
+  redirect(`/buyer/purchase-orders/${poId}/review?submitted=1`);
 }

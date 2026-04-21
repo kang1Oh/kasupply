@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   PURCHASE_ORDER_RECEIPTS_BUCKET,
   formatPurchaseOrderNumber,
+  getPurchaseOrderPaymentMethodLabel,
   normalizePurchaseOrderReceiptStatus,
   normalizePurchaseOrderStatus,
 } from "@/lib/purchase-orders/constants";
@@ -624,7 +625,9 @@ async function buildPurchaseOrderView(
     rfqId: engagement?.rfq_id ?? null,
     leadTime: quotation?.lead_time ?? null,
     quotationNotes: quotation?.notes ?? null,
-    paymentMethod: readFirstString(row, ["payment_method"]),
+    paymentMethod: getPurchaseOrderPaymentMethodLabel(
+      readFirstString(row, ["payment_method"]),
+    ),
     termsAndConditions: readFirstString(row, ["terms_and_conditions"]),
     additionalNotes: readFirstString(row, ["additional_notes"]),
     specifications: rfq?.specifications ?? null,

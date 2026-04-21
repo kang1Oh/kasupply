@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getSupplierRfqEngagementDetail } from "../data";
 import { declineEngagement, submitFinalQuotation } from "../actions";
 import { SupplierQuotationForm } from "./quotation-form";
+import { QuotationResponseActions } from "./quotation-response-actions";
 
 function BellIcon() {
   return (
@@ -161,14 +162,16 @@ function getTopBadge(status: string | null) {
   if (normalized === "accepted") {
     return {
       label: "Accepted",
-      className: "bg-[#ECF8F1] text-[#2A8A57]",
+      className: "bg-[#DDFBEA] text-[#249A62]",
+      dotClassName: "bg-[#249A62]",
     };
   }
 
   if (normalized === "closed") {
     return {
       label: "Closed",
-      className: "bg-[#EEF1F5] text-[#8793A7]",
+      className: "bg-[#F1F3F6] text-[#4F5D73]",
+      dotClassName: "bg-[#4F5D73]",
     };
   }
 
@@ -176,19 +179,22 @@ function getTopBadge(status: string | null) {
     return {
       label: "Declined",
       className: "bg-[#FFF0ED] text-[#F36E56]",
+      dotClassName: "bg-[#F36E56]",
     };
   }
 
   if (normalized === "quoted" || normalized === "responded" || normalized === "negotiating") {
     return {
       label: "Responded",
-      className: "bg-[#EEF4FF] text-[#3D7BFF]",
+      className: "bg-[#E4EEFF] text-[#3D72F6]",
+      dotClassName: "bg-[#3D72F6]",
     };
   }
 
   return {
     label: "New Request",
     className: "bg-[#FFF1E8] text-[#FF8A39]",
+    dotClassName: "bg-[#FF8A39]",
   };
 }
 
@@ -196,13 +202,15 @@ function getProgressState(data: Awaited<ReturnType<typeof getSupplierRfqEngageme
   const status = String(data?.engagement.status ?? "").toLowerCase();
   const quotationStatus = String(data?.latestQuotation?.status ?? "").toLowerCase();
   const hasPurchaseOrder = Boolean(data?.purchaseOrder?.po_id);
-  const poReceived = hasPurchaseOrder;
+  const quotationSubmitted =
+    Boolean(data?.latestQuotation) || ["quoted", "accepted", "closed"].includes(status);
 
   return {
     received: true,
     respond: ["viewing", "negotiating", "quoted", "accepted", "closed"].includes(status),
+    quotationSubmitted,
     accepted: status === "accepted" || quotationStatus === "accepted",
-    poReceived,
+    poReceived: hasPurchaseOrder,
   };
 }
 
@@ -211,31 +219,40 @@ function ProgressItem({
   index,
   complete,
   current,
+  tone = "default",
 }: {
   label: string;
   index: number;
   complete?: boolean;
   current?: boolean;
+  tone?: "default" | "closed";
 }) {
+  const currentClassName =
+    tone === "closed"
+      ? "bg-[#4F5D73] text-white"
+      : "bg-[#4FA171] text-white";
+  const currentTextClassName =
+    tone === "closed" ? "text-[#4F5D73]" : "text-[#4FA171]";
+
   return (
     <div className="flex items-center gap-[8px]">
       <div
-        className={`flex h-[20px] w-[20px] items-center justify-center rounded-full text-[10px] font-semibold ${
+        className={`flex h-[22px] w-[22px] items-center justify-center rounded-full text-[13px] font-normal ${
           current
-            ? "bg-[#4AA264] text-white"
+            ? currentClassName
             : complete
-              ? "bg-[#233F68] text-white"
+              ? "bg-[#1E3A5F] text-white"
               : "bg-[#E5E7EB] text-[#B6BDC8]"
         }`}
       >
         {index}
       </div>
       <span
-        className={`text-[12px] font-medium ${
+        className={`text-[15px] font-medium ${
           current
-            ? "text-[#4AA264]"
+            ? currentTextClassName
             : complete
-              ? "text-[#233F68]"
+              ? "text-[#1E3A5F]"
               : "text-[#C0C5CE]"
         }`}
       >
@@ -247,17 +264,20 @@ function ProgressItem({
 
 function SectionCard({
   title,
+  headerRight,
   children,
 }: {
   title: string;
+  headerRight?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section className="rounded-[16px] border border-[#E5EBF3] bg-white shadow-[0_4px_14px_rgba(15,23,42,0.03)]">
-      <div className="border-b border-[#EDF1F6] px-[20px] py-[14px]">
-        <h2 className="text-[12px] font-semibold uppercase tracking-[0.02em] text-[#223654]">
+      <div className="flex items-center justify-between gap-[12px] border-b border-[#EDF1F6] px-[20px] py-[14px]">
+        <h2 className="text-[14px] font-[600] uppercase tracking-[0.02em] text-[#223654]">
           {title}
         </h2>
+        {headerRight ? headerRight : null}
       </div>
       <div className="px-[20px] py-[18px]">{children}</div>
     </section>
@@ -276,7 +296,7 @@ function DetailItem({
       <p className="text-[11px] font-semibold uppercase tracking-[0.02em] text-[#A0A9B8]">
         {label}
       </p>
-      <div className="mt-[4px] text-[14px] font-medium leading-[1.45] text-[#334155]">
+      <div className="mt-[4px] text-[14px] font-normal leading-[1.45] text-[#334155]">
         {value}
       </div>
     </div>
@@ -326,6 +346,7 @@ export default async function SupplierRfqQuotePage({
   const quoteSent = forcedView === "sent" || Boolean(data.latestQuotation);
   const poReceived = progress.poReceived;
   const quoteAccepted = progress.accepted && !progress.poReceived;
+  const showingAgreedTerms = quoteAccepted || poReceived;
   const quoteCreatedAt = formatDate(data.latestQuotation?.created_at ?? null);
   const agreedDate = formatDate(
     data.latestQuotation?.updated_at ?? data.latestQuotation?.created_at ?? null,
@@ -344,12 +365,8 @@ export default async function SupplierRfqQuotePage({
   const purchaseOrderHref = data.purchaseOrder?.po_id
     ? `/supplier/purchase-orders/${data.purchaseOrder.po_id}`
     : "/supplier/purchase-orders";
-  const topBadge = poReceived
-    ? {
-        label: "Closed",
-        className: "bg-[#EEF1F5] text-[#8793A7]",
-      }
-    : getTopBadge(data.engagement.status);
+  const topBadge = poReceived ? getTopBadge("closed") : getTopBadge(data.engagement.status);
+  const finalProgressLabel = poReceived ? "Closed" : "PO Received";
   const buyerInitials =
     data.buyer.businessName
       .split(/\s+/)
@@ -357,6 +374,9 @@ export default async function SupplierRfqQuotePage({
       .slice(0, 2)
       .map((part) => part[0]?.toUpperCase() ?? "")
       .join("") || "BY";
+  const buyerSublineDisplay = [data.buyer.businessType, buyerLocation]
+    .filter((value): value is string => Boolean(value && value.trim()))
+    .join(" | ");
   const buyerSubline = [data.buyer.businessType, buyerLocation]
     .filter((value): value is string => Boolean(value && value.trim()))
     .join(" · ");
@@ -366,7 +386,7 @@ export default async function SupplierRfqQuotePage({
       <div className="border-b border-[#E8EDF4] bg-white">
         <div className="flex items-center justify-between px-[18px] py-[15px]">
           <div className="flex items-center gap-2 text-[12px] text-[#A4ACB9]">
-            <span>KaSupply</span>
+            <span className="font-normal">KaSupply</span>
             <span className="text-[#CBD2DE]">
               <ChevronRightIcon />
             </span>
@@ -397,77 +417,99 @@ export default async function SupplierRfqQuotePage({
       </div>
 
       <div className="px-[20px] py-[18px]">
-        <section className="rounded-[18px] border border-[#E5EBF3] bg-white shadow-[0_4px_14px_rgba(15,23,42,0.03)]">
-          <div className="flex flex-col gap-[12px] border-b border-[#EDF1F6] px-[20px] py-[16px] lg:flex-row lg:items-start lg:justify-between">
+        <section>
+          <div className="flex flex-col gap-[8px] px-[6px] py-[4px] lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <h1 className="text-[16px] font-semibold text-[#223654]">
+              <h1 className="text-[18px] font-semibold text-[#223654]">
                 {productTitle} — {quantityLabel}
               </h1>
-              <p className="mt-[4px] text-[12px] text-[#A0A9B8]">
+              <p className="mt-[4px] text-[15px] text-[#A0A9B8]">
                 {rfqNumber} · Sent {sentDate}
               </p>
             </div>
 
             <span
-              className={`inline-flex h-[28px] items-center rounded-full px-[12px] text-[11px] font-semibold ${topBadge.className}`}
+              className={`inline-flex h-[30px] items-center gap-[8px] rounded-full px-[14px] text-[11px] font-semibold ${topBadge.className}`}
             >
+              <span className={`h-[6px] w-[6px] rounded-full ${topBadge.dotClassName}`} />
               {topBadge.label}
             </span>
           </div>
 
-          <div className="px-[20px] py-[14px]">
-            <div className="flex items-center gap-[10px] overflow-x-auto">
+          <div className="mt-[10px] px-[6px] pt-[12px]">
+            <div className="flex items-center gap-[10px] overflow-x-auto pb-[2px]">
               <ProgressItem label="Received" index={1} complete />
               <div
-                className={`h-px min-w-[78px] flex-1 ${
-                  progress.respond ? "bg-[#7DC890]" : "bg-[#E5E7EB]"
+                className={`h-[2px] min-w-[78px] flex-1 rounded-full ${
+                  progress.accepted || progress.poReceived
+                    ? "bg-[#1E3A5F]"
+                    : progress.quotationSubmitted
+                      ? "bg-[#1E3A5F]"
+                      : progress.respond
+                        ? "bg-[#4FA171]"
+                      : "bg-[#E5E7EB]"
                 }`}
               />
               <ProgressItem
                 label="Respond"
                 index={2}
-                current={progress.respond && !progress.accepted}
-                complete={progress.accepted || progress.poReceived}
+                current={
+                  progress.respond &&
+                  !progress.quotationSubmitted &&
+                  !progress.accepted &&
+                  !progress.poReceived
+                }
+                complete={
+                  progress.quotationSubmitted || progress.accepted || progress.poReceived
+                }
               />
               <div
-                className={`h-px min-w-[78px] flex-1 ${
-                  progress.accepted ? "bg-[#7DC890]" : "bg-[#E5E7EB]"
+                className={`h-[2px] min-w-[78px] flex-1 rounded-full ${
+                  progress.accepted || progress.poReceived ? "bg-[#1E3A5F]" : "bg-[#E5E7EB]"
                 }`}
               />
               <ProgressItem
                 label="Accepted"
                 index={3}
-                current={progress.accepted && !progress.poReceived}
-                complete={progress.poReceived}
+                complete={progress.accepted || progress.poReceived}
               />
               <div
-                className={`h-px min-w-[78px] flex-1 ${
-                  progress.poReceived ? "bg-[#7DC890]" : "bg-[#E5E7EB]"
+                className={`h-[2px] min-w-[78px] flex-1 rounded-full ${
+                  progress.poReceived
+                    ? "bg-[#4F5D73]"
+                    : progress.accepted
+                      ? "bg-[#4FA171]"
+                      : "bg-[#E5E7EB]"
                 }`}
               />
-              <ProgressItem label="PO Received" index={4} current={progress.poReceived} />
+              <ProgressItem
+                label={finalProgressLabel}
+                index={4}
+                current={progress.accepted || progress.poReceived}
+                tone={poReceived ? "closed" : "default"}
+              />
             </div>
           </div>
         </section>
 
-        <div className="mt-[16px] space-y-[16px]">
+        <div className="mt-[14px] space-y-[16px]">
           <SectionCard title="Buyer Info">
-            <div className="flex items-center gap-[14px]">
-              <div className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-[#EDF9F1] text-[18px] font-medium text-[#2E8B57]">
+            <div className="flex items-start gap-[14px]">
+              <div className="mt-[2px] flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-[#EDF9F1] text-[18px] font-medium text-[#2E8B57]">
                 {buyerInitials}
               </div>
 
-              <div className="min-w-0">
+              <div className="min-w-0 pt-[1px]">
                 <div className="flex flex-wrap items-center gap-[8px]">
-                  <p className="text-[14px] font-semibold text-[#223654]">
+                  <p className="text-[15px] font-semibold text-[#223654]">
                     {data.buyer.businessName}
                   </p>
-                  <span className="inline-flex h-[22px] items-center rounded-full border border-[#B8E0C7] bg-[#F4FCF7] px-[8px] text-[10px] font-semibold text-[#2F8C57]">
+                  <span className="inline-flex h-[22px] items-center rounded-[6px] border border-[#B8E0C7] bg-[#F4FCF7] px-[8px] text-[10px] font-semibold text-[#2F8C57]">
                     Verified
                   </span>
                 </div>
-                <p className="mt-[3px] text-[12px] text-[#8E99AB]">
-                  {buyerSubline || "Buyer profile details not available"}
+                <p className="mt-[2px] text-[14px] text-[#8E99AB]">
+                  {buyerSublineDisplay || buyerSubline || "Buyer profile details not available"}
                 </p>
               </div>
             </div>
@@ -492,21 +534,24 @@ export default async function SupplierRfqQuotePage({
 
           <SectionCard
             title={
-              quoteAccepted ? "Agreed Terms" : quoteSent ? "Your Quote Sent" : "Your Quotation"
+              showingAgreedTerms ? "Agreed Terms" : quoteSent ? "Your Quote Sent" : "Your Quotation"
+            }
+            headerRight={
+              showingAgreedTerms ? (
+                <span className="text-[14px] font-normal text-[#A0A9B8]">
+                  Agreed on {agreedDate}
+                </span>
+              ) : null
             }
           >
             {poReceived ? (
               <>
-                <div className="flex items-center justify-end text-[12px] font-medium text-[#A0A9B8]">
-                  Agreed on {agreedDate}
-                </div>
-
-                <div className="mt-[14px] grid gap-[12px] md:grid-cols-2 xl:grid-cols-4">
+                <div className="grid gap-[12px] md:grid-cols-2 xl:grid-cols-4">
                   <div className="rounded-[12px] border border-[#E5EBF3] bg-[#FBFCFE] px-[14px] py-[12px]">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.02em] text-[#2A8A57]">
+                    <p className="text-[13px] font-semibold uppercase tracking-[0.02em] text-[#1A6B3C]">
                       Quoted Price
                     </p>
-                    <p className="mt-[8px] text-[15px] font-semibold text-[#223654]">
+                    <p className="mt-[8px] text-[15px] font-normal text-[#223654]">
                       {formatCurrencyPerUnit(
                         data.latestQuotation?.price_per_unit ?? null,
                         data.rfq.unit,
@@ -514,26 +559,26 @@ export default async function SupplierRfqQuotePage({
                     </p>
                   </div>
                   <div className="rounded-[12px] border border-[#E5EBF3] bg-[#FBFCFE] px-[14px] py-[12px]">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.02em] text-[#2A8A57]">
+                    <p className="text-[13px] font-semibold uppercase tracking-[0.02em] text-[#1A6B3C]">
                       Total Amount
                     </p>
-                    <p className="mt-[8px] text-[15px] font-semibold text-[#223654]">
+                    <p className="mt-[8px] text-[15px] font-normal text-[#223654]">
                       {formatCurrency(quotedTotal)}
                     </p>
                   </div>
                   <div className="rounded-[12px] border border-[#E5EBF3] bg-[#FBFCFE] px-[14px] py-[12px]">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.02em] text-[#2A8A57]">
+                    <p className="text-[13px] font-semibold uppercase tracking-[0.02em] text-[#1A6B3C]">
                       Lead Time
                     </p>
-                    <p className="mt-[8px] text-[15px] font-semibold text-[#223654]">
+                    <p className="mt-[8px] text-[15px] font-normal text-[#223654]">
                       {data.latestQuotation?.lead_time || "Not set"}
                     </p>
                   </div>
                   <div className="rounded-[12px] border border-[#E5EBF3] bg-[#FBFCFE] px-[14px] py-[12px]">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.02em] text-[#2A8A57]">
+                    <p className="text-[13px] font-semibold uppercase tracking-[0.02em] text-[#1A6B3C]">
                       Minimum Order Qty.
                     </p>
-                    <p className="mt-[8px] text-[15px] font-semibold text-[#223654]">
+                    <p className="mt-[8px] text-[15px] font-normal text-[#223654]">
                       {productMoq != null
                         ? `${formatNumber(productMoq)}${data.rfq.unit ? ` ${data.rfq.unit}` : ""}`
                         : "Not set"}
@@ -541,12 +586,12 @@ export default async function SupplierRfqQuotePage({
                   </div>
                 </div>
 
-                <div className="mt-[14px] rounded-[12px] border border-[#84D1A0] bg-[#F6FFF9] px-[14px] py-[12px]">
-                  <div className="flex items-start gap-[10px]">
+                <div className="mt-[14px] rounded-[12px] border border-[#84D1A0] bg-[#FDFFFE] px-[14px] py-[12px]">
+                  <div className="flex items-start gap-[12px]">
                     <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] bg-[#267C49] text-white">
                       <svg
                         viewBox="0 0 24 24"
-                        className="h-[18px] w-[18px]"
+                        className="block h-[31px] w-[31px]"
                         fill="none"
                         aria-hidden="true"
                       >
@@ -582,16 +627,12 @@ export default async function SupplierRfqQuotePage({
               </>
             ) : quoteAccepted ? (
               <>
-                <div className="flex items-center justify-end text-[12px] font-medium text-[#A0A9B8]">
-                  Agreed on {agreedDate}
-                </div>
-
-                <div className="mt-[10px] rounded-[12px] border border-[#84D1A0] bg-[#F6FFF9] px-[14px] py-[12px]">
-                  <div className="flex items-start gap-[10px]">
+                <div className="mt-[10px] rounded-[12px] border border-[#84D1A0] bg-[#FDFFFE] px-[18px] py-[16px]">
+                  <div className="flex items-center gap-[12px]">
                     <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] bg-[#267C49] text-white">
                       <svg
                         viewBox="0 0 24 24"
-                        className="h-[18px] w-[18px]"
+                        className="block h-[31px] w-[31px]"
                         fill="none"
                         aria-hidden="true"
                       >
@@ -604,11 +645,11 @@ export default async function SupplierRfqQuotePage({
                         />
                       </svg>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-[13px] font-semibold text-[#267C49]">
                         Buyer accepted your quotation
                       </p>
-                      <p className="mt-[2px] text-[12px] leading-[1.45] text-[#7C8B9F]">
+                      <p className="mt-[2px] text-[13px] leading-[1.45] text-[#7C8B9F]">
                         Both parties agreed on {agreedDate}. Awaiting Purchase Order from{" "}
                         {data.buyer.businessName}. You&apos;ll be notified once the Purchase Order
                         form is sent.
@@ -618,38 +659,38 @@ export default async function SupplierRfqQuotePage({
                 </div>
 
                 <div className="mt-[14px] grid gap-[12px] md:grid-cols-2 xl:grid-cols-4">
-                  <div className="rounded-[12px] border border-[#E5EBF3] bg-[#FBFCFE] px-[14px] py-[12px]">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.02em] text-[#A0A9B8]">
+                  <div className="rounded-[12px] border border-[#E5EBF3] bg-[#F8F8F8] px-[14px] py-[12px]">
+                    <p className="text-[13px] font-semibold uppercase tracking-[0.02em] text-[#1A6B3C]">
                       Quoted Price
                     </p>
-                    <p className="mt-[8px] text-[15px] font-semibold text-[#223654]">
+                    <p className="mt-[8px] text-[15px] font-normal text-[#223654]">
                       {formatCurrencyPerUnit(
                         data.latestQuotation?.price_per_unit ?? null,
                         data.rfq.unit,
                       )}
                     </p>
                   </div>
-                  <div className="rounded-[12px] border border-[#E5EBF3] bg-[#FBFCFE] px-[14px] py-[12px]">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.02em] text-[#A0A9B8]">
+                  <div className="rounded-[12px] border border-[#E5EBF3] bg-[#F8F8F8] px-[14px] py-[12px]">
+                    <p className="text-[13px] font-semibold uppercase tracking-[0.02em] text-[#1A6B3C]">
                       Total Amount
                     </p>
-                    <p className="mt-[8px] text-[15px] font-semibold text-[#223654]">
+                    <p className="mt-[8px] text-[15px] font-normal text-[#223654]">
                       {formatCurrency(quotedTotal)}
                     </p>
                   </div>
-                  <div className="rounded-[12px] border border-[#E5EBF3] bg-[#FBFCFE] px-[14px] py-[12px]">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.02em] text-[#A0A9B8]">
+                  <div className="rounded-[12px] border border-[#E5EBF3] bg-[#F8F8F8] px-[14px] py-[12px]">
+                    <p className="text-[13px] font-semibold uppercase tracking-[0.02em] text-[#1A6B3C]">
                       Lead Time
                     </p>
-                    <p className="mt-[8px] text-[15px] font-semibold text-[#223654]">
+                    <p className="mt-[8px] text-[15px] font-normal text-[#223654]">
                       {data.latestQuotation?.lead_time || "Not set"}
                     </p>
                   </div>
-                  <div className="rounded-[12px] border border-[#E5EBF3] bg-[#FBFCFE] px-[14px] py-[12px]">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.02em] text-[#A0A9B8]">
+                  <div className="rounded-[12px] border border-[#E5EBF3] bg-[#F8F8F8] px-[14px] py-[12px]">
+                    <p className="text-[13px] font-semibold uppercase tracking-[0.02em] text-[#1A6B3C]">
                       Minimum Order Qty.
                     </p>
-                    <p className="mt-[8px] text-[15px] font-semibold text-[#223654]">
+                    <p className="mt-[8px] text-[15px] font-normal text-[#223654]">
                       {productMoq != null
                         ? `${formatNumber(productMoq)}${data.rfq.unit ? ` ${data.rfq.unit}` : ""}`
                         : "Not set"}
@@ -668,7 +709,7 @@ export default async function SupplierRfqQuotePage({
               </>
             ) : quoteSent ? (
               <>
-                <div className="rounded-[12px] border border-[#BCD2FF] bg-[#F7FAFF] px-[14px] py-[12px]">
+                <div className="rounded-[12px] border border-[#BCD2FF] bg-[#FDFFFE] px-[14px] py-[12px]">
                   <div className="flex items-start gap-[10px]">
                     <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] bg-[#2D6BFF] text-white">
                       <ClockIcon />
@@ -687,10 +728,10 @@ export default async function SupplierRfqQuotePage({
 
                 <div className="mt-[14px] grid gap-[12px] md:grid-cols-2 xl:grid-cols-4">
                   <div className="rounded-[12px] border border-[#E5EBF3] bg-[#FBFCFE] px-[14px] py-[12px]">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.02em] text-[#A0A9B8]">
+                    <p className="text-[13px] font-semibold uppercase tracking-[0.02em] text-[#1A6B3C]">
                       Quoted Price
                     </p>
-                    <p className="mt-[8px] text-[15px] font-semibold text-[#223654]">
+                    <p className="mt-[8px] text-[13px] font-normal text-[#223654]">
                       {formatCurrencyPerUnit(
                         data.latestQuotation?.price_per_unit ?? null,
                         data.rfq.unit,
@@ -698,26 +739,26 @@ export default async function SupplierRfqQuotePage({
                     </p>
                   </div>
                   <div className="rounded-[12px] border border-[#E5EBF3] bg-[#FBFCFE] px-[14px] py-[12px]">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.02em] text-[#A0A9B8]">
+                    <p className="text-[13px] font-semibold uppercase tracking-[0.02em] text-[#1A6B3C]">
                       Total Amount
                     </p>
-                    <p className="mt-[8px] text-[15px] font-semibold text-[#223654]">
+                    <p className="mt-[8px] text-[13px] font-normal text-[#223654]">
                       {formatCurrency(quotedTotal)}
                     </p>
                   </div>
                   <div className="rounded-[12px] border border-[#E5EBF3] bg-[#FBFCFE] px-[14px] py-[12px]">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.02em] text-[#A0A9B8]">
+                    <p className="text-[13px] font-semibold uppercase tracking-[0.02em] text-[#1A6B3C]">
                       Lead Time
                     </p>
-                    <p className="mt-[8px] text-[15px] font-semibold text-[#223654]">
+                    <p className="mt-[8px] text-[13px] font-normal text-[#223654]">
                       {data.latestQuotation?.lead_time || "Not set"}
                     </p>
                   </div>
                   <div className="rounded-[12px] border border-[#E5EBF3] bg-[#FBFCFE] px-[14px] py-[12px]">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.02em] text-[#A0A9B8]">
+                    <p className="text-[13px] font-semibold uppercase tracking-[0.02em] text-[#1A6B3C]">
                       Minimum Order Qty.
                     </p>
-                    <p className="mt-[8px] text-[15px] font-semibold text-[#223654]">
+                    <p className="mt-[8px] text-[13px] font-normal text-[#223654]">
                       {productMoq != null
                         ? `${formatNumber(productMoq)}${data.rfq.unit ? ` ${data.rfq.unit}` : ""}`
                         : "Not set"}
@@ -726,7 +767,7 @@ export default async function SupplierRfqQuotePage({
                 </div>
 
                 <div className="mt-[12px] rounded-[12px] border border-[#E5EBF3] bg-[#FBFCFE] px-[14px] py-[12px]">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.02em] text-[#A0A9B8]">
+                  <p className="text-[13px] font-semibold uppercase tracking-[0.02em] text-[#A0A9B8]">
                     Your Note to Buyer
                   </p>
                   <p className="mt-[8px] text-[13px] leading-[1.55] text-[#4E5C72]">
@@ -734,16 +775,16 @@ export default async function SupplierRfqQuotePage({
                   </p>
                 </div>
 
-                <div className="mt-[18px] flex flex-wrap items-center gap-[10px]">
+                <div className="mt-[18px] flex flex-wrap items-center gap-[6px] sm:flex-nowrap">
                   <Link
                     href={buyerMessageHref}
-                    className="inline-flex h-[44px] flex-1 items-center justify-center rounded-[10px] bg-[#2D6BFF] px-[20px] text-[13px] font-semibold text-white sm:min-w-[260px]"
+                    className="inline-flex h-[36px] flex-1 items-center justify-center rounded-[8px] bg-[#356FEA] px-[20px] text-[14px] font-medium text-white"
                   >
                     Message Buyer
                   </Link>
                   <Link
                     href="/supplier/rfq"
-                    className="inline-flex h-[44px] min-w-[182px] items-center justify-center rounded-[10px] border border-[#D8E0EC] bg-white px-[18px] text-[13px] font-medium text-[#97A3B5]"
+                    className="inline-flex h-[36px] flex-1 items-center justify-center rounded-[8px] border border-[#BFCBDA] bg-white px-[18px] text-[14px] font-medium text-[#A0A9B8]"
                   >
                     Go back to RFQs
                   </Link>
@@ -758,32 +799,17 @@ export default async function SupplierRfqQuotePage({
                   validUntil={formatDateInput(data.rfq.deadline)}
                   rfqDeadline={formatDateInput(data.rfq.deadline)}
                   defaultPricePerUnit={targetPrice ?? null}
-                  defaultLeadTime=""
+                  defaultLeadTime={data.rfq.product_lead_time ?? ""}
                   defaultMoq={productMoq ?? data.rfq.quantity ?? null}
                   defaultNotes=""
                   submitAction={submitFinalQuotation}
                 />
 
-                <div className="mt-[18px] flex flex-wrap items-center gap-[10px]">
-                  <button
-                    type="submit"
-                    form="quotation-form"
-                    className="inline-flex h-[44px] flex-1 items-center justify-center rounded-[10px] bg-[#233F68] px-[20px] text-[13px] font-semibold text-white sm:min-w-[260px]"
-                  >
-                    Submit Quotation
-                  </button>
-
-                  <form action={declineEngagement}>
-                    <input type="hidden" name="engagement_id" value={engagementId} />
-                    <input type="hidden" name="return_to" value="/supplier/rfq" />
-                    <button
-                      type="submit"
-                      className="inline-flex h-[44px] min-w-[122px] items-center justify-center rounded-[10px] border border-[#FF6C57] bg-white px-[18px] text-[13px] font-medium text-[#FF5A44]"
-                    >
-                      Decline
-                    </button>
-                  </form>
-                </div>
+                <QuotationResponseActions
+                  engagementId={engagementId}
+                  returnTo="/supplier/rfq"
+                  declineAction={declineEngagement}
+                />
               </>
             )}
           </SectionCard>

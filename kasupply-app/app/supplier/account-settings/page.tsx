@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Bell, MessageSquare } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getSupplierCertificationRequirements } from "@/lib/supplier-requirements";
 import {
@@ -8,6 +9,7 @@ import {
   saveSupplierPermitUpdates,
   uploadSupplierCertification,
 } from "./actions";
+import { SupplierBusinessProfileForm } from "./business-profile-form";
 import { CertificationsForm } from "./certifications-form";
 import { PermitsLicensesForm } from "./permits-licenses-form";
 
@@ -22,11 +24,31 @@ type BusinessProfileRow = {
   profile_id: number;
   business_name: string | null;
   business_type: string | null;
+  business_location: string | null;
+  city: string | null;
+  province: string | null;
+  region: string | null;
+  about: string | null;
+  contact_name: string | null;
+  contact_number: string | null;
 };
 
 type SupplierProfileRow = {
   supplier_id: number;
   profile_id: number;
+};
+
+type ProductCategoryRow = {
+  category_id: number;
+  category_name: string | null;
+};
+
+type BusinessProfileCategoryRow = {
+  category_id: number;
+};
+
+type BusinessProfileCustomCategoryRow = {
+  category_name: string | null;
 };
 
 type BusinessDocumentRow = {
@@ -74,7 +96,7 @@ function HeaderActionIcon({
   return (
     <button
       type="button"
-      className="inline-flex h-9 w-9 items-center justify-center rounded-[11px] border border-[#E6EBF3] bg-[#FBFCFE] text-[#B4BECF] transition hover:border-[#D7E0EC] hover:text-[#7D8CA3]"
+      className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-[11px] border border-[#E2E8F0] bg-[#F9FBFD] text-[#A6B0BF] transition hover:border-[#D6DFEA] hover:text-[#4D5E75]"
     >
       {children}
     </button>
@@ -212,7 +234,12 @@ export default async function SupplierAccountSettingsPage({
   searchParams?: Promise<{ tab?: string }>;
 }) {
   const resolvedSearchParams = (await searchParams) ?? {};
-  const activeTab = resolvedSearchParams.tab === "business" ? "business" : resolvedSearchParams.tab === "certifications" ? "certifications" : "permits";
+  const activeTab =
+    resolvedSearchParams.tab === "permits"
+      ? "permits"
+      : resolvedSearchParams.tab === "certifications"
+        ? "certifications"
+        : "business";
 
   const supabase = await createClient();
 
@@ -237,7 +264,9 @@ export default async function SupplierAccountSettingsPage({
 
   const { data: businessProfile, error: businessProfileError } = await supabase
     .from("business_profiles")
-    .select("profile_id, business_name, business_type")
+    .select(
+      "profile_id, business_name, business_type, business_location, city, province, region, about, contact_name, contact_number",
+    )
     .eq("user_id", appUser.user_id)
     .single<BusinessProfileRow>();
 
@@ -253,6 +282,42 @@ export default async function SupplierAccountSettingsPage({
 
   if (supplierProfileError || !supplierProfile) {
     redirect("/onboarding");
+  }
+
+  const [
+    { data: categoryRows, error: categoryRowsError },
+    { data: selectedCategoryRows, error: selectedCategoryRowsError },
+    { data: customCategoryRows, error: customCategoryRowsError },
+  ] = await Promise.all([
+    supabase
+      .from("product_categories")
+      .select("category_id, category_name")
+      .order("category_name", { ascending: true }),
+    supabase
+      .from("business_profile_categories")
+      .select("category_id")
+      .eq("profile_id", businessProfile.profile_id),
+    supabase
+      .from("business_profile_custom_categories")
+      .select("category_name")
+      .eq("profile_id", businessProfile.profile_id)
+      .order("category_name", { ascending: true }),
+  ]);
+
+  if (categoryRowsError) {
+    throw new Error(categoryRowsError.message || "Failed to load category options.");
+  }
+
+  if (selectedCategoryRowsError) {
+    throw new Error(
+      selectedCategoryRowsError.message || "Failed to load selected categories.",
+    );
+  }
+
+  if (customCategoryRowsError) {
+    throw new Error(
+      customCategoryRowsError.message || "Failed to load custom categories.",
+    );
   }
 
   const { data: businessDocuments, error: businessDocumentsError } = await supabase
@@ -344,62 +409,59 @@ export default async function SupplierAccountSettingsPage({
     }))
     .filter((type) => type.label);
 
+  const availableCategories = ((categoryRows as ProductCategoryRow[] | null) ?? [])
+    .map((category) => ({
+      categoryId: category.category_id,
+      categoryName: category.category_name?.trim() || "Uncategorized",
+    }))
+    .filter((category) => category.categoryName);
+
+  const initialSelectedCategoryIds = (
+    (selectedCategoryRows as BusinessProfileCategoryRow[] | null) ?? []
+  )
+    .map((category) => category.category_id)
+    .filter((categoryId) => Number.isFinite(categoryId));
+
+  const initialOtherCategories = (
+    (customCategoryRows as BusinessProfileCustomCategoryRow[] | null) ?? []
+  )
+    .map((category) => category.category_name?.trim() || "")
+    .filter(Boolean);
+
   return (
     <div className="-m-6 min-h-screen bg-[#F6F8FB]">
-      <header className="border-b border-[#E6EBF3] bg-white">
-        <div className="flex items-center justify-between px-[20px] py-[10px]">
-          <div className="flex items-center gap-[8px] text-[11px] text-[#B0B9C8]">
-            <span>KaSupply</span>
-            <span>&gt;</span>
-            <span className="font-medium text-[#708196]">Account Settings</span>
+      <header className="border-b border-[#E8EDF4] bg-white">
+        <div className="flex items-center justify-between px-[18px] py-[15px]">
+          <div className="flex items-center gap-2 text-[12px] text-[#A4ACBA]">
+            <span className="font-normal">KaSupply</span>
+            <span className="text-[#CBD2DE]">/</span>
+            <span className="font-semibold text-[#506073]">Account Settings</span>
           </div>
 
-          <div className="flex items-center gap-[8px]">
+          <div className="flex items-center gap-2">
             <HeaderActionIcon>
-              <svg viewBox="0 0 24 24" className="h-[15px] w-[15px]" fill="none" aria-hidden="true">
-                <path
-                  d="M12 4.75a4.25 4.25 0 0 0-4.25 4.25v2.12c0 .48-.16.94-.46 1.31l-1.2 1.53a1 1 0 0 0 .79 1.61h10.24a1 1 0 0 0 .79-1.61l-1.2-1.53a2.1 2.1 0 0 1-.46-1.31V9A4.25 4.25 0 0 0 12 4.75Z"
-                  stroke="currentColor"
-                  strokeWidth="1.7"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M10.25 18a1.75 1.75 0 0 0 3.5 0"
-                  stroke="currentColor"
-                  strokeWidth="1.7"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+              <Bell className="h-[15px] w-[15px]" strokeWidth={1.8} />
             </HeaderActionIcon>
             <HeaderActionIcon>
-              <svg viewBox="0 0 24 24" className="h-[15px] w-[15px]" fill="none" aria-hidden="true">
-                <path
-                  d="M7.25 7.25h9.5a2 2 0 0 1 2 2v6.02a2 2 0 0 1-2 2h-5.08l-2.92 2.48c-.65.55-1.65.09-1.65-.76v-1.72H7.25a2 2 0 0 1-2-2V9.25a2 2 0 0 1 2-2Z"
-                  stroke="currentColor"
-                  strokeWidth="1.7"
-                  strokeLinejoin="round"
-                />
-              </svg>
+              <MessageSquare className="h-[15px] w-[15px]" strokeWidth={1.8} />
             </HeaderActionIcon>
           </div>
         </div>
       </header>
 
-      <div className="px-[20px] py-[14px]">
+      <div className="px-[18px] py-[12px]">
         <div className="mx-auto max-w-[1040px]">
-          <div className="border-b border-[#E9EEF5] pb-[11px]">
-            <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-[#223654]">
+          <div className="pb-[12px]">
+            <h1 className="text-[18px] font-semibold tracking-[-0.02em] text-[#223654]">
               Account Setting
             </h1>
-            <p className="mt-[2px] text-[12px] text-[#9CA8B9]">
+            <p className="mt-[3px] text-[15px] text-[#9CA8B9]">
               Manage your profile, permits, and certifications.
             </p>
           </div>
 
-          <div className="border-b border-[#E9EEF5]">
-            <nav className="flex items-center gap-[26px] px-[10px] pt-[13px]">
+          <div className="border-b border-[#E6EBF3]">
+            <nav className="flex items-center gap-[34px] px-[14px] pt-[18px]">
               {[
                 ["Business Profile", "business"],
                 ["Permits & Licenses", "permits"],
@@ -410,13 +472,13 @@ export default async function SupplierAccountSettingsPage({
                   <Link
                     key={value}
                     href={`/supplier/account-settings?tab=${value}`}
-                    className={`relative pb-[10px] text-[12px] font-medium transition ${
-                      isActive ? "text-[#3C6FF7]" : "text-[#C1C8D4]"
+                    className={`relative pb-[12px] text-[14px] font-medium transition ${
+                      isActive ? "text-[#3C6FF7]" : "text-[#C9CFDA]"
                     }`}
                   >
                     {label}
                     {isActive ? (
-                      <span className="absolute inset-x-0 bottom-0 h-[2px] rounded-full bg-[#5F88FF]" />
+                      <span className="absolute inset-x-0 bottom-0 h-[2px] rounded-full bg-[#4E7CFF]" />
                     ) : null}
                   </Link>
                 );
@@ -425,7 +487,27 @@ export default async function SupplierAccountSettingsPage({
           </div>
 
           <div className="pt-[14px]">
-            {activeTab === "certifications" ? (
+            {activeTab === "business" ? (
+              <SupplierBusinessProfileForm
+                headerBusinessName={businessProfile.business_name?.trim() || "Business Profile"}
+                headerInitials="DF"
+                userEmail={appUser.email?.trim() || ""}
+                businessProfile={{
+                  businessName: businessProfile.business_name?.trim() || "",
+                  businessType: businessProfile.business_type?.trim() || "",
+                  businessLocation: businessProfile.business_location?.trim() || "",
+                  city: businessProfile.city?.trim() || "",
+                  province: businessProfile.province?.trim() || "",
+                  region: businessProfile.region?.trim() || "",
+                  contactName: businessProfile.contact_name?.trim() || "",
+                  contactNumber: businessProfile.contact_number?.trim() || "",
+                  businessDescription: businessProfile.about?.trim() || "",
+                }}
+                categories={availableCategories}
+                initialSelectedCategoryIds={initialSelectedCategoryIds}
+                initialOtherCategories={initialOtherCategories}
+              />
+            ) : activeTab === "certifications" ? (
               <CertificationsForm
                 certifications={certificationList}
                 certificationTypes={certificationTypeOptions}

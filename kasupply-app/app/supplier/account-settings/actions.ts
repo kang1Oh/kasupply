@@ -18,7 +18,17 @@ type AppUserRow = {
   user_id: string;
   name: string | null;
   avatar_url: string | null;
+  email?: string | null;
 };
+
+const ALLOWED_BUSINESS_TYPES = new Set([
+  "manufacturer",
+  "distributor",
+  "trader",
+  "retailer",
+  "processor",
+  "wholesaler",
+]);
 
 function isAvatarFromBucket(avatarUrl: string | null) {
   return Boolean(avatarUrl && avatarUrl.includes("/storage/v1/object/public/avatars/"));
@@ -46,7 +56,7 @@ async function getCurrentSupplierContext() {
 
   const { data: appUser, error: appUserError } = await supabase
     .from("users")
-    .select("user_id, name, avatar_url")
+    .select("user_id, name, avatar_url, email")
     .eq("auth_user_id", authUser.id)
     .single<AppUserRow>();
 
@@ -94,6 +104,20 @@ async function getCurrentSupplierContext() {
   };
 }
 
+function parseCustomCategories(value: string) {
+  return value
+    .split(/[\n,]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function parseCategoryIds(formData: FormData) {
+  return formData
+    .getAll("category_ids")
+    .map((value) => Number(String(value)))
+    .filter((value) => Number.isFinite(value) && value > 0);
+}
+
 export async function updateSupplierAccountSettings(formData: FormData) {
   const { supabase, authUser, appUser, businessProfile } =
     await getCurrentSupplierContext();
@@ -102,21 +126,37 @@ export async function updateSupplierAccountSettings(formData: FormData) {
   const business_name = String(formData.get("business_name") || "").trim();
   const business_type = String(formData.get("business_type") || "").trim();
   const business_location = String(formData.get("business_location") || "").trim();
-  const city = String(formData.get("city") || "").trim();
-  const province = String(formData.get("province") || "").trim();
-  const region = String(formData.get("region") || "").trim();
+  const city =
+    String(formData.get("city") || "").trim() || String(businessProfile.city || "").trim();
+  const province =
+    String(formData.get("province") || "").trim() ||
+    String(businessProfile.province || "").trim();
+  const region =
+    String(formData.get("region") || "").trim() || String(businessProfile.region || "").trim();
   const about = String(formData.get("about") || "").trim();
   const contact_number = String(formData.get("contact_number") || "").trim();
+  const email_address = String(formData.get("email_address") || "").trim();
+  const selectedCategoryIds = Array.from(new Set(parseCategoryIds(formData)));
+  const customCategories = parseCustomCategories(
+    String(formData.get("other_categories") || "").trim(),
+  );
   const avatarFile = formData.get("avatar_file") as File | null;
 
   if (!contact_name) throw new Error("Contact name is required.");
   if (!business_name) throw new Error("Business name is required.");
   if (!business_type) throw new Error("Business type is required.");
+  if (!ALLOWED_BUSINESS_TYPES.has(business_type)) {
+    throw new Error("Invalid business type selected.");
+  }
   if (!business_location) throw new Error("Business location is required.");
+  if (!contact_number) throw new Error("Contact number is required.");
+  if (!email_address) throw new Error("Email address is required.");
   if (!city) throw new Error("City is required.");
   if (!province) throw new Error("Province is required.");
   if (!region) throw new Error("Region is required.");
-  if (!contact_number) throw new Error("Contact number is required.");
+  if (selectedCategoryIds.length === 0 && customCategories.length === 0) {
+    throw new Error("Select at least one category or enter a custom category.");
+  }
 
   let nextAvatarUrl = appUser.avatar_url ?? null;
   let uploadedAvatarPath: string | null = null;
@@ -153,6 +193,7 @@ export async function updateSupplierAccountSettings(formData: FormData) {
     .update({
       name: contact_name,
       avatar_url: nextAvatarUrl,
+      email: email_address,
     })
     .eq("user_id", appUser.user_id);
 
@@ -181,6 +222,60 @@ export async function updateSupplierAccountSettings(formData: FormData) {
 
   if (updateBusinessError) {
     throw new Error(updateBusinessError.message || "Failed to update business profile.");
+  }
+
+  const { error: deleteCategoriesError } = await supabase
+    .from("business_profile_categories")
+    .delete()
+    .eq("profile_id", businessProfile.profile_id);
+
+  if (deleteCategoriesError) {
+    throw new Error(deleteCategoriesError.message || "Failed to reset saved categories.");
+  }
+
+  const { error: deleteCustomCategoriesError } = await supabase
+    .from("business_profile_custom_categories")
+    .delete()
+    .eq("profile_id", businessProfile.profile_id);
+
+  if (deleteCustomCategoriesError) {
+    throw new Error(
+      deleteCustomCategoriesError.message || "Failed to reset custom categories.",
+    );
+  }
+
+  const allCustomCategoriesBase = Array.from(new Set(customCategories));
+
+  if (selectedCategoryIds.length > 0) {
+    const { error: insertCategoriesError } = await supabase
+      .from("business_profile_categories")
+      .insert(
+        selectedCategoryIds.map((categoryId) => ({
+          profile_id: businessProfile.profile_id,
+          category_id: categoryId,
+        })),
+      );
+
+    if (insertCategoriesError) {
+      throw new Error(insertCategoriesError.message || "Failed to save categories.");
+    }
+  }
+
+  if (allCustomCategoriesBase.length > 0) {
+    const { error: insertCustomCategoriesError } = await supabase
+      .from("business_profile_custom_categories")
+      .insert(
+        allCustomCategoriesBase.map((categoryName) => ({
+          profile_id: businessProfile.profile_id,
+          category_name: categoryName,
+        })),
+      );
+
+    if (insertCustomCategoriesError) {
+      throw new Error(
+        insertCustomCategoriesError.message || "Failed to save custom categories.",
+      );
+    }
   }
 
   if (uploadedAvatarPath && isAvatarFromBucket(appUser.avatar_url)) {

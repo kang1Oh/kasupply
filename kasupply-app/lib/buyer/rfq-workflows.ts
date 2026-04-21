@@ -72,6 +72,7 @@ export type BuyerRfqListItem = {
     verifiedBadge: boolean;
     avatarUrl: string | null;
   } | null;
+  hasPurchaseOrder: boolean;
   quotationCount: number;
   requestMatchesCount: number;
   visibleMatchesCount: number;
@@ -233,6 +234,13 @@ type BuyerOfferRow = {
   created_at: string;
 };
 
+const PRODUCT_RELEVANCE_WEIGHT = 0.4;
+const MOQ_CAPACITY_WEIGHT = 0.25;
+const BUSINESS_NICHE_WEIGHT = 0.2;
+const LOCATION_WEIGHT = 0.15;
+const MATCH_ELIGIBILITY_THRESHOLD = 70;
+const MAX_MATCHED_SUPPLIERS = 10;
+
 export async function getCurrentBuyerContext() {
   const supabase = await createClient();
   const { user, error } = await getCurrentAppUser();
@@ -370,6 +378,27 @@ function getLocationScore(
   return 0;
 }
 
+function normalizeLocationFactor(
+  buyerLocation: Pick<BusinessProfileLocation, "city" | "province" | "region">,
+  supplierLocation: Pick<BusinessProfileLocation, "city" | "province" | "region">
+) {
+  const score = getLocationScore(buyerLocation, supplierLocation);
+
+  if (score >= 15) {
+    return 100;
+  }
+
+  if (score >= 10) {
+    return Number(((score / 15) * 100).toFixed(2));
+  }
+
+  if (score > 0) {
+    return Number(((score / 15) * 100).toFixed(2));
+  }
+
+  return 0;
+}
+
 function getTemporarySupplierMatchScore(params: {
   categoryId: number;
   productName: string;
@@ -392,9 +421,10 @@ function getTemporarySupplierMatchScore(params: {
     }`
   );
 
-  const categoryMatch = params.supplier.categoryIds.includes(params.categoryId) ? 20 : 0;
-  const productRelevanceScore =
-    categoryMatch + getOverlapRatio(requestTokens, supplierProductTokens) * 20;
+  const hasCategoryMatch = params.supplier.categoryIds.includes(params.categoryId);
+  const productTextOverlap = getOverlapRatio(requestTokens, supplierProductTokens);
+  const productRelevanceFactor =
+    (hasCategoryMatch ? 50 : 0) + productTextOverlap * 50;
 
   const relevantProducts = params.supplier.products.filter((product) => {
     const productTokens = tokenize(
@@ -407,7 +437,7 @@ function getTemporarySupplierMatchScore(params: {
     );
   });
 
-  let moqCapacityScore = 0;
+  let moqCapacityFactor = 0;
   if (relevantProducts.length > 0) {
     const compliantProduct = relevantProducts.find((product) => {
       if (product.moq == null) {
@@ -418,7 +448,7 @@ function getTemporarySupplierMatchScore(params: {
     });
 
     if (compliantProduct) {
-      moqCapacityScore = 25;
+      moqCapacityFactor = 100;
     } else {
       const lowestMoq = relevantProducts
         .map((product) => product.moq)
@@ -427,47 +457,48 @@ function getTemporarySupplierMatchScore(params: {
 
       if (lowestMoq) {
         const ratio = Math.max(0, Math.min(1, params.quantity / lowestMoq));
-        moqCapacityScore = Math.max(6, ratio * 18);
+        moqCapacityFactor = Number(Math.max(24, ratio * 72).toFixed(2));
       } else {
-        moqCapacityScore = 10;
+        moqCapacityFactor = 40;
       }
     }
   }
 
-  const profileFitScore = getOverlapRatio(requestTokens, supplierProfileTokens) * 20;
-  const locationScore = getLocationScore(params.buyerLocation, params.supplier);
+  const businessNicheFactor = getOverlapRatio(requestTokens, supplierProfileTokens) * 100;
+  const locationFactor = normalizeLocationFactor(
+    params.buyerLocation,
+    params.supplier,
+  );
 
-  const totalScore = Math.min(
-    100,
-    Number(
-      (
-        productRelevanceScore +
-        moqCapacityScore +
-        profileFitScore +
-        locationScore
-      ).toFixed(2)
-    )
+  const totalScore = Number(
+    Math.min(
+      100,
+      productRelevanceFactor * PRODUCT_RELEVANCE_WEIGHT +
+        moqCapacityFactor * MOQ_CAPACITY_WEIGHT +
+        businessNicheFactor * BUSINESS_NICHE_WEIGHT +
+        locationFactor * LOCATION_WEIGHT,
+    ).toFixed(2),
   );
 
   const reasons: string[] = [];
 
-  if (categoryMatch > 0) {
+  if (hasCategoryMatch) {
     reasons.push("category match");
   }
 
-  if (moqCapacityScore >= 18) {
+  if (moqCapacityFactor >= 72) {
     reasons.push("MOQ fits requested quantity");
-  } else if (moqCapacityScore > 0) {
+  } else if (moqCapacityFactor > 0) {
     reasons.push("partial MOQ fit");
   }
 
-  if (profileFitScore >= 10) {
-    reasons.push("business niche overlap");
+  if (businessNicheFactor >= 50) {
+    reasons.push("business description / niche fit");
   }
 
-  if (locationScore >= 10) {
+  if (locationFactor >= 66.67) {
     reasons.push("same local area");
-  } else if (locationScore > 0) {
+  } else if (locationFactor > 0) {
     reasons.push("regional proximity");
   }
 
@@ -612,9 +643,12 @@ export async function getTopSupplierMatchesForRfq(params: {
         matchReason: match.reason,
       };
     })
-    .filter((row) => row.matchScore >= 70)
+    // Suppliers with a match score of 70% and above are eligible to rank.
+    // Only the top 10 highest-ranked suppliers receive the buyer's RFQ so the
+    // buyer negotiates only with the most relevant suppliers.
+    .filter((row) => row.matchScore >= MATCH_ELIGIBILITY_THRESHOLD)
     .sort((left, right) => right.matchScore - left.matchScore)
-    .slice(0, 10);
+    .slice(0, MAX_MATCHED_SUPPLIERS);
 }
 
 export async function createPublicSourcingRequest(input: {
@@ -927,6 +961,31 @@ export async function getBuyerRfqListItems(filter?: {
     }
   }
 
+  const quoteIds = engagementRows
+    .map((row) => row.final_quote_id)
+    .filter((quoteId): quoteId is number => quoteId != null);
+  const purchaseOrderQuoteIds = new Set<number>();
+
+  if (quoteIds.length > 0) {
+    const { data: purchaseOrderRows, error: purchaseOrdersError } = await supabase
+      .from("purchase_orders")
+      .select("quote_id")
+      .eq("buyer_id", buyerContext.buyerId)
+      .in("quote_id", quoteIds);
+
+    if (purchaseOrdersError) {
+      throw new Error(
+        purchaseOrdersError.message || "Failed to load RFQ purchase orders."
+      );
+    }
+
+    for (const row of purchaseOrderRows ?? []) {
+      if (row.quote_id != null) {
+        purchaseOrderQuoteIds.add(row.quote_id);
+      }
+    }
+  }
+
   const engagementsByRfqId = new Map<number, BuyerRfqListItem["engagements"]>();
   for (const row of engagementRows) {
     if (!engagementsByRfqId.has(row.rfq_id)) {
@@ -1039,6 +1098,11 @@ export async function getBuyerRfqListItems(filter?: {
           }
         : null,
       supplierPreview: supplierPreviewByRfqId.get(row.rfq_id) ?? null,
+      hasPurchaseOrder: (engagementsByRfqId.get(row.rfq_id) ?? []).some(
+        (engagement) =>
+          engagement.finalQuoteId != null &&
+          purchaseOrderQuoteIds.has(engagement.finalQuoteId),
+      ),
       quotationCount: quotationsByRfqId.get(row.rfq_id) ?? 0,
       requestMatchesCount: matchStats?.total ?? 0,
       visibleMatchesCount: matchStats?.visible ?? 0,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type DatePickerInputProps = {
   id: string;
@@ -8,6 +8,7 @@ type DatePickerInputProps = {
   defaultValue?: string;
   required?: boolean;
   className?: string;
+  placeholder?: string;
 };
 
 type PickerInputElement = HTMLInputElement & {
@@ -26,9 +27,17 @@ export function DatePickerInput({
   defaultValue,
   required,
   className,
+  placeholder,
 }: DatePickerInputProps) {
   const inputRef = useRef<PickerInputElement | null>(null);
   const minDate = useMemo(() => getTodayDateString(), []);
+  const [value, setValue] = useState(defaultValue ?? "");
+  const [showDateInput, setShowDateInput] = useState(!placeholder || Boolean(defaultValue));
+
+  useEffect(() => {
+    setValue(defaultValue ?? "");
+    setShowDateInput(!placeholder || Boolean(defaultValue));
+  }, [defaultValue, placeholder]);
 
   const inputClassName =
     className ??
@@ -38,6 +47,17 @@ export function DatePickerInput({
     const input = inputRef.current;
 
     if (!input) {
+      return;
+    }
+
+    if (!showDateInput) {
+      setShowDateInput(true);
+
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+        inputRef.current?.showPicker?.();
+      });
+
       return;
     }
 
@@ -51,11 +71,25 @@ export function DatePickerInput({
         ref={inputRef}
         id={id}
         name={name}
-        type="date"
+        type={showDateInput ? "date" : "text"}
         min={minDate}
-        defaultValue={defaultValue}
+        value={value}
+        placeholder={showDateInput ? undefined : placeholder}
         required={required}
         className={inputClassName}
+        onFocus={() => {
+          if (!showDateInput) {
+            setShowDateInput(true);
+          }
+        }}
+        onBlur={() => {
+          if (!value && placeholder) {
+            setShowDateInput(false);
+          }
+        }}
+        onChange={(event) => {
+          setValue(event.target.value);
+        }}
       />
 
       <button

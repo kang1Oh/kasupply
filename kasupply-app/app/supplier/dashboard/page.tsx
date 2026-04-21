@@ -23,6 +23,30 @@ type StatCardConfig = {
   iconAlt: string;
 };
 
+function buildFallbackDashboardData(): SupplierDashboardData {
+  return {
+    supplierName: "Supplier",
+    supplierInitials: "S",
+    supplierBusinessType: "Supplier",
+    currentDateLabel: "Today",
+    verificationStatus: "incomplete",
+    stats: {
+      inventoryItems: 0,
+      inventoryNote: "Dashboard data is temporarily unavailable",
+      incomingRfqs: 0,
+      incomingRfqsNote: "Dashboard data is temporarily unavailable",
+      matchedBuyers: 0,
+      matchedBuyersNote: "Dashboard data is temporarily unavailable",
+      pendingInvoices: 0,
+      pendingInvoicesNote: "Dashboard data is temporarily unavailable",
+    },
+    sourcingOpportunities: [],
+    notifications: [],
+    incomingRfqs: [],
+    inventorySnapshot: [],
+  };
+}
+
 const notificationToneStyles: Record<
   SupplierDashboardData["notifications"][number]["tone"],
   {
@@ -135,7 +159,7 @@ function SourcingCard({
           <span className="inline-flex rounded-full bg-[#E7F0FF] px-[12px] py-[5px] text-[12px] font-semibold text-[#4D83F6]">
             {item.matchLabel}
           </span>
-          <span className="inline-flex items-center rounded-full bg-[#EEF9F1] px-[12px] py-[5px] text-[12px] font-semibold text-[#3E9A60]">
+          <span className="inline-flex items-center rounded-[6px] bg-[#EEF9F1] px-[12px] py-[5px] text-[12px] font-semibold text-[#3E9A60]">
             <span className="mr-[6px] h-[7px] w-[7px] rounded-full bg-[#3E9A60]" />
             {item.statusLabel}
           </span>
@@ -187,7 +211,15 @@ function SourcingCard({
 }
 
 export default async function SupplierDashboardPage() {
-  const data = await getSupplierDashboardData();
+  let data = buildFallbackDashboardData();
+  let hasLoadError = false;
+
+  try {
+    data = await getSupplierDashboardData();
+  } catch (error) {
+    hasLoadError = true;
+    console.error("Failed to load supplier dashboard data:", error);
+  }
 
   const statCards: StatCardConfig[] = [
     {
@@ -225,7 +257,7 @@ export default async function SupplierDashboardPage() {
       <header className="border-b border-[#DCE5F1] bg-white">
         <div className="flex items-center justify-between px-[18px] py-[15px]">
           <div className="flex items-center gap-[8px] text-[12px]">
-            <span className="font-medium text-[#A5AEBB]">KaSupply</span>
+            <span className="font-normal text-[#A5AEBB]">KaSupply</span>
             <ChevronRight className="h-[14px] w-[14px] text-[#B6BEC9]" />
             <span className="font-semibold text-[#2B4368]">Dashboard</span>
           </div>
@@ -251,6 +283,13 @@ export default async function SupplierDashboardPage() {
           </h1>
           <p className="mt-[3px] text-[14px] font-medium text-[#A1AAB8]">{data.currentDateLabel}</p>
         </section>
+
+        {hasLoadError ? (
+          <section className="mt-[14px] rounded-[14px] border border-[#F6D5C7] bg-[#FFF7F2] px-[16px] py-[12px] text-[13px] text-[#A45A38]">
+            The dashboard is available again, but some live supplier data could not be loaded right
+            now.
+          </section>
+        ) : null}
 
         <section className="mt-[16px] grid gap-[16px] xl:grid-cols-4 md:grid-cols-2">
           {statCards.map((item) => (
@@ -357,7 +396,7 @@ export default async function SupplierDashboardPage() {
                 <div className="flex items-center justify-between border-b border-[#E8EDF3] px-[16px] py-[14px]">
                   <div className="flex items-center gap-[8px]">
                     <h2 className="text-[15px] font-semibold text-[#304668]">Incoming RFQs</h2>
-                    <span className="rounded-full bg-[#FFF0E3] px-[8px] py-[2px] text-[10px] font-semibold text-[#F08A24]">
+                    <span className="rounded-[6px] bg-[#FFF0E3] px-[8px] py-[2px] text-[10px] font-semibold text-[#F08A24]">
                       {data.stats.incomingRfqs} Pending
                     </span>
                   </div>
@@ -452,7 +491,7 @@ export default async function SupplierDashboardPage() {
                             {item.quantity}
                           </span>
                           <span
-                            className={`rounded-full px-[9px] py-[3px] text-[10px] font-semibold ${
+                            className={`rounded-[6px] px-[9px] py-[3px] text-[10px] font-semibold ${
                               item.status === "in-stock"
                                 ? "bg-[#ECFBF2] text-[#2F8C57]"
                                 : item.status === "low-stock"

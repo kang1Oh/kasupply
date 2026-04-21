@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 type ModalShellProps = {
   title?: string;
@@ -8,6 +12,7 @@ type ModalShellProps = {
   closeLabel?: string;
   maxWidthClassName?: string;
   panelClassName?: string;
+  panelOverflowClassName?: string;
   overlayClassName?: string;
   contentClassName?: string;
   headerActions?: React.ReactNode;
@@ -21,14 +26,41 @@ export function ModalShell({
   closeLabel = "Close",
   maxWidthClassName = "max-w-3xl",
   panelClassName = "rounded-2xl bg-white p-6 shadow-2xl",
+  panelOverflowClassName = "overflow-y-auto",
   overlayClassName = "bg-black/50 p-4",
   contentClassName,
   headerActions,
 }: ModalShellProps) {
-  return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center ${overlayClassName}`}>
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  useEffect(() => {
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
+
+  return createPortal(
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none ${overlayClassName}`}
+    >
       <div
-        className={`max-h-[90vh] w-full overflow-y-auto ${maxWidthClassName} ${panelClassName}`}
+        className={`max-h-[90vh] w-full ${panelOverflowClassName} ${maxWidthClassName} ${panelClassName}`}
       >
         {title || description || closeHref || headerActions ? (
           <div className="mb-5 flex items-start justify-between gap-4">
@@ -55,6 +87,7 @@ export function ModalShell({
 
         <div className={contentClassName}>{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

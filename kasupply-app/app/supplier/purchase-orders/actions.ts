@@ -96,6 +96,7 @@ export async function updatePurchaseOrderStatus(formData: FormData) {
   )
     .trim()
     .toLowerCase();
+  const redirectTo = String(formData.get("redirect_to") || "").trim();
 
   if (!poId || Number.isNaN(poId)) {
     throw new Error("Invalid purchase order.");
@@ -156,7 +157,8 @@ export async function updatePurchaseOrderStatus(formData: FormData) {
       completed_at: nextStatus === "completed" ? new Date().toISOString() : null,
       updated_at: new Date().toISOString(),
     })
-    .eq("po_id", poId);
+    .eq("po_id", poId)
+    .eq("supplier_id", supplierId);
 
   if (updateError) {
     throw new Error(updateError.message || "Failed to update purchase order status.");
@@ -171,6 +173,10 @@ export async function updatePurchaseOrderStatus(formData: FormData) {
       revalidatePath(`/buyer/rfqs/${rfqId}`);
       revalidatePath(`/buyer/sourcing-board/${rfqId}`);
     }
+  }
+
+  if (redirectTo === "/supplier/purchase-orders") {
+    redirect(redirectTo);
   }
 
   redirect(`/supplier/purchase-orders/${poId}`);

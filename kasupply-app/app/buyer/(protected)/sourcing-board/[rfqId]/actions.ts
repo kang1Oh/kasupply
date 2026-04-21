@@ -128,7 +128,7 @@ export async function closeSourcingRequest(formData: FormData) {
   }
 
   const [rfqUpdate, matchesUpdate] = await Promise.all([
-    supabase.from("rfqs").update({ status: "cancelled" }).eq("rfq_id", rfqId),
+    supabase.from("rfqs").update({ status: "closed" }).eq("rfq_id", rfqId),
     supabase
       .from("request_matches")
       .update({ is_visible: false })

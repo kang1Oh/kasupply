@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { BuyerPurchaseOrdersPage } from "@/components/buyer-purchase-orders-page";
 import { getBuyerAccessRedirect } from "@/lib/auth/buyer-access";
 import { getUserOnboardingStatus } from "@/lib/auth/get-user-onboarding-status";
+import { PURCHASE_ORDER_PAYMENT_METHOD_OPTIONS } from "@/lib/purchase-orders/constants";
 import { createPurchaseOrder } from "./actions";
 import { getBuyerPurchaseOrders, getPurchaseOrderCreationDraft } from "./data";
 
@@ -156,21 +157,42 @@ export default async function BuyerPurchaseOrdersRoute({
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="space-y-2">
                   <span className="text-sm font-medium text-[#223654]">Payment method</span>
-                  <input
-                    type="text"
-                    name="paymentMethod"
-                    required
-                    placeholder="e.g. Bank transfer, Cash on delivery"
-                    className="w-full rounded-md border border-[#d7dee8] bg-white px-4 py-3 text-sm text-[#223654] outline-none transition placeholder:text-[#b0b8c5] focus:border-[#223654]"
-                  />
+                  <div className="relative">
+                    <select
+                      name="paymentMethod"
+                      required
+                      defaultValue=""
+                      className="w-full appearance-none rounded-md border border-[#d7dee8] bg-white px-4 py-3 pr-11 text-sm text-[#223654] outline-none transition focus:border-[#223654] invalid:text-[#b0b8c5]"
+                    >
+                      <option value="" disabled>
+                        Select payment method
+                      </option>
+                      {PURCHASE_ORDER_PAYMENT_METHOD_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4 text-[#8b95a5]">
+                      <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" aria-hidden="true">
+                        <path
+                          d="m5 7.5 5 5 5-5"
+                          stroke="currentColor"
+                          strokeWidth="1.6"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </span>
+                  </div>
                 </label>
 
                 <label className="space-y-2">
-                  <span className="text-sm font-medium text-[#223654]">Terms and conditions</span>
+                  <span className="text-sm font-medium text-[#223654]">Payment terms / notes</span>
                   <textarea
                     name="termsAndConditions"
                     rows={4}
-                    placeholder="Add any delivery, payment, or coordination terms for this order."
+                    placeholder="Optional: add bank details, partial upfront arrangements, or release instructions."
                     className="w-full rounded-md border border-[#d7dee8] bg-white px-4 py-3 text-sm text-[#223654] outline-none transition placeholder:text-[#b0b8c5] focus:border-[#223654]"
                   />
                 </label>

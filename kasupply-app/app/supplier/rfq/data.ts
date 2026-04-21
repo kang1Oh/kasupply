@@ -31,6 +31,8 @@ type RfqRow = {
   category_id: number | null;
   product_id: number | null;
   product_name: string | null;
+  product_moq?: number | null;
+  product_lead_time?: string | null;
   requested_product_name: string | null;
   quantity: number;
   unit: string | null;
@@ -89,6 +91,57 @@ type PurchaseOrderRow = {
   status: string | null;
   created_at: string | null;
 };
+
+type ProductCatalogRow = {
+  product_id: number;
+  supplier_id: number;
+  category_id: number | null;
+  product_name: string | null;
+  moq: number | null;
+  lead_time: string | null;
+  is_published: boolean;
+};
+
+function normalizeText(value: string | null | undefined) {
+  return String(value ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+function scoreProductMatch(params: {
+  requestedName: string;
+  productName: string;
+  rfqCategoryId: number | null;
+  productCategoryId: number | null;
+}) {
+  const requested = normalizeText(params.requestedName);
+  const product = normalizeText(params.productName);
+
+  if (!requested || !product) {
+    return 0;
+  }
+
+  let score = 0;
+
+  if (params.rfqCategoryId != null && params.rfqCategoryId === params.productCategoryId) {
+    score += 40;
+  }
+
+  if (requested === product) {
+    score += 100;
+  } else if (product.includes(requested) || requested.includes(product)) {
+    score += 75;
+  }
+
+  const requestedTokens = new Set(requested.split(" ").filter(Boolean));
+  const productTokens = new Set(product.split(" ").filter(Boolean));
+  const overlappingTokens = [...requestedTokens].filter((token) => productTokens.has(token));
+
+  score += overlappingTokens.length * 12;
+
+  return score;
+}
 
 function getSingleRfq(rfqs: EngagementRow["rfqs"]): RfqRow | null {
   if (!rfqs) return null;
@@ -267,11 +320,12 @@ export async function getSupplierRfqEngagementDetail(engagementId: number) {
   const rawRfq = getSingleRfq(engagement.rfqs);
   let productName: string | null = null;
   let productMoq: number | null = null;
+  let productLeadTime: string | null = null;
 
   if (rawRfq?.product_id != null) {
     const { data: productRow, error: productRowError } = await supabase
       .from("products")
-      .select("product_id, product_name, moq")
+      .select("product_id, product_name, moq, lead_time")
       .eq("product_id", rawRfq.product_id)
       .maybeSingle();
 
@@ -284,6 +338,50 @@ export async function getSupplierRfqEngagementDetail(engagementId: number) {
       typeof productRow?.moq === "number" && Number.isFinite(productRow.moq)
         ? productRow.moq
         : null;
+    productLeadTime = productRow?.lead_time?.trim() || null;
+  }
+
+  if (rawRfq && (!productName || !productLeadTime || productMoq == null)) {
+    const requestedProductName =
+      rawRfq.requested_product_name?.trim() ||
+      rawRfq.product_name?.trim() ||
+      getRfqProductName(rawRfq) ||
+      "";
+
+    if (requestedProductName) {
+      const { data: supplierProducts, error: supplierProductsError } = await supabase
+        .from("products")
+        .select("product_id, supplier_id, category_id, product_name, moq, lead_time, is_published")
+        .eq("supplier_id", supplierProfile.supplier_id)
+        .eq("is_published", true);
+
+      if (supplierProductsError) {
+        throw new Error(supplierProductsError.message || "Failed to load supplier catalog.");
+      }
+
+      const bestMatchingProduct = ((supplierProducts ?? []) as ProductCatalogRow[])
+        .map((product) => ({
+          product,
+          score: scoreProductMatch({
+            requestedName: requestedProductName,
+            productName: product.product_name ?? "",
+            rfqCategoryId: rawRfq.category_id,
+            productCategoryId: product.category_id,
+          }),
+        }))
+        .filter((entry) => entry.score > 0)
+        .sort((left, right) => right.score - left.score)[0]?.product;
+
+      if (bestMatchingProduct) {
+        productName = productName ?? bestMatchingProduct.product_name ?? null;
+        productMoq =
+          productMoq ??
+          (typeof bestMatchingProduct.moq === "number" && Number.isFinite(bestMatchingProduct.moq)
+            ? bestMatchingProduct.moq
+            : null);
+        productLeadTime = productLeadTime ?? bestMatchingProduct.lead_time?.trim() ?? null;
+      }
+    }
   }
 
   const rfq = rawRfq
@@ -291,6 +389,7 @@ export async function getSupplierRfqEngagementDetail(engagementId: number) {
           ...rawRfq,
           product_name: productName ?? `RFQ #${rawRfq.rfq_id}`,
           product_moq: productMoq,
+          product_lead_time: productLeadTime,
         }
       : null;
 

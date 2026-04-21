@@ -1,10 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CheckMarkModalIcon, ModalShell, TrashCanModalIcon } from "@/components/modals";
+import { CheckMarkModalIcon, ModalShell } from "@/components/modals";
 import { SupplierProductImagePicker } from "@/components/supplier-product-image-picker";
 import { createClient } from "@/lib/supabase/server";
-import { createInventoryItem, deleteInventoryItem, updateInventoryItem } from "./actions";
+import { createInventoryItem, updateInventoryItem } from "./actions";
+import { SupplierInventoryTableClient } from "./inventory-table-client";
+import { LeadTimeField } from "./lead-time-field";
 
 type ProductCategoryRow = { category_id: number; category_name: string };
 type SupplierProfileRow = { supplier_id: number; profile_id: number };
@@ -68,6 +70,13 @@ function formatUpdatedAt(value: string | null) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function normalizeInventoryFilterValue(value: string | null | undefined) {
+  return String(value ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
 }
 
 function buildInventoryHref(params: {
@@ -203,7 +212,7 @@ function ProductFormFields({
       {imageSrc ? (
         <div className="flex items-center gap-2">
           <img
-            src={imageSrc}
+            src={imageSrc ?? ""}
             alt={product?.product_name ?? "Current product image"}
             className="h-[54px] w-[54px] rounded-[10px] border border-[#E5EAF2] object-cover"
           />
@@ -290,14 +299,7 @@ function ProductFormFields({
         </InventoryField>
 
         <InventoryField label={<>Lead time <span className="text-[#F04438]">*</span></>}>
-          <input
-            name="lead_time"
-            type="text"
-            required
-            defaultValue={product?.lead_time ?? ""}
-            className="h-[34px] w-full rounded-[8px] border border-[#C9D3E0] px-3 text-[12px] text-[#344054] outline-none placeholder:text-[#B0B8C5]"
-            placeholder="e.g 1 day"
-          />
+          <LeadTimeField defaultValue={product?.lead_time ?? ""} />
         </InventoryField>
 
         <InventoryField label={<>Max capacity <span className="text-[#F04438]">*</span></>}>
@@ -345,10 +347,8 @@ function ProductFormFields({
 export default async function SupplierInventoryPage({ searchParams }: { searchParams?: Promise<InventorySearchParams> }) {
   const resolvedSearchParams = (await searchParams) ?? {};
   const editingId = resolvedSearchParams.edit ? Number(resolvedSearchParams.edit) : null;
-  const deletingId = resolvedSearchParams.delete ? Number(resolvedSearchParams.delete) : null;
   const modal = String(resolvedSearchParams.modal || "").trim().toLowerCase();
   const searchText = String(resolvedSearchParams.search || "").trim();
-  const normalizedSearch = searchText.toLowerCase();
   const selectedCategory = String(resolvedSearchParams.category || "").trim();
   const selectedStatus = (String(resolvedSearchParams.status || "").trim() || "all") as InventoryStatus;
   const currentPage = Math.max(1, Number(resolvedSearchParams.page || "1") || 1);
@@ -387,6 +387,13 @@ export default async function SupplierInventoryPage({ searchParams }: { searchPa
   if (productImagesError) throw new Error(productImagesError.message || "Failed to load product images.");
   const categoryMap = new Map<number, string>();
   for (const category of safeCategories) categoryMap.set(category.category_id, category.category_name);
+  const selectedCategoryName =
+    safeCategories.find(
+      (category) =>
+        String(category.category_id) === selectedCategory ||
+        normalizeInventoryFilterValue(category.category_name) ===
+          normalizeInventoryFilterValue(selectedCategory),
+    )?.category_name ?? "";
 
   const imageSrcMap = new Map<number, string | null>();
   const productImagesMap = new Map<number, Array<{ id: number; url: string }>>();
@@ -416,32 +423,53 @@ export default async function SupplierInventoryPage({ searchParams }: { searchPa
   const outOfStockProducts = safeProducts.filter((product) => getInventoryStatus(product) === "out-of-stock").length;
 
   const lastUpdatedProduct = [...safeProducts].sort((a, b) => new Date(b.updated_at ?? b.created_at ?? 0).getTime() - new Date(a.updated_at ?? a.created_at ?? 0).getTime()).at(0);
-
   const filteredProducts = safeProducts.filter((product) => {
     const productStatus = getInventoryStatus(product);
     const categoryName = product.category_id ? categoryMap.get(product.category_id) ?? "" : "";
-    const matchesSearch = !normalizedSearch || product.product_name.toLowerCase().includes(normalizedSearch) || (product.description ?? "").toLowerCase().includes(normalizedSearch) || categoryName.toLowerCase().includes(normalizedSearch);
+    const matchesSearch =
+      !searchText ||
+      product.product_name.toLowerCase().includes(searchText.toLowerCase()) ||
+      (product.description ?? "").toLowerCase().includes(searchText.toLowerCase()) ||
+      categoryName.toLowerCase().includes(searchText.toLowerCase());
     const matchesCategory = !selectedCategory || String(product.category_id ?? "") === selectedCategory;
     const matchesStatus = selectedStatus === "all" ? true : productStatus === selectedStatus;
     return matchesSearch && matchesCategory && matchesStatus;
   });
-
   const pageSize = 6;
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
   const safePage = Math.min(currentPage, totalPages);
   const paginatedProducts = filteredProducts.slice((safePage - 1) * pageSize, safePage * pageSize);
   const productBeingEdited = editingId != null ? safeProducts.find((product) => product.product_id === editingId) ?? null : null;
-  const productBeingDeleted = deletingId != null ? safeProducts.find((product) => product.product_id === deletingId) ?? null : null;
   const pageNumbers: (number | "...")[] = [];
   if (totalPages <= 7) {
     for (let page = 1; page <= totalPages; page += 1) pageNumbers.push(page);
   } else {
     pageNumbers.push(1);
     if (safePage > 3) pageNumbers.push("...");
-    for (let page = Math.max(2, safePage - 1); page <= Math.min(totalPages - 1, safePage + 1); page += 1) pageNumbers.push(page);
+    for (let page = Math.max(2, safePage - 1); page <= Math.min(totalPages - 1, safePage + 1); page += 1) {
+      pageNumbers.push(page);
+    }
     if (safePage < totalPages - 2) pageNumbers.push("...");
     pageNumbers.push(totalPages);
   }
+  const inventoryItems = safeProducts.map((product) => ({
+    productId: product.product_id,
+    categoryId: product.category_id,
+    categoryLabel: product.category_id
+      ? categoryMap.get(product.category_id) ?? "Uncategorized"
+      : "Uncategorized",
+    productName: product.product_name,
+    description: product.description,
+    imageSrc: imageSrcMap.get(product.product_id) ?? null,
+    unit: product.unit,
+    pricePerUnit: Number(product.price_per_unit),
+    moq: product.moq,
+    maxCapacity: product.max_capacity,
+    leadTime: product.lead_time,
+    stockAvailable: product.stock_available,
+    isPublished: product.is_published,
+    status: getInventoryStatus(product) as Exclude<InventoryStatus, "all">,
+  }));
 
   return (
     <>
@@ -449,7 +477,7 @@ export default async function SupplierInventoryPage({ searchParams }: { searchPa
         <section className="overflow-hidden border-b border-[#E8EDF4] bg-white">
           <div className="flex items-center justify-between px-[18px] py-[15px]">
             <div className="flex items-center gap-2 text-[12px] text-[#A4ACBA]">
-              <span>KaSupply</span>
+              <span className="font-normal">KaSupply</span>
               <span className="text-[#CBD2DE]">/</span>
               <span className="font-semibold text-[#506073]">Inventory</span>
             </div>
@@ -477,11 +505,11 @@ export default async function SupplierInventoryPage({ searchParams }: { searchPa
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <h1 className="text-[20px] font-semibold text-[#2B3B56]">Product Inventory</h1>
-                <p className="mt-1.5 text-[13px] text-[#98A3B4]">
+                <p className="mt-1.5 text-[14px] text-[#98A3B4]">
                   {totalProducts} items cataloged · last updated {formatUpdatedAt(lastUpdatedProduct?.updated_at ?? lastUpdatedProduct?.created_at ?? null)}
                 </p>
               </div>
-              <Link href={buildInventoryHref({ search: searchText, category: selectedCategory, status: selectedStatus, page: safePage, modal: "add" })} className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-[#2F6CF6] px-4 text-[13px] font-medium text-white shadow-[0_8px_22px_rgba(47,108,246,0.22)] transition hover:bg-[#245CE0]">
+              <Link href={buildInventoryHref({ search: searchText, category: selectedCategoryName, status: selectedStatus, page: currentPage, modal: "add" })} className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-[#2F6CF6] px-4 text-[13px] font-medium text-white shadow-[0_8px_22px_rgba(47,108,246,0.22)] transition hover:bg-[#245CE0]">
                 <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" /></svg>
                 Add Product
               </Link>
@@ -494,6 +522,20 @@ export default async function SupplierInventoryPage({ searchParams }: { searchPa
               <div className="rounded-[18px] border border-[#EDF1F6] border-l-[3px] border-l-[#FF4D4F] bg-white px-[18px] py-[18px] shadow-[0_8px_20px_rgba(15,23,42,0.03)]"><p className="text-[11px] font-normal uppercase tracking-[0.04em] text-[#A0A8B7]">Out of Stock</p><p className="mt-3 text-[24px] font-semibold leading-none text-[#27344C]">{outOfStockProducts}</p></div>
             </div>
 
+            <SupplierInventoryTableClient
+              categories={safeCategories.map((category) => ({
+                categoryId: category.category_id,
+                categoryName: category.category_name,
+              }))}
+              products={inventoryItems}
+              initialSearchText={searchText}
+              initialSelectedCategory={selectedCategoryName}
+              initialSelectedStatus={selectedStatus}
+              initialPage={currentPage}
+            />
+
+            {false ? (
+            <>
             <div className="mt-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <form method="GET" className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <input type="hidden" name="status" value={selectedStatus} />
@@ -531,7 +573,7 @@ export default async function SupplierInventoryPage({ searchParams }: { searchPa
                   ["low-stock", "Low stock"],
                   ["out-of-stock", "Out of stock"],
                 ].map(([value, label]) => (
-                  <Link key={value} href={buildInventoryHref({ search: searchText, category: selectedCategory, status: value, page: 1 })} className={`inline-flex h-[28px] items-center justify-center rounded-full px-4 text-[12px] font-normal transition ${selectedStatus === value ? "bg-[#233F68] text-white" : "text-[#A0A8B7] hover:text-[#64748B]"}`}>
+                  <Link key={value} href={buildInventoryHref({ search: searchText, category: selectedCategory, status: value, page: 1 })} className={`inline-flex h-[28px] items-center justify-center rounded-full px-4 text-[13px] font-normal transition ${selectedStatus === value ? "bg-[#233F68] text-white" : "text-[#A0A8B7] hover:text-[#64748B]"}`}>
                     {label}
                   </Link>
                 ))}
@@ -562,7 +604,7 @@ export default async function SupplierInventoryPage({ searchParams }: { searchPa
                       <th className="px-3 py-4 text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Stock</th>
                       <th className="px-3 py-4 text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Price</th>
                       <th className="px-3 py-4 text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Min Qty</th>
-                      <th className="px-3 py-4 text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Max Capacity</th>
+                      <th className="whitespace-nowrap px-3 py-4 text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Max Capacity</th>
                       <th className="px-3 py-4 text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Lead Time</th>
                       <th className="px-3 py-4 text-center text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Visibility</th>
                       <th className="px-3 py-4 text-center text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Status</th>
@@ -611,9 +653,9 @@ export default async function SupplierInventoryPage({ searchParams }: { searchPa
                             <td className="px-3 py-3.5 align-middle font-medium text-[#66748B]">{product.max_capacity.toLocaleString()}</td>
                             <td className="px-3 py-3.5 align-middle font-medium text-[#66748B]">{product.lead_time}</td>
                             <td className="px-3 py-3.5 align-middle text-center">
-                              <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-medium whitespace-nowrap ${visibilityClassName}`}>{visibilityLabel}</span>
+                              <span className={`inline-flex rounded-[6px] px-2.5 py-1 text-[10px] font-medium whitespace-nowrap ${visibilityClassName}`}>{visibilityLabel}</span>
                             </td>
-                            <td className="px-3 py-3.5 align-middle text-center"><span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-medium whitespace-nowrap ${statusClassName}`}>{statusLabel}</span></td>
+                            <td className="px-3 py-3.5 align-middle text-center"><span className={`inline-flex rounded-[6px] px-2.5 py-1 text-[10px] font-medium whitespace-nowrap ${statusClassName}`}>{statusLabel}</span></td>
                             <td className="pl-3 pr-6 py-3.5 align-middle">
                               <div className="flex items-center justify-center gap-1.5">
                                 <Link href={buildInventoryHref({ search: searchText, category: selectedCategory, status: selectedStatus, page: safePage, edit: product.product_id })} aria-label="Edit product" className="block h-[32px] w-[40px] shrink-0 transition hover:opacity-90">
@@ -644,24 +686,30 @@ export default async function SupplierInventoryPage({ searchParams }: { searchPa
                 <span>Next</span><span>→</span>
               </Link>
             </div>
+            </>
+            ) : null}
         </section>
       </main>
 
       {modal === "add" ? (
         <ModalShell
-          maxWidthClassName="max-w-[420px]"
-          panelClassName="rounded-[20px] bg-white px-5 py-5 shadow-[0_22px_70px_rgba(15,23,42,0.14)]"
-          overlayClassName="bg-[#101828]/45 p-4"
+          maxWidthClassName="max-w-[780px]"
+          panelClassName="flex h-[min(92dvh,860px)] flex-col rounded-[24px] bg-white px-5 py-5 shadow-[0_22px_70px_rgba(15,23,42,0.14)] md:px-7 md:py-6"
+          panelOverflowClassName="overflow-hidden"
+          overlayClassName="bg-[#101828]/45 p-4 md:p-6"
+          contentClassName="flex min-h-0 flex-1 flex-col"
         >
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[#EEF2F7] pb-4">
             <h2 className="text-[18px] font-semibold text-[#243F68]">Add Product</h2>
             <Link href="/supplier/inventory" className="flex h-[44px] w-[44px] items-center justify-center rounded-[12px] bg-[#F4F6FA] text-[#A0A8B7] transition hover:text-[#66748B]">
               <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </Link>
           </div>
-          <form action={createInventoryItem} className="mt-3 space-y-5">
-            <ProductFormFields categories={safeCategories} />
-            <div className="flex items-center justify-end gap-3 pt-1">
+          <form action={createInventoryItem} className="mt-4 grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto] overflow-hidden">
+            <div className="scrollbar-hidden min-h-0 overflow-y-auto overscroll-contain pr-1 touch-pan-y md:pr-2">
+              <ProductFormFields categories={safeCategories} />
+            </div>
+            <div className="mt-4 flex shrink-0 items-center justify-end gap-3 border-t border-[#EEF2F7] bg-white pt-4">
               <Link href="/supplier/inventory" className="px-2 py-2 text-[12px] font-medium text-[#98A2B3]">Cancel</Link>
               <button type="submit" className="inline-flex h-[40px] min-w-[124px] items-center justify-center rounded-[10px] bg-[#233F68] px-5 text-[13px] font-medium text-white">Add Product</button>
             </div>
@@ -671,25 +719,29 @@ export default async function SupplierInventoryPage({ searchParams }: { searchPa
 
       {productBeingEdited ? (
         <ModalShell
-          maxWidthClassName="max-w-[420px]"
-          panelClassName="rounded-[20px] bg-white px-5 py-5 shadow-[0_22px_70px_rgba(15,23,42,0.14)]"
-          overlayClassName="bg-[#101828]/45 p-4"
+          maxWidthClassName="max-w-[780px]"
+          panelClassName="flex h-[min(92dvh,860px)] flex-col rounded-[24px] bg-white px-5 py-5 shadow-[0_22px_70px_rgba(15,23,42,0.14)] md:px-7 md:py-6"
+          panelOverflowClassName="overflow-hidden"
+          overlayClassName="bg-[#101828]/45 p-4 md:p-6"
+          contentClassName="flex min-h-0 flex-1 flex-col"
         >
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[#EEF2F7] pb-4">
             <h2 className="text-[18px] font-semibold text-[#243F68]">Edit Product</h2>
             <Link href="/supplier/inventory" className="flex h-[44px] w-[44px] items-center justify-center rounded-[12px] bg-[#F4F6FA] text-[#A0A8B7] transition hover:text-[#66748B]">
               <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </Link>
           </div>
-          <form action={updateInventoryItem} className="mt-3 space-y-5">
+          <form action={updateInventoryItem} className="mt-4 grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto] overflow-hidden">
             <input type="hidden" name="product_id" value={productBeingEdited.product_id} />
-            <ProductFormFields
-              categories={safeCategories}
-              product={productBeingEdited}
-              imageSrc={imageSrcMap.get(productBeingEdited.product_id) ?? null}
-              existingImages={productImagesMap.get(productBeingEdited.product_id) ?? []}
-            />
-            <div className="flex items-center justify-end gap-3 pt-1">
+            <div className="scrollbar-hidden min-h-0 overflow-y-auto overscroll-contain pr-1 touch-pan-y md:pr-2">
+              <ProductFormFields
+                categories={safeCategories}
+                product={productBeingEdited}
+                imageSrc={imageSrcMap.get(productBeingEdited.product_id) ?? null}
+                existingImages={productImagesMap.get(productBeingEdited.product_id) ?? []}
+              />
+            </div>
+            <div className="mt-4 flex shrink-0 items-center justify-end gap-3 border-t border-[#EEF2F7] bg-white pt-4">
               <Link href="/supplier/inventory" className="px-2 py-2 text-[12px] font-medium text-[#98A2B3]">Cancel</Link>
               <button type="submit" className="inline-flex h-[40px] min-w-[124px] items-center justify-center rounded-[10px] bg-[#233F68] px-5 text-[13px] font-medium text-white">Update Product</button>
             </div>
@@ -697,120 +749,79 @@ export default async function SupplierInventoryPage({ searchParams }: { searchPa
         </ModalShell>
       ) : null}
 
-      {productBeingDeleted ? (
-        <ModalShell
-          maxWidthClassName="max-w-[625px]"
-          panelClassName="rounded-[26px] bg-white px-[42px] py-[42px] shadow-[0_22px_70px_rgba(15,23,42,0.14)]"
-          overlayClassName="bg-[#101828]/45 p-4"
-        >
-          <div className="flex flex-col items-center text-center">
-            <div className="flex h-[78px] w-[78px] items-center justify-center rounded-full bg-[#EFF4FA]">
-              <TrashCanModalIcon size={50} />
-            </div>
-
-            <h2 className="mt-[26px] text-[28px] font-semibold leading-none tracking-[-0.03em] text-[#243F68]">
-              Remove Product
-            </h2>
-
-            <p className="mt-[18px] max-w-[520px] text-[17px] leading-[1.42] text-[#A7B0BF]">
-              Are you sure you want to remove this product from your catalog? This action cannot be undone.
-            </p>
-
-            <div className="mt-[34px] flex w-full max-w-[342px] items-center justify-center gap-2.5">
-              <Link
-                href="/supplier/inventory"
-                className="inline-flex h-[46px] min-w-[166px] items-center justify-center rounded-[12px] bg-[#233F68] px-6 text-[14px] font-medium text-white transition hover:bg-[#1D3557]"
-              >
-                Cancel
-              </Link>
-
-              <form action={deleteInventoryItem}>
-                <input type="hidden" name="product_id" value={productBeingDeleted.product_id} />
-                <button
-                  type="submit"
-                  className="inline-flex h-[46px] min-w-[166px] items-center justify-center rounded-[12px] border border-[#FF4A3D] bg-white px-6 text-[14px] font-medium text-[#FF3B30] transition hover:bg-[#FFF6F5]"
-                >
-                  Remove Product
-                </button>
-              </form>
-            </div>
-          </div>
-        </ModalShell>
-      ) : null}
-
         {modal === "added" ? (
           <ModalShell
-            maxWidthClassName="max-w-[560px]"
+            maxWidthClassName="max-w-[432px]"
             panelClassName="rounded-[24px] bg-white px-[34px] py-[34px] shadow-[0_22px_70px_rgba(15,23,42,0.14)]"
             overlayClassName="bg-[#101828]/45 p-4"
           >
             <div className="flex flex-col items-center text-center">
-              <div className="flex h-[92px] w-[92px] items-center justify-center rounded-full bg-[#EFF4FA]">
-                <CheckMarkModalIcon size={52} />
+              <div className="flex h-[68px] w-[68px] items-center justify-center rounded-full bg-[#EEF2F6]">
+                <CheckMarkModalIcon size={42} />
               </div>
 
-              <h2 className="mt-7 text-[24px] font-semibold leading-none tracking-[-0.03em] text-[#243F68]">
+              <h2 className="mt-[22px] text-[24px] font-semibold leading-none tracking-[-0.03em] text-[#243F68]">
                 Product Added
               </h2>
 
-                <p className="mt-4 max-w-[370px] text-[16px] font-normal leading-[1.45] text-[#A7B0BF]">
-                  Your product has been successfully added to your catalog.
-                </p>
+              <p className="mt-[10px] max-w-[320px] text-[17px] font-light leading-[1.42] text-[#A7B0BF]">
+                Your product has been successfully added to your catalog.
+              </p>
 
-              <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+              <div className="mt-[28px] flex w-full max-w-[320px] items-center justify-center gap-2.5">
                 <Link
                   href={
                     buildInventoryHref({
                       search: searchText,
-                      category: selectedCategory,
+                      category: selectedCategoryName,
                       status: selectedStatus,
-                      page: safePage,
+                      page: currentPage,
                     })
                   }
-                  className="inline-flex h-[52px] min-w-[182px] items-center justify-center rounded-[12px] bg-[#233F68] px-6 text-[14px] font-medium text-white transition hover:bg-[#1D3557]"
+                  className="inline-flex h-[44px] min-w-0 flex-1 items-center justify-center rounded-[12px] bg-[#233F68] px-5 text-[14px] font-medium text-white transition hover:bg-[#1D3557]"
                 >
                   View Product
                 </Link>
-              <Link
-                href={buildInventoryHref({
-                  search: searchText,
-                  category: selectedCategory,
-                  status: selectedStatus,
-                  page: safePage,
-                  modal: "add",
-                })}
-                  className="inline-flex h-[52px] min-w-[182px] items-center justify-center rounded-[12px] bg-[#98A7BD] px-6 text-[14px] font-medium text-white transition hover:bg-[#8899B1]"
+                <Link
+                  href={buildInventoryHref({
+                    search: searchText,
+                    category: selectedCategoryName,
+                    status: selectedStatus,
+                    page: currentPage,
+                    modal: "add",
+                  })}
+                  className="inline-flex h-[44px] min-w-0 flex-1 items-center justify-center rounded-[12px] bg-[#98A7BD] px-5 text-[14px] font-medium text-white transition hover:bg-[#8899B1]"
                 >
                   Add Another
                 </Link>
-            </div>
+              </div>
             </div>
           </ModalShell>
         ) : null}
 
         {modal === "saved" ? (
           <ModalShell
-            maxWidthClassName="max-w-[420px]"
-            panelClassName="rounded-[20px] bg-white px-[30px] py-[30px] shadow-[0_22px_70px_rgba(15,23,42,0.14)]"
+            maxWidthClassName="max-w-[432px]"
+            panelClassName="rounded-[24px] bg-white px-[34px] py-[34px] shadow-[0_22px_70px_rgba(15,23,42,0.14)]"
             overlayClassName="bg-[#101828]/45 p-4"
           >
             <div className="flex flex-col items-center text-center">
-              <div className="flex h-[72px] w-[72px] items-center justify-center rounded-full bg-[#EFF4FA]">
-                <CheckMarkModalIcon size={34} />
+              <div className="flex h-[68px] w-[68px] items-center justify-center rounded-full bg-[#EEF2F6]">
+                <CheckMarkModalIcon size={42} />
               </div>
 
-              <h2 className="mt-5 text-[18px] font-semibold leading-none tracking-[-0.02em] text-[#243F68]">
+              <h2 className="mt-[22px] text-[24px] font-semibold leading-none tracking-[-0.03em] text-[#243F68]">
                 Changes saved
               </h2>
 
-              <p className="mt-3 max-w-[290px] text-[14px] font-normal leading-[1.45] text-[#A7B0BF]">
+              <p className="mt-[10px] max-w-[360px] whitespace-nowrap text-[17px] font-light leading-[1.42] text-[#A7B0BF]">
                 Your changes have been saved successfully.
               </p>
 
-              <div className="mt-6">
+              <div className="mt-[28px]">
                 <Link
                   href="/supplier/inventory"
-                  className="inline-flex h-[42px] min-w-[112px] items-center justify-center rounded-[10px] bg-[#233F68] px-6 text-[14px] font-medium text-white transition hover:bg-[#1D3557]"
+                  className="inline-flex h-[44px] min-w-[154px] items-center justify-center rounded-[12px] bg-[#233F68] px-5 text-[14px] font-medium text-white transition hover:bg-[#1D3557]"
                 >
                   Okay
                 </Link>

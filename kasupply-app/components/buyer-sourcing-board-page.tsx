@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type { BuyerRfqListItem } from "@/lib/buyer/rfq-workflows";
 
 type BuyerSourcingBoardPageProps = {
@@ -33,12 +33,12 @@ const SORT_OPTIONS: Array<{
 
 function ChevronDownIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+    <svg viewBox="0 0 20 20" className="h-[14px] w-[14px]" aria-hidden="true">
       <path
-        d="m7 10 5 5 5-5"
+        d="m5.5 7.5 4.5 4.5 4.5-4.5"
         fill="none"
         stroke="currentColor"
-        strokeWidth="1.8"
+        strokeWidth="1.7"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -48,27 +48,12 @@ function ChevronDownIcon() {
 
 function MessageIcon() {
   return (
-    <svg viewBox="0 0 20 20" className="h-4 w-4" aria-hidden="true">
+    <svg viewBox="0 0 20 20" className="h-[15px] w-[15px]" aria-hidden="true">
       <path
-        d="M4.75 5.5h10.5a1.75 1.75 0 0 1 1.75 1.75v6a1.75 1.75 0 0 1-1.75 1.75H9l-3.75 2v-2H4.75A1.75 1.75 0 0 1 3 13.25v-6A1.75 1.75 0 0 1 4.75 5.5Z"
+        d="M4.75 5.25h10.5A1.75 1.75 0 0 1 17 7v5.75a1.75 1.75 0 0 1-1.75 1.75H9.35L5.5 16.55V14.5H4.75A1.75 1.75 0 0 1 3 12.75V7a1.75 1.75 0 0 1 1.75-1.75Z"
         fill="none"
         stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function ArrowRightIcon() {
-  return (
-    <svg viewBox="0 0 20 20" className="h-4 w-4" aria-hidden="true">
-      <path
-        d="M4.5 10h11m-4-4 4 4-4 4"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
+        strokeWidth="1.45"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -82,7 +67,7 @@ function formatDate(
     month: "short",
     day: "numeric",
     year: "numeric",
-  }
+  },
 ) {
   if (!value) {
     return "-";
@@ -123,40 +108,6 @@ function isPastDue(deadline: string) {
   return parsed.getTime() < Date.now();
 }
 
-function getRequestState(request: BuyerRfqListItem): {
-  key: Exclude<FilterKey, "all">;
-  label: string;
-  className: string;
-} {
-  const normalizedStatus = request.status.toLowerCase();
-
-  if (normalizedStatus === "cancelled") {
-    return {
-      key: "cancelled",
-      label: "Cancelled",
-      className: "bg-[#f5eaee] text-[#a15769]",
-    };
-  }
-
-  if (
-    normalizedStatus === "closed" ||
-    normalizedStatus === "fulfilled" ||
-    isPastDue(request.deadline)
-  ) {
-    return {
-      key: "closed",
-      label: "Closed",
-      className: "bg-[#eef2f7] text-[#536275]",
-    };
-  }
-
-  return {
-    key: "open",
-    label: "Open",
-    className: "bg-[#edf8ef] text-[#2f7a45]",
-  };
-}
-
 function getInitials(value: string) {
   const initials = value
     .split(/\s+/)
@@ -172,8 +123,42 @@ function getDescription(request: BuyerRfqListItem) {
   return request.specifications || "No additional specifications provided yet.";
 }
 
-function getNeedByValue(request: BuyerRfqListItem) {
-  return formatDate(request.preferredDeliveryDate ?? null);
+function getRequestState(request: BuyerRfqListItem): {
+  key: Exclude<FilterKey, "all">;
+  label: string;
+  badgeClassName: string;
+  dotClassName: string;
+} {
+  const normalizedStatus = request.status.toLowerCase();
+
+  if (normalizedStatus === "cancelled") {
+    return {
+      key: "cancelled",
+      label: "Cancelled",
+      badgeClassName: "bg-[#faecee] text-[#b35f68]",
+      dotClassName: "bg-[#c7727d]",
+    };
+  }
+
+  if (
+    normalizedStatus === "closed" ||
+    normalizedStatus === "fulfilled" ||
+    isPastDue(request.deadline)
+  ) {
+    return {
+      key: "closed",
+      label: "Closed",
+      badgeClassName: "bg-[#eef0f4] text-[#5e697a]",
+      dotClassName: "bg-[#667285]",
+    };
+  }
+
+  return {
+    key: "open",
+    label: "Open",
+    badgeClassName: "bg-[#edf8ef] text-[#2c8b4b]",
+    dotClassName: "bg-[#2c8b4b]",
+  };
 }
 
 function getSortTimestamp(request: BuyerRfqListItem, sortBy: SortOption) {
@@ -184,7 +169,7 @@ function getSortTimestamp(request: BuyerRfqListItem, sortBy: SortOption) {
   return new Date(request.createdAt).getTime();
 }
 
-function SourcingMetric({
+function MetricCell({
   label,
   value,
 }: {
@@ -192,11 +177,13 @@ function SourcingMetric({
   value: React.ReactNode;
 }) {
   return (
-    <div className="rounded-[14px] border border-[#e7edf5] bg-[#fbfcfe] px-4 py-4">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#c0c8d4]">
+    <div className="min-w-0 px-[18px] py-[13px]">
+      <p className="text-[11px] font-medium uppercase tracking-[0.04em] text-[#a3acb8]">
         {label}
       </p>
-      <p className="mt-1.5 text-[16px] font-semibold text-[#223654]">{value}</p>
+      <p className="mt-[5px] text-[14px] font-semibold leading-[1.35] text-[#374151]">
+        {value}
+      </p>
     </div>
   );
 }
@@ -208,273 +195,249 @@ export function BuyerSourcingBoardPage({
   const [selectedFilter, setSelectedFilter] = useState<FilterKey>("all");
   const [sortBy, setSortBy] = useState<SortOption>("newest");
 
-  const requestStates = useMemo(
-    () =>
-      requests.map((request) => ({
-        rfqId: request.rfqId,
-        state: getRequestState(request),
-      })),
-    [requests]
+  const requestStates = requests.map((request) => ({
+    rfqId: request.rfqId,
+    state: getRequestState(request),
+  }));
+
+  const stateById = new Map(
+    requestStates.map((entry) => [entry.rfqId, entry.state] as const),
   );
 
-  const stateById = useMemo(
-    () => new Map(requestStates.map((entry) => [entry.rfqId, entry.state] as const)),
-    [requestStates]
+  const filterCounts = requestStates.reduce(
+    (counts, entry) => {
+      counts.all += 1;
+      counts[entry.state.key] += 1;
+      return counts;
+    },
+    {
+      all: 0,
+      open: 0,
+      closed: 0,
+      cancelled: 0,
+    },
   );
 
-  const filterCounts = useMemo(
-    () =>
-      requestStates.reduce(
-        (counts, entry) => {
-          counts.all += 1;
-          counts[entry.state.key] += 1;
-          return counts;
-        },
-        {
-          all: 0,
-          open: 0,
-          closed: 0,
-          cancelled: 0,
-        }
-      ),
-    [requestStates]
-  );
-
-  const visibleRequests = useMemo(() => {
-    const filtered = requests.filter((request) => {
+  const visibleRequests = requests
+    .filter((request) => {
       if (selectedFilter === "all") {
         return true;
       }
 
       return stateById.get(request.rfqId)?.key === selectedFilter;
-    });
-
-    const sorted = [...filtered];
-
-    sorted.sort((left, right) => {
-      if (sortBy === "oldest") {
-        return getSortTimestamp(left, sortBy) - getSortTimestamp(right, sortBy);
-      }
-
-      if (sortBy === "need-by") {
+    })
+    .sort((left, right) => {
+      if (sortBy === "oldest" || sortBy === "need-by") {
         return getSortTimestamp(left, sortBy) - getSortTimestamp(right, sortBy);
       }
 
       return getSortTimestamp(right, sortBy) - getSortTimestamp(left, sortBy);
     });
 
-    return sorted;
-  }, [requests, selectedFilter, sortBy, stateById]);
-
   return (
-    <main className="mx-auto max-w-[1120px] space-y-5 px-6 py-8 pb-2">
-      <section className="rounded-[28px] border border-[#e8edf5] bg-[linear-gradient(180deg,#ffffff_0%,#fbfcfe_100%)] px-5 py-6 shadow-[0_10px_30px_rgba(15,23,42,0.04)] sm:px-6">
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div>
-              <h1 className="text-[28px] font-semibold tracking-[-0.03em] text-[#223654]">
-                Sourcing Board
-              </h1>
-              <p className="mt-1 text-[15px] text-[#8a96a8]">
-                Your sourcing requests and supplier quotations.
-              </p>
-            </div>
-
-            <Link
-              href="/buyer/sourcing-board/new"
-              className="inline-flex h-11 items-center justify-center rounded-[12px] bg-[#2f6fed] px-5 text-[14px] font-semibold text-white transition hover:bg-[#255fd0]"
-            >
-              + Post Request
-            </Link>
+    <main className="mx-auto max-w-[1120px] px-6 py-9">
+      <section className="flex flex-col gap-5">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h1 className="text-[37px] font-semibold leading-[1.08] tracking-[-0.03em] text-[#27456f]">
+              Sourcing Board
+            </h1>
+            <p className="mt-[6px] text-[15px] font-normal text-[#a0aaba]">
+              Your sourcing requests and supplier quotations
+            </p>
           </div>
 
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap gap-2">
-              {FILTER_OPTIONS.map((option) => {
-                const isActive = selectedFilter === option.key;
-                const showCount = option.key === "all";
+          <Link
+            href="/buyer/sourcing-board/new"
+            className="inline-flex h-[40px] items-center justify-center self-start rounded-[10px] bg-[#2f6fec] px-[18px] text-[15px] font-medium text-white transition hover:bg-[#275fd0]"
+          >
+            + Post Request
+          </Link>
+        </div>
 
-                return (
-                  <button
-                    key={option.key}
-                    type="button"
-                    onClick={() => setSelectedFilter(option.key)}
-                    className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[13px] font-medium transition ${
-                      isActive
-                        ? "border-[#294773] bg-[#294773] text-white"
-                        : "border-[#d9e1ec] bg-white text-[#526176] hover:border-[#c5d0df] hover:text-[#223654]"
-                    }`}
-                  >
-                    <span>{option.label}</span>
-                    {showCount ? (
-                      <span
-                        className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold ${
-                          isActive
-                            ? "bg-white/18 text-white"
-                            : "bg-[#eef3f8] text-[#526176]"
-                        }`}
-                      >
-                        {filterCounts.all}
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap items-center gap-[8px]">
+            {FILTER_OPTIONS.map((option) => {
+              const isActive = selectedFilter === option.key;
 
-            <label className="inline-flex h-11 items-center gap-3 self-start rounded-[12px] border border-[#dce4ee] bg-white px-4 text-[13px] text-[#98a3b4] shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-              <span>Sort by</span>
-              <span className="relative inline-flex items-center text-[#4c5d73]">
-                <select
-                  value={sortBy}
-                  onChange={(event) => setSortBy(event.target.value as SortOption)}
-                  className="appearance-none bg-transparent pr-5 font-medium outline-none"
+              return (
+                <button
+                  key={option.key}
+                  type="button"
+                  onClick={() => setSelectedFilter(option.key)}
+                  className={`inline-flex h-[33px] items-center gap-[7px] rounded-full border px-[16px] text-[14px] font-medium transition ${
+                    isActive
+                      ? "border-[#294773] bg-[#294773] text-white"
+                      : "border-[#ccd6e2] bg-white text-[#2f3f52] hover:border-[#b9c6d7]"
+                  }`}
                 >
-                  {SORT_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <span className="pointer-events-none absolute right-0 text-[#a0abba]">
-                  <ChevronDownIcon />
-                </span>
+                  <span>{option.label}</span>
+                  {option.key === "all" ? (
+                    <span
+                      className={`inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-[5px] text-[10px] font-semibold ${
+                        isActive
+                          ? "bg-white text-[#294773]"
+                          : "bg-[#eef2f7] text-[#536275]"
+                      }`}
+                    >
+                      {filterCounts.all}
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center gap-[10px] self-start">
+            <span className="text-[13px] text-[#a5aebc]">Sort by</span>
+            <label className="relative inline-flex h-[34px] items-center rounded-[10px] border border-[#e0e6ee] bg-white px-[12px] pr-[32px] text-[13px] text-[#556273] shadow-[0_1px_2px_rgba(15,23,42,0.02)]">
+              <select
+                value={sortBy}
+                onChange={(event) => setSortBy(event.target.value as SortOption)}
+                className="appearance-none bg-transparent pr-2 font-medium outline-none"
+              >
+                {SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <span className="pointer-events-none absolute right-[12px] text-[#b0b8c5]">
+                <ChevronDownIcon />
               </span>
             </label>
           </div>
         </div>
       </section>
 
-      {requests.length === 0 ? (
-        <section className="rounded-[24px] border border-[#e8edf5] bg-white px-6 py-10 text-center shadow-[0_10px_28px_rgba(15,23,42,0.04)]">
-          <h2 className="text-[20px] font-semibold text-[#223654]">
-            No sourcing requests yet
-          </h2>
-          <p className="mx-auto mt-2 max-w-[560px] text-[14px] leading-6 text-[#8a96a8]">
-            Post a sourcing request to notify matched suppliers and start receiving
-            quotations from across the platform.
-          </p>
-          <Link
-            href="/buyer/sourcing-board/new"
-            className="mt-5 inline-flex h-11 items-center justify-center rounded-[12px] bg-[#243f68] px-5 text-[14px] font-semibold text-white transition hover:bg-[#1d3454]"
-          >
-            Post Your First Request
-          </Link>
-        </section>
-      ) : visibleRequests.length === 0 ? (
-        <section className="rounded-[24px] border border-dashed border-[#d7e1ec] bg-white px-6 py-8 text-center shadow-[0_10px_28px_rgba(15,23,42,0.03)]">
-          <h2 className="text-[18px] font-semibold text-[#223654]">
-            No requests in this view
-          </h2>
-          <p className="mt-2 text-[14px] text-[#8a96a8]">
-            Try another filter to see the rest of your sourcing requests.
-          </p>
-          <button
-            type="button"
-            onClick={() => setSelectedFilter("all")}
-            className="mt-4 inline-flex h-10 items-center justify-center rounded-[10px] border border-[#d7e0eb] bg-white px-4 text-[14px] font-medium text-[#223654] transition hover:bg-[#f8fafc]"
-          >
-            Show all requests
-          </button>
-        </section>
-      ) : (
-        <div className="space-y-4">
-          {visibleRequests.map((request) => {
+      <section className="mt-5 space-y-[12px]">
+        {requests.length === 0 ? (
+          <div className="rounded-[18px] border border-[#e4e8ef] bg-white px-8 py-12 text-center shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
+            <h2 className="text-[22px] font-semibold text-[#304668]">
+              No sourcing requests yet
+            </h2>
+            <p className="mx-auto mt-2 max-w-[520px] text-[14px] leading-6 text-[#9aa4b3]">
+              Post a sourcing request to notify matched suppliers and start receiving
+              quotations from the marketplace.
+            </p>
+            <Link
+              href="/buyer/sourcing-board/new"
+              className="mt-5 inline-flex h-[40px] items-center justify-center rounded-[10px] bg-[#2f6fec] px-[18px] text-[15px] font-medium text-white transition hover:bg-[#275fd0]"
+            >
+              + Post Request
+            </Link>
+          </div>
+        ) : visibleRequests.length === 0 ? (
+          <div className="rounded-[18px] border border-dashed border-[#d5dde8] bg-white px-8 py-10 text-center shadow-[0_8px_24px_rgba(15,23,42,0.03)]">
+            <h2 className="text-[19px] font-semibold text-[#304668]">
+              No requests in this view
+            </h2>
+            <p className="mt-2 text-[14px] text-[#9aa4b3]">
+              Try another status filter to see the rest of your sourcing requests.
+            </p>
+          </div>
+        ) : (
+          visibleRequests.map((request) => {
             const state = stateById.get(request.rfqId) ?? getRequestState(request);
 
             return (
-              <section
+              <article
                 key={request.rfqId}
-                className="overflow-hidden rounded-[22px] border border-[#e8edf5] bg-white shadow-[0_10px_28px_rgba(15,23,42,0.04)]"
+                className="overflow-hidden rounded-[18px] border border-[#e4e8ef] bg-white shadow-[0_8px_24px_rgba(15,23,42,0.04)]"
               >
-                <div className="flex flex-col gap-5 px-4 py-4 sm:px-5">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="flex min-w-0 items-start gap-4">
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[14px] bg-[#ffe8ef] text-[18px] font-semibold text-[#c95073]">
+                <div className="px-[18px] py-[16px] sm:px-[18px]">
+                  <div className="flex flex-col gap-[12px] lg:flex-row lg:items-start lg:justify-between">
+                    <div className="flex min-w-0 items-start gap-[12px]">
+                      <div className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-full bg-[#ffc3d0] text-[18px] font-medium text-[#cb5c7b]">
                         {getInitials(buyerBusinessName)}
                       </div>
 
                       <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                          <p className="text-[18px] font-semibold text-[#223654]">
-                            {buyerBusinessName}
-                          </p>
-                          <p className="text-[13px] text-[#97a3b4]">
+                        <p className="truncate text-[16px] font-semibold text-[#394150]">
+                          {buyerBusinessName}
+                        </p>
+
+                        <div className="mt-[3px] flex flex-wrap items-center gap-[7px] text-[12px] text-[#a0a8b4]">
+                          <span className="inline-flex rounded-[5px] border border-[#e6ebf1] bg-[#f8f9fb] px-[6px] py-[2px] text-[11px] font-medium text-[#7d8794]">
                             {request.category?.categoryName ?? "General sourcing"}
-                            <span className="mx-1.5 text-[#c1c8d2]">&bull;</span>
+                          </span>
+                          <span>&bull;</span>
+                          <span>
                             {formatDate(request.createdAt, {
                               month: "short",
                               day: "numeric",
                             })}
-                          </p>
+                          </span>
                         </div>
-
-                        <h2 className="mt-2 text-[20px] font-semibold leading-tight tracking-[-0.02em] text-[#223654]">
-                          {request.productName}
-                        </h2>
-
-                        <p className="mt-2 max-w-[760px] text-[14px] leading-6 text-[#8a96a8]">
-                          {getDescription(request)}
-                        </p>
                       </div>
                     </div>
 
-                    <div className="flex shrink-0 flex-col items-start gap-2 lg:items-end">
-                      <span
-                        className={`inline-flex items-center rounded-full px-3 py-1.5 text-[12px] font-semibold ${state.className}`}
-                      >
-                        <span className="mr-1.5 text-[10px] leading-none">&bull;</span>
-                        {state.label}
-                      </span>
-
-                      <p className="text-[12px] text-[#a1acbc]">
-                        RFQ #{request.rfqId}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    <SourcingMetric
-                      label="Quantity"
-                      value={formatQuantity(request.quantity, request.unit)}
-                    />
-                    <SourcingMetric
-                      label="Budget"
-                      value={formatBudget(request.targetPricePerUnit, request.unit)}
-                    />
-                    <SourcingMetric
-                      label="Needed By"
-                      value={getNeedByValue(request)}
-                    />
-                    <SourcingMetric
-                      label="Location"
-                      value={request.deliveryLocation || "To be confirmed"}
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-3 border-t border-[#edf2f7] pt-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="inline-flex items-center gap-2 text-[13px] text-[#9aa5b6]">
-                      <MessageIcon />
-                      <span>
-                        {request.quotationCount} quotation
-                        {request.quotationCount === 1 ? "" : "s"} received
-                      </span>
-                    </div>
-
-                    <Link
-                      href={`/buyer/sourcing-board/${request.rfqId}`}
-                      className="inline-flex items-center gap-1 text-[14px] font-semibold text-[#2f6fed] transition hover:text-[#255fd0]"
+                    <span
+                      className={`inline-flex h-[28px] items-center self-start rounded-full px-[10px] text-[13px] font-medium ${state.badgeClassName}`}
                     >
-                      View Details
-                      <ArrowRightIcon />
-                    </Link>
+                      <span
+                        className={`mr-[7px] inline-flex h-[7px] w-[7px] rounded-full ${state.dotClassName}`}
+                      />
+                      {state.label}
+                    </span>
+                  </div>
+
+                  <div className="mt-[2px] pl-0 lg:pl-[56px]">
+                    <h2 className="text-[17px] font-semibold leading-[1.4] text-[#364152]">
+                      {request.productName}
+                    </h2>
+
+                    <p className="[display:-webkit-box] overflow-hidden text-[15px] leading-[1.48] text-[#7d8794] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
+                      {getDescription(request)}
+                    </p>
+
+                    <div className="mt-[12px] overflow-hidden rounded-[12px] border border-[#e4e7eb] bg-[#f3f4f6]">
+                      <div className="grid md:grid-cols-2 xl:grid-cols-4">
+                        <MetricCell
+                          label="Quantity"
+                          value={formatQuantity(request.quantity, request.unit)}
+                        />
+                        <MetricCell
+                          label="Budget"
+                          value={formatBudget(
+                            request.targetPricePerUnit,
+                            request.unit,
+                          )}
+                        />
+                        <MetricCell
+                          label="Needed By"
+                          value={formatDate(request.preferredDeliveryDate)}
+                        />
+                        <MetricCell
+                          label="Location"
+                          value={request.deliveryLocation || "To be confirmed"}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-[10px] flex flex-col gap-[10px] border-t border-[#edf1f5] pt-[12px] sm:flex-row sm:items-center sm:justify-between">
+                      <div className="inline-flex items-center gap-[7px] text-[13px] text-[#adb4bf]">
+                        <MessageIcon />
+                        <span>
+                          {request.quotationCount} quotation
+                          {request.quotationCount === 1 ? "" : "s"} received
+                        </span>
+                      </div>
+
+                      <Link
+                        href={`/buyer/sourcing-board/${request.rfqId}`}
+                        className="inline-flex items-center justify-end text-[15px] font-medium text-[#2f6fec] transition hover:text-[#275fd0]"
+                      >
+                        View &rarr;
+                      </Link>
+                    </div>
                   </div>
                 </div>
-              </section>
+              </article>
             );
-          })}
-        </div>
-      )}
+          })
+        )}
+      </section>
     </main>
   );
 }

@@ -37,7 +37,7 @@ function AddCertificationModal({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="inline-flex h-[34px] items-center justify-center gap-[6px] rounded-[9px] bg-[#3C78F6] px-[14px] text-[11px] font-semibold text-white transition hover:bg-[#3169DF]"
+        className="inline-flex h-[34px] items-center justify-center gap-[6px] rounded-[9px] bg-[#3C78F6] px-[14px] text-[13px] font-semibold text-white transition hover:bg-[#3169DF]"
       >
         <span className="text-[14px] leading-none">+</span>
         <span>Add Certification</span>
@@ -188,12 +188,12 @@ export function CertificationsForm({
   return (
     <div>
       <section className="overflow-hidden rounded-[18px] border border-[#E8EDF5] bg-white shadow-[0_8px_24px_rgba(15,23,42,0.03)]">
-        <div className="flex items-start justify-between gap-4 border-b border-[#EEF2F7] px-[20px] py-[12px]">
+        <div className="flex items-start justify-between gap-4 border-b border-[#EEF2F7] px-[20px] pb-[10px] pt-[18px]">
           <div>
-            <h2 className="text-[12px] font-semibold uppercase tracking-[0.02em] text-[#23416A]">
+            <h2 className="text-[14px] font-semibold uppercase tracking-[0.02em] text-[#23416A]">
               CERTIFICATIONS
             </h2>
-            <p className="mt-[6px] text-[12px] text-[#9CA8B9]">
+            <p className="mt-[4px] text-[14px] text-[#9CA8B9]">
               Add or update your quality and compliance certifications.
             </p>
           </div>
@@ -278,16 +278,16 @@ export function CertificationsForm({
 
                       <div className="min-w-0">
                         <div className="flex items-center gap-[8px]">
-                          <p className="truncate text-[12px] font-semibold text-[#3A4A64]">
+                          <p className="truncate text-[14px] font-semibold text-[#3A4A64]">
                             {certification.title}
                           </p>
                           {certification.isVerified ? (
-                            <span className="inline-flex h-[18px] items-center rounded-full border border-[#A9C7FF] bg-white px-[6px] text-[9px] font-semibold text-[#4E86FF]">
+                            <span className="inline-flex h-[18px] items-center rounded-[6px] border border-[#A9C7FF] bg-white px-[6px] text-[9px] font-semibold text-[#4E86FF]">
                               {certification.statusLabel}
                             </span>
                           ) : null}
                         </div>
-                        <p className="mt-[2px] text-[11px] text-[#A0AABA]">
+                        <p className="mt-[2px] text-[13px] text-[#A0AABA]">
                           {hasNewFile
                             ? `Selected: ${selectedFiles[certification.certificationId]}`
                             : certification.expiryLabel}
@@ -301,12 +301,12 @@ export function CertificationsForm({
                           href={certification.viewUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex h-[31px] min-w-[68px] items-center justify-center rounded-[8px] border border-[#D8E1EC] bg-white px-[12px] text-[11px] font-medium text-[#58697F] transition hover:bg-[#F6F8FB]"
+                          className="inline-flex h-[31px] min-w-[68px] items-center justify-center rounded-[8px] border border-[#D8E1EC] bg-white px-[12px] text-[14px] font-medium text-[#58697F] transition hover:bg-[#F6F8FB]"
                         >
                           View File
                         </a>
                       ) : (
-                        <span className="inline-flex h-[31px] min-w-[68px] items-center justify-center rounded-[8px] border border-[#E4EAF2] bg-white px-[12px] text-[11px] font-medium text-[#BCC6D4]">
+                        <span className="inline-flex h-[31px] min-w-[68px] items-center justify-center rounded-[8px] border border-[#E4EAF2] bg-white px-[12px] text-[14px] font-medium text-[#BCC6D4]">
                           View File
                         </span>
                       )}
@@ -315,7 +315,7 @@ export function CertificationsForm({
                         onClick={() =>
                           inputRefs.current[certification.certificationId]?.click()
                         }
-                        className="inline-flex h-[31px] min-w-[82px] items-center justify-center rounded-[8px] bg-[#243F69] px-[12px] text-[11px] font-medium text-white transition hover:bg-[#1C3558]"
+                        className="inline-flex h-[31px] min-w-[82px] items-center justify-center rounded-[8px] bg-[#243F69] px-[12px] text-[14px] font-medium text-white transition hover:bg-[#1C3558]"
                       >
                         Update File
                       </button>
@@ -329,13 +329,13 @@ export function CertificationsForm({
       </section>
 
       <div className="flex items-center justify-between px-[2px] pt-[210px]">
-        <p className="text-[11px] text-[#98A3B4]">Changes are not saved automatically.</p>
+        <p className="text-[13px] text-[#98A3B4]">Changes are not saved automatically.</p>
 
         <div className="flex items-center gap-[10px]">
           <button
             type="button"
             onClick={handleDiscardChanges}
-            className="inline-flex h-[34px] items-center justify-center rounded-[8px] border border-[#DDE5EF] bg-white px-[14px] text-[11px] font-medium text-[#6E7E93] transition hover:bg-[#FAFBFD]"
+            className="inline-flex h-[33px] items-center justify-center rounded-[8px] border border-[#DDE5EF] bg-white px-[14px] text-[13px] font-medium text-[#6E7E93] transition hover:bg-[#FAFBFD]"
           >
             Discard Changes
           </button>
@@ -343,7 +343,7 @@ export function CertificationsForm({
             type="submit"
             form={formId}
             disabled={!hasPendingChanges}
-            className="inline-flex h-[34px] items-center justify-center rounded-[8px] bg-[#3C78F6] px-[16px] text-[11px] font-semibold text-white transition hover:bg-[#3169DF] disabled:cursor-not-allowed disabled:bg-[#AFC4FA]"
+            className="inline-flex h-[33px] items-center justify-center rounded-[8px] bg-[#3C78F6] px-[16px] text-[13px] font-semibold text-white transition hover:bg-[#3169DF] disabled:cursor-not-allowed disabled:bg-[#AFC4FA]"
           >
             Save Changes
           </button>

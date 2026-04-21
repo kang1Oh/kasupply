@@ -3,6 +3,7 @@ import { getCurrentBuyerContext } from "@/lib/buyer/rfq-workflows";
 import {
   PURCHASE_ORDER_RECEIPTS_BUCKET,
   formatPurchaseOrderNumber,
+  getPurchaseOrderPaymentMethodLabel,
   normalizePurchaseOrderReceiptStatus,
   normalizePurchaseOrderStatus,
 } from "@/lib/purchase-orders/constants";
@@ -12,12 +13,14 @@ type RawRecord = Record<string, unknown>;
 type SupplierProfileRow = {
   supplier_id: number;
   profile_id: number | null;
+  verified_badge?: boolean | null;
 };
 
 type BusinessProfileRow = {
   profile_id?: number;
   user_id?: string | null;
   business_name?: string | null;
+  business_type?: string | null;
   business_location?: string | null;
   city?: string | null;
   province?: string | null;
@@ -72,6 +75,8 @@ type ConversationRow = {
 
 type PartyInfo = {
   businessName: string;
+  businessType: string | null;
+  verifiedBadge: boolean;
   contactName: string | null;
   phone: string | null;
   email: string | null;
@@ -134,6 +139,22 @@ export type PurchaseOrderCreationDraft = {
   existingPurchaseOrderId: number | null;
 };
 
+export type BuyerPurchaseOrderReview = {
+  reviewId: number;
+  overallRating: number;
+  productQualityRating: number | null;
+  deliveryRating: number | null;
+  communicationRating: number | null;
+  valueForMoneyRating: number | null;
+  reviewText: string | null;
+  createdAt: string | null;
+};
+
+export type BuyerPurchaseOrderReviewDraft = {
+  order: BuyerPurchaseOrderView;
+  existingReview: BuyerPurchaseOrderReview | null;
+};
+
 function asNumber(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
@@ -173,6 +194,20 @@ function readFirstNumber(row: RawRecord, keys: string[]) {
   return null;
 }
 
+function isMissingSupplierReviewsTableError(message: string | null | undefined) {
+  const normalizedMessage = String(message ?? "").toLowerCase();
+
+  if (!normalizedMessage.includes("supplier_reviews")) {
+    return false;
+  }
+
+  return (
+    normalizedMessage.includes("does not exist") ||
+    normalizedMessage.includes("schema cache") ||
+    normalizedMessage.includes("could not find the table")
+  );
+}
+
 function formatQuantityValue(quantity: number | null, unit: string | null) {
   if (quantity === null && !unit) return "Not specified";
   if (quantity !== null && unit) return `${quantity} ${unit}`;
@@ -203,12 +238,15 @@ function getRfqProductName(rfq: RfqRow | null) {
 }
 
 function buildPartyInfo(
+  supplierProfile: SupplierProfileRow | null,
   businessProfile: BusinessProfileRow | null,
   user: UserRow | null,
   fallbackBusinessName: string,
 ): PartyInfo {
   return {
     businessName: businessProfile?.business_name ?? fallbackBusinessName,
+    businessType: businessProfile?.business_type ?? null,
+    verifiedBadge: Boolean(supplierProfile?.verified_badge),
     contactName: user?.name ?? null,
     phone: businessProfile?.contact_number ?? null,
     email: user?.email ?? null,
@@ -251,7 +289,7 @@ async function getSupplierInfoMap(
 
   const { data: supplierProfiles, error: supplierProfilesError } = await supabase
     .from("supplier_profiles")
-    .select("supplier_id, profile_id")
+    .select("supplier_id, profile_id, verified_badge")
     .in("supplier_id", supplierIds);
 
   if (supplierProfilesError) {
@@ -329,6 +367,7 @@ async function getSupplierInfoMap(
     supplierInfoMap.set(
       supplierProfile.supplier_id,
       buildPartyInfo(
+        supplierProfile,
         businessProfile,
         user,
         `Supplier #${supplierProfile.supplier_id}`,
@@ -547,7 +586,9 @@ async function buildBuyerPurchaseOrderViews(
         deliveryFee,
         totalAmount: readFirstNumber(row, ["total_amount"]),
         status: normalizePurchaseOrderStatus(readFirstString(row, ["status"])),
-        paymentMethod: readFirstString(row, ["payment_method"]),
+        paymentMethod: getPurchaseOrderPaymentMethodLabel(
+          readFirstString(row, ["payment_method"]),
+        ),
         termsAndConditions: readFirstString(row, ["terms_and_conditions"]),
         additionalNotes: readFirstString(row, ["additional_notes"]),
         receiptFilePath,
@@ -631,6 +672,50 @@ export async function getBuyerPurchaseOrderDetail(poId: number) {
   );
 
   return views[0] ?? null;
+}
+
+export async function getBuyerPurchaseOrderReviewDraft(poId: number) {
+  const supabase = await createClient();
+  const buyerContext = await getCurrentBuyerContext();
+
+  if (!buyerContext) {
+    return null as BuyerPurchaseOrderReviewDraft | null;
+  }
+
+  const order = await getBuyerPurchaseOrderDetail(poId);
+
+  if (!order) {
+    return null as BuyerPurchaseOrderReviewDraft | null;
+  }
+
+  const { data: review, error } = await supabase
+    .from("supplier_reviews")
+    .select(
+      "review_id, overall_rating, product_quality_rating, delivery_rating, communication_rating, value_for_money_rating, review_text, created_at",
+    )
+    .eq("purchase_order_id", poId)
+    .eq("buyer_id", buyerContext.buyerId)
+    .maybeSingle();
+
+  if (error && !isMissingSupplierReviewsTableError(error.message)) {
+    throw new Error(error.message || "Failed to load supplier review.");
+  }
+
+  return {
+    order,
+    existingReview: review
+      ? {
+          reviewId: review.review_id,
+          overallRating: Number(review.overall_rating),
+          productQualityRating: asNumber(review.product_quality_rating),
+          deliveryRating: asNumber(review.delivery_rating),
+          communicationRating: asNumber(review.communication_rating),
+          valueForMoneyRating: asNumber(review.value_for_money_rating),
+          reviewText: asString(review.review_text),
+          createdAt: asString(review.created_at),
+        }
+      : null,
+  } satisfies BuyerPurchaseOrderReviewDraft;
 }
 
 export async function getPurchaseOrderCreationDraft(rfqId: number, quoteId: number) {

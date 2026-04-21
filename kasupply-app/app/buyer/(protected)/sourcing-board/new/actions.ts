@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 import {
   createPublicSourcingRequest,
   getCurrentBuyerContext,
@@ -31,13 +32,34 @@ function getBusinessLocationLabel(
 }
 
 export async function getSourcingRequestFormData() {
-  const [categories, buyerContext] = await Promise.all([
+  const supabase = await createClient();
+  const [categories, buyerContext, productUnitsResult] = await Promise.all([
     getProductCategories(),
     getCurrentBuyerContext(),
+    supabase
+      .from("products")
+      .select("unit")
+      .not("unit", "is", null),
   ]);
+
+  if (productUnitsResult.error) {
+    throw new Error(productUnitsResult.error.message || "Failed to load unit options.");
+  }
+
+  const units = Array.from(
+    new Set(
+      (productUnitsResult.data ?? [])
+        .map((row) => String(row.unit ?? "").trim())
+        .filter((value) => value.length > 0),
+    ),
+  ).sort((left, right) => left.localeCompare(right));
 
   return {
     categories,
+    units:
+      units.length > 0
+        ? units
+        : ["bag", "bottle", "box", "g", "kg", "liter", "pack", "pcs"],
     defaultDeliveryLocation: getBusinessLocationLabel(buyerContext?.businessProfile ?? null),
   };
 }
@@ -51,7 +73,6 @@ export async function createSourcingRequest(formData: FormData) {
   const specifications =
     formData.get("specifications")?.toString().trim() ?? "";
   const needBy = formData.get("needBy")?.toString().trim() ?? "";
-  const deadline = formData.get("deadline")?.toString().trim() ?? "";
   const targetPriceRaw = formData.get("targetPricePerUnit")?.toString().trim() ?? "";
   const deliveryLocation =
     formData.get("deliveryLocation")?.toString().trim() ?? "";
@@ -76,14 +97,6 @@ export async function createSourcingRequest(formData: FormData) {
     throw new Error("Need-by date is required.");
   }
 
-  if (!deadline) {
-    throw new Error("Request deadline is required.");
-  }
-
-  if (deadline > needBy) {
-    throw new Error("Request deadline must be on or before the need-by date.");
-  }
-
   const targetPricePerUnit =
     targetPriceRaw === "" ? null : Number(targetPriceRaw);
 
@@ -101,7 +114,7 @@ export async function createSourcingRequest(formData: FormData) {
     quantity,
     unit,
     specifications: specifications || null,
-    deadline,
+    deadline: needBy,
     targetPricePerUnit,
     preferredDeliveryDate: needBy,
     deliveryLocation,

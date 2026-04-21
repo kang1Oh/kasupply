@@ -4,6 +4,15 @@ import { Bell, ChevronRight, MessageSquare } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { getUserOnboardingStatus } from "@/lib/auth/get-user-onboarding-status";
+import {
+  SUPPLIER_CARD_ACTION_ROW_CLASS,
+  SUPPLIER_CARD_PRIMARY_ACTION_CLASS,
+  SUPPLIER_CARD_SECONDARY_ACTION_CLASS,
+} from "../shared/card-actions";
+import {
+  SUPPLIER_CARD_METADATA_LABEL_CLASS,
+  SUPPLIER_CARD_METADATA_VALUE_CLASS,
+} from "../shared/card-metadata";
 import { declineEngagement } from "./actions";
 
 type SupplierProfileRow = {
@@ -88,7 +97,12 @@ type PurchaseOrderRow = {
   quote_id: number;
 };
 
-type DisplayStatus = "new" | "responded" | "accepted" | "closed" | "declined";
+type DisplayStatus =
+  | "new"
+  | "responded"
+  | "accepted"
+  | "closed"
+  | "declined";
 
 type RfqCard = {
   engagementId: number;
@@ -168,11 +182,22 @@ function formatRelativeDate(value: string | null | undefined) {
   if (diffHours < 1) return "Received just now";
   if (diffHours < 24) return `Received ${diffHours}h ago`;
   const diffDays = Math.floor(diffHours / 24);
-  if (diffDays === 1) return "Yesterday";
-  return parsed.toLocaleDateString("en-US", {
+  if (diffDays === 1) return "Received yesterday";
+  return `Received ${parsed.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
-  });
+    year: "numeric",
+  })}`;
+}
+
+function formatRfqReferenceCode(rfqId: number, createdAt: string | null | undefined) {
+  const createdDate = createdAt ? new Date(createdAt) : null;
+  const year =
+    createdDate && !Number.isNaN(createdDate.getTime())
+      ? createdDate.getFullYear()
+      : new Date().getFullYear();
+
+  return `RFQ-${year}-${String(rfqId).padStart(3, "0")}`;
 }
 
 function getInitials(name: string) {
@@ -241,10 +266,10 @@ function getStatusPresentation(status: DisplayStatus) {
     case "closed":
       return {
         label: "CLOSED",
-        className: "bg-[#EEF2F6] text-[#8A94A6]",
+        className: "bg-[#EEF2F6] text-[#4F5D73]",
         actionLabel: "View Details",
-        actionClassName: "bg-[#EEF2F6] text-[#B0B9C8]",
-        actionDisabled: true,
+        actionClassName: "bg-[#223F68] text-white hover:bg-[#1C3455]",
+        actionDisabled: false,
         showDecline: false,
       };
     case "declined":
@@ -448,7 +473,10 @@ export default async function SupplierRfqPage({
       status: displayStatus,
       statusLabel: presentation.label,
       statusClassName: presentation.className,
-      rfqNumber: `RFQ-${String(engagement.rfq_id).padStart(3, "0")}`,
+      rfqNumber: formatRfqReferenceCode(
+        engagement.rfq_id,
+        rfq?.created_at ?? engagement.created_at,
+      ),
       timeLabel: formatRelativeDate(rfq?.created_at ?? engagement.created_at),
       quantityLabel: quantity,
       targetPriceLabel: targetPrice,
@@ -470,15 +498,15 @@ export default async function SupplierRfqPage({
 
   const totalRfqs = cards.length;
   const newCount = cards.filter((card) => card.status === "new").length;
-  const pendingCount = cards.filter((card) => card.status === "responded").length;
   const acceptedCount = cards.filter((card) => card.status === "accepted").length;
+  const closedCount = cards.filter((card) => card.status === "closed").length;
 
   return (
     <main className="-m-6 min-h-screen bg-[#F7F9FC]">
       <header className="border-b border-[#DCE5F1] bg-white">
         <div className="flex items-center justify-between px-[18px] py-[15px]">
           <div className="flex items-center gap-[8px] text-[12px]">
-            <span className="font-medium text-[#A5AEBB]">KaSupply</span>
+            <span className="font-normal text-[#A5AEBB]">KaSupply</span>
             <ChevronRight className="h-[14px] w-[14px] text-[#B6BEC9]" />
             <span className="font-semibold text-[#2B4368]">RFQs</span>
           </div>
@@ -501,40 +529,38 @@ export default async function SupplierRfqPage({
         </div>
       </header>
 
-      <div className="px-[28px] py-[18px]">
-        <div className="mx-auto max-w-[1080px]">
-          <div className="mb-[16px]">
-            <h1 className="text-[17px] font-semibold text-[#223654]">RFQ Requests</h1>
-            <p className="mt-[2px] text-[12px] text-[#94A3B8]">
+      <div className="px-[36px] py-[28px]">
+        <div className="mx-auto max-w-[1360px]">
+          <div className="mb-[24px]">
+            <h1 className="text-[23px] font-semibold text-[#223654]">RFQ Requests</h1>
+            <p className="mt-[6px] text-[16px] text-[#94A3B8]">
               {filteredCards.length} incoming requests from buyers
             </p>
           </div>
 
-          <section className="grid gap-[16px] md:grid-cols-4">
+          <section className="grid gap-[20px] md:grid-cols-4">
             {[
               ["TOTAL RFQs", totalRfqs, "#A855F7"],
               ["NEW", newCount, "#2563EB"],
-              ["PENDING", pendingCount, "#FF7A1A"],
               ["ACCEPTED", acceptedCount, "#1F7A47"],
+              ["CLOSED", closedCount, "#4F5D73"],
             ].map(([label, value, accent]) => (
               <div
                 key={String(label)}
-                className="overflow-hidden rounded-[16px] border border-[#E3EAF2] bg-white shadow-[0_4px_12px_rgba(15,23,42,0.02)]"
+                className="rounded-[22px] border border-[#EDF1F6] border-l-[4px] bg-white px-[24px] py-[22px] shadow-[0_8px_20px_rgba(15,23,42,0.03)]"
+                style={{ borderLeftColor: String(accent) }}
               >
-                <div className="flex">
-                  <span className="w-[3px]" style={{ backgroundColor: String(accent) }} />
-                  <div className="flex-1 px-[18px] py-[16px]">
-                    <p className="text-[11px] font-medium uppercase tracking-[0.02em] text-[#A0A9B9]">
-                      {label}
-                    </p>
-                    <p className="mt-[10px] text-[20px] font-semibold text-[#223654]">{value}</p>
-                  </div>
-                </div>
+                <p className="text-[13px] font-normal uppercase tracking-[0.04em] text-[#A0A8B7]">
+                  {label}
+                </p>
+                <p className="mt-[16px] text-[34px] font-semibold leading-none text-[#27344C]">
+                  {value}
+                </p>
               </div>
             ))}
           </section>
 
-          <div className="mt-[18px] flex flex-wrap items-center gap-[18px]">
+          <div className="mt-[28px] flex flex-wrap items-center gap-[30px]">
             {[
               ["all", "All"],
               ["new", "New"],
@@ -550,8 +576,8 @@ export default async function SupplierRfqPage({
                   href={value === "all" ? "/supplier/rfq" : `/supplier/rfq?status=${value}`}
                   className={
                     isActive
-                      ? "inline-flex h-[28px] items-center rounded-full bg-[#223F68] px-[14px] text-[12px] font-medium text-white"
-                      : "text-[12px] font-medium text-[#94A3B8] transition hover:text-[#223654]"
+                      ? "inline-flex h-[40px] items-center rounded-full bg-[#223F68] px-[22px] text-[15px] font-medium text-white"
+                      : "text-[16px] font-normal text-[#94A3B8] transition hover:text-[#223654]"
                   }
                 >
                   {label}
@@ -560,48 +586,51 @@ export default async function SupplierRfqPage({
             })}
           </div>
 
-          <section className="mt-[18px] space-y-[14px]">
+          <section className="mt-[24px] space-y-[18px]">
             {filteredCards.length === 0 ? (
-              <div className="rounded-[18px] border border-[#E3EAF2] bg-white px-[22px] py-[26px] text-[14px] text-[#94A3B8] shadow-[0_6px_16px_rgba(15,23,42,0.03)]">
+              <div className="rounded-[22px] border border-[#E3EAF2] bg-white px-[24px] py-[34px] text-[15px] text-[#94A3B8] shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
                 No RFQ requests found for this status.
               </div>
             ) : (
               filteredCards.map((card) => (
                 <article
                   key={card.engagementId}
-                  className="rounded-[18px] border border-[#E3EAF2] bg-white px-[22px] py-[22px] shadow-[0_6px_16px_rgba(15,23,42,0.03)]"
+                  className="rounded-[24px] border border-[#E3EAF2] bg-white px-[22px] py-[22px] shadow-[0_8px_20px_rgba(15,23,42,0.04)]"
                 >
-                  <div className="flex items-start justify-between gap-[18px]">
+                  <div className="flex items-start justify-between gap-[20px]">
                     <div className="flex min-w-0 items-start gap-[14px]">
                       <div
-                        className={`flex h-[56px] w-[56px] shrink-0 items-center justify-center rounded-[14px] text-[20px] font-medium ${card.initialsClassName}`}
+                        className={`flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-[14px] text-[24px] font-medium ${card.initialsClassName}`}
                       >
                         {card.initials}
                       </div>
                       <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-[8px]">
-                          <h2 className="text-[15px] font-semibold text-[#223654]">{card.product}</h2>
-                          <span className={`inline-flex rounded-full px-[8px] py-[3px] text-[10px] font-medium ${card.statusClassName}`}>
+                        <div className="flex flex-wrap items-center gap-[12px]">
+                          <h2 className="text-[18px] font-semibold leading-none text-[#223654]">{card.product}</h2>
+                          <span className={`inline-flex h-[24px] items-center rounded-[8px] px-[10px] text-[11px] font-semibold ${card.statusClassName}`}>
                             {card.statusLabel}
                           </span>
                         </div>
-                        <p className="mt-[3px] text-[13px] text-[#94A3B8]">{card.buyer}</p>
+                        <p className="mt-[6px] text-[16px] font-medium text-[#6C788B]">{card.buyer}</p>
+                        <p className="mt-[4px] text-[14px] font-normal text-[#A5AFBD]">{card.buyerSubtitle}</p>
                       </div>
                     </div>
 
-                    <div className="shrink-0 text-right">
-                      <span className="inline-flex rounded-full bg-[#F3F4F6] px-[12px] py-[5px] text-[12px] font-medium text-[#6B7280]">
-                        {card.rfqNumber}
-                      </span>
-                      <p className="mt-[8px] inline-flex items-center gap-[5px] text-[12px] text-[#94A3B8]">
-                        <ClockIcon />
-                        {card.timeLabel}
-                      </p>
+                    <div className="shrink-0 flex justify-end">
+                      <div className="flex flex-col items-center">
+                        <span className="inline-flex rounded-full bg-[#F2F4F7] px-[18px] py-[10px] text-[14px] font-medium text-[#667085]">
+                          {card.rfqNumber}
+                        </span>
+                        <p className="mt-[12px] inline-flex items-center gap-[6px] text-[14px] text-[#98A2B3]">
+                          <ClockIcon />
+                          {card.timeLabel}
+                        </p>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="mt-[18px] border-t border-[#EDF2F7] pt-[18px]">
-                    <div className="grid gap-y-[16px] md:grid-cols-4">
+                  <div className="mt-[20px] border-t border-[#EDF2F7] pt-[18px]">
+                    <div className="grid gap-x-[24px] gap-y-[16px] md:grid-cols-4">
                       {[
                         ["QUANTITY", card.quantityLabel],
                         ["TARGET PRICE", card.targetPriceLabel],
@@ -609,38 +638,40 @@ export default async function SupplierRfqPage({
                         ["LOCATION", card.locationLabel],
                       ].map(([label, value]) => (
                         <div key={label}>
-                          <p className="text-[11px] font-medium uppercase tracking-[0.02em] text-[#A0A9B9]">
+                          <p className={`${SUPPLIER_CARD_METADATA_LABEL_CLASS} text-[12px]`}>
                             {label}
                           </p>
-                          <p className="mt-[6px] text-[14px] font-medium text-[#223654]">{value}</p>
+                          <p className={`${SUPPLIER_CARD_METADATA_VALUE_CLASS} mt-[8px] text-[16px]`}>
+                            {value}
+                          </p>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  <div className="mt-[18px] flex flex-wrap gap-[10px] border-t border-[#EDF2F7] pt-[18px]">
+                  <div className={`${SUPPLIER_CARD_ACTION_ROW_CLASS} mt-[20px] border-t border-[#EDF2F7] pt-[20px]`}>
                     {card.actionHref ? (
                       <Link
                         href={card.actionHref}
-                        className={`inline-flex h-[44px] flex-1 items-center justify-center rounded-[8px] px-[18px] text-[13px] font-medium transition ${card.actionClassName}`}
+                        className={`${SUPPLIER_CARD_PRIMARY_ACTION_CLASS} h-[50px] rounded-[10px] text-[15px] ${card.actionClassName}`}
                       >
                         {card.actionLabel}
                       </Link>
                     ) : (
                       <span
-                        className={`inline-flex h-[44px] flex-1 items-center justify-center rounded-[8px] px-[18px] text-[13px] font-medium ${card.actionClassName}`}
+                        className={`${SUPPLIER_CARD_PRIMARY_ACTION_CLASS} h-[50px] rounded-[10px] text-[15px] ${card.actionClassName}`}
                       >
                         {card.actionLabel}
                       </span>
                     )}
 
                     {card.showDecline ? (
-                      <form action={declineEngagement} className="min-w-[140px]">
+                      <form action={declineEngagement} className="flex-1">
                         <input type="hidden" name="engagement_id" value={card.engagementId} />
                         <input type="hidden" name="return_to" value="/supplier/rfq" />
                         <button
                           type="submit"
-                          className="inline-flex h-[44px] w-full items-center justify-center rounded-[8px] border border-[#D9E2EE] bg-white px-[18px] text-[13px] font-medium text-[#516074] transition hover:bg-[#F8FAFC]"
+                          className={`${SUPPLIER_CARD_SECONDARY_ACTION_CLASS} h-[50px] w-full rounded-[10px] text-[15px]`}
                         >
                           Decline
                         </button>
@@ -652,9 +683,9 @@ export default async function SupplierRfqPage({
             )}
           </section>
 
-          <div className="mt-[18px] flex flex-col gap-[12px] text-[12px] text-[#94A3B8] md:flex-row md:items-center md:justify-between">
+          <div className="mt-[18px] flex flex-col gap-[12px] text-[13px] text-[#94A3B8] md:flex-row md:items-center md:justify-between">
             <p>Showing 1-{Math.min(filteredCards.length, 45)} of {filteredCards.length} results</p>
-            <div className="flex items-center gap-[14px]">
+            <div className="flex items-center gap-[14px] text-[13px]">
               <span className="text-[#B0B9C8]">← Previous</span>
               <span className="inline-flex h-[28px] w-[28px] items-center justify-center rounded-[8px] bg-[#223F68] text-white">1</span>
               <span className="text-[#223654]">2</span>

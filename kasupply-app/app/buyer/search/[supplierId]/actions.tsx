@@ -56,6 +56,44 @@ export type SupplierProfileDetails = {
     expiresAt: string | null;
     verifiedAt: string | null;
   }[];
+  reviewSummary: {
+    reviewCount: number;
+    averageOverallRating: number | null;
+  };
+  reviews: {
+    reviewId: number;
+    buyerId: number;
+    buyerName: string | null;
+    overallRating: number;
+    productQualityRating: number | null;
+    deliveryRating: number | null;
+    communicationRating: number | null;
+    valueForMoneyRating: number | null;
+    reviewText: string | null;
+    createdAt: string | null;
+  }[];
+};
+
+type SupplierReviewRow = {
+  review_id: number;
+  buyer_id: number;
+  overall_rating: number;
+  product_quality_rating: number | null;
+  delivery_rating: number | null;
+  communication_rating: number | null;
+  value_for_money_rating: number | null;
+  review_text: string | null;
+  created_at: string | null;
+};
+
+type BuyerProfileRow = {
+  buyer_id: number;
+  profile_id: number | null;
+};
+
+type BuyerBusinessProfileRow = {
+  profile_id: number;
+  business_name: string | null;
 };
 
 function getFileNameFromPath(path: string | null | undefined) {
@@ -126,6 +164,20 @@ function getBusinessDocumentTypeName(docTypeId: number) {
   };
 
   return documentTypeNames[docTypeId] ?? "Business Document";
+}
+
+function isMissingSupplierReviewsTableError(message: string | null | undefined) {
+  const normalizedMessage = String(message ?? "").toLowerCase();
+
+  if (!normalizedMessage.includes("supplier_reviews")) {
+    return false;
+  }
+
+  return (
+    normalizedMessage.includes("does not exist") ||
+    normalizedMessage.includes("schema cache") ||
+    normalizedMessage.includes("could not find the table")
+  );
 }
 
 async function getCertificationDocumentUrl(
@@ -496,6 +548,99 @@ export async function getSupplierProfileDetails(
     })
   );
 
+  const { data: reviewRows, error: reviewError } = await supabase
+    .from("supplier_reviews")
+    .select(
+      "review_id, buyer_id, overall_rating, product_quality_rating, delivery_rating, communication_rating, value_for_money_rating, review_text, created_at"
+    )
+    .eq("supplier_id", supplierId)
+    .order("created_at", { ascending: false });
+
+  if (reviewError && !isMissingSupplierReviewsTableError(reviewError.message)) {
+    console.error("Error fetching supplier reviews:", reviewError);
+    throw new Error("Failed to fetch supplier reviews.");
+  }
+
+  const safeReviewRows = (reviewRows as SupplierReviewRow[] | null) ?? [];
+  const buyerIds = Array.from(new Set(safeReviewRows.map((row) => row.buyer_id)));
+  const buyerNameById = new Map<number, string | null>();
+
+  if (buyerIds.length > 0) {
+    const { data: buyerProfiles, error: buyerProfilesError } = await supabase
+      .from("buyer_profiles")
+      .select("buyer_id, profile_id")
+      .in("buyer_id", buyerIds);
+
+    if (buyerProfilesError) {
+      console.error("Error fetching buyer profiles for reviews:", buyerProfilesError);
+      throw new Error("Failed to fetch supplier review authors.");
+    }
+
+    const safeBuyerProfiles = (buyerProfiles as BuyerProfileRow[] | null) ?? [];
+    const profileIds = Array.from(
+      new Set(
+        safeBuyerProfiles
+          .map((row) => row.profile_id)
+          .filter((value): value is number => typeof value === "number")
+      )
+    );
+
+    const businessNameByProfileId = new Map<number, string | null>();
+
+    if (profileIds.length > 0) {
+      const { data: buyerBusinessProfiles, error: buyerBusinessProfilesError } =
+        await supabase
+          .from("business_profiles")
+          .select("profile_id, business_name")
+          .in("profile_id", profileIds);
+
+      if (buyerBusinessProfilesError) {
+        console.error(
+          "Error fetching buyer business profiles for reviews:",
+          buyerBusinessProfilesError
+        );
+        throw new Error("Failed to fetch supplier review authors.");
+      }
+
+      for (const row of (buyerBusinessProfiles as BuyerBusinessProfileRow[] | null) ?? []) {
+        businessNameByProfileId.set(row.profile_id, row.business_name ?? null);
+      }
+    }
+
+    for (const row of safeBuyerProfiles) {
+      if (row.profile_id == null) continue;
+      buyerNameById.set(row.buyer_id, businessNameByProfileId.get(row.profile_id) ?? null);
+    }
+  }
+
+  const reviews = safeReviewRows.map((row) => ({
+    reviewId: row.review_id,
+    buyerId: row.buyer_id,
+    buyerName: buyerNameById.get(row.buyer_id) ?? null,
+    overallRating: Number(row.overall_rating),
+    productQualityRating:
+      typeof row.product_quality_rating === "number" ? Number(row.product_quality_rating) : null,
+    deliveryRating: typeof row.delivery_rating === "number" ? Number(row.delivery_rating) : null,
+    communicationRating:
+      typeof row.communication_rating === "number" ? Number(row.communication_rating) : null,
+    valueForMoneyRating:
+      typeof row.value_for_money_rating === "number"
+        ? Number(row.value_for_money_rating)
+        : null,
+    reviewText: row.review_text ?? null,
+    createdAt: row.created_at ?? null,
+  }));
+
+  const reviewCount = reviews.length;
+  const averageOverallRating =
+    reviewCount > 0
+      ? Number(
+          (
+            reviews.reduce((sum, review) => sum + review.overallRating, 0) / reviewCount
+          ).toFixed(1)
+        )
+      : null;
+
   return {
     supplierId: supplierRow.supplier_id,
     profileId: profile.profile_id,
@@ -514,5 +659,10 @@ export async function getSupplierProfileDetails(
     businessDocuments,
     products,
     certifications,
+    reviewSummary: {
+      reviewCount,
+      averageOverallRating,
+    },
+    reviews,
   };
 }

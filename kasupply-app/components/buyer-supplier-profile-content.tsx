@@ -12,6 +12,50 @@ type SupplierProfileContentProps = {
 type TabKey = "overview" | "products" | "reviews";
 type SortKey = "match" | "name" | "price_low" | "price_high";
 
+function formatReviewDate(value: string | null) {
+  if (!value) {
+    return "Recently";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return "Recently";
+  }
+
+  return new Intl.DateTimeFormat("en-PH", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(parsed);
+}
+
+function RatingStars({
+  rating,
+  size = "sm",
+}: {
+  rating: number;
+  size?: "sm" | "md";
+}) {
+  const dimension = size === "md" ? "h-5 w-5" : "h-4 w-4";
+
+  return (
+    <div className="flex items-center gap-1" aria-label={`${rating} out of 5 stars`}>
+      {Array.from({ length: 5 }, (_, index) => {
+        const filled = index < Math.round(rating);
+
+        return (
+          <svg key={index} viewBox="0 0 24 24" className={dimension} aria-hidden="true">
+            <path
+              d="m12 2.6 2.88 5.84 6.45.94-4.66 4.54 1.1 6.41L12 17.28l-5.77 3.05 1.1-6.41L2.67 9.38l6.45-.94L12 2.6Z"
+              fill={filled ? "#F4B53F" : "#E1E5EB"}
+            />
+          </svg>
+        );
+      })}
+    </div>
+  );
+}
+
 function SearchIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
@@ -360,7 +404,8 @@ export function BuyerSupplierProfileContent({
     SupplierProfileDetails["products"][number] | null
   >(null);
   const productCount = supplier.products.length;
-  const reviewCount = 0;
+  const reviewCount = supplier.reviewSummary.reviewCount;
+  const averageOverallRating = supplier.reviewSummary.averageOverallRating;
 
   const filteredProducts = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -650,11 +695,109 @@ export function BuyerSupplierProfileContent({
       ) : null}
 
       {activeTab === "reviews" ? (
-        <section className="rounded-2xl border border-[#e3eaf2] bg-white p-8 text-center shadow-[0_8px_20px_rgba(15,23,42,0.03)]">
-          <p className="text-[14px] text-[#94a3b8]">
-            No reviews yet for this supplier.
-          </p>
-        </section>
+        reviewCount === 0 ? (
+          <section className="rounded-2xl border border-[#e3eaf2] bg-white p-8 text-center shadow-[0_8px_20px_rgba(15,23,42,0.03)]">
+            <p className="text-[14px] text-[#94a3b8]">
+              No reviews yet for this supplier.
+            </p>
+          </section>
+        ) : (
+          <section className="space-y-4">
+            <section className="rounded-2xl border border-[#e3eaf2] bg-white p-6 shadow-[0_8px_20px_rgba(15,23,42,0.03)]">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-[14px] font-medium text-[#94a3b8]">
+                    Supplier rating
+                  </p>
+                  <div className="mt-2 flex items-center gap-3">
+                    <p className="text-[28px] font-semibold leading-none text-[#223654]">
+                      {averageOverallRating?.toFixed(1) ?? "-"}
+                    </p>
+                    {averageOverallRating ? (
+                      <RatingStars rating={averageOverallRating} size="md" />
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="rounded-[16px] border border-[#e5edf6] bg-[#fbfcfe] px-4 py-3 text-right">
+                  <p className="text-[12px] font-medium uppercase tracking-[0.04em] text-[#b2bac7]">
+                    Total reviews
+                  </p>
+                  <p className="mt-1 text-[22px] font-semibold text-[#223654]">
+                    {reviewCount}
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            <section className="space-y-4">
+              {supplier.reviews.map((review) => (
+                <article
+                  key={review.reviewId}
+                  className="rounded-2xl border border-[#e3eaf2] bg-white p-6 shadow-[0_8px_20px_rgba(15,23,42,0.03)]"
+                >
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-[16px] font-semibold text-[#223654]">
+                        {review.buyerName ?? "Verified buyer"}
+                      </p>
+                      <p className="mt-1 text-[12px] text-[#94a3b8]">
+                        {formatReviewDate(review.createdAt)}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <RatingStars rating={review.overallRating} />
+                      <span className="text-[14px] font-semibold text-[#223654]">
+                        {review.overallRating.toFixed(1)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    {[
+                      ["Product quality", review.productQualityRating],
+                      ["Delivery", review.deliveryRating],
+                      ["Communication", review.communicationRating],
+                      ["Value for money", review.valueForMoneyRating],
+                    ].map(([label, value]) => (
+                      <div
+                        key={label}
+                        className="rounded-[14px] border border-[#edf2f7] bg-[#fbfcfe] px-3 py-3"
+                      >
+                        <p className="text-[11px] font-medium uppercase tracking-[0.03em] text-[#b2bac7]">
+                          {label}
+                        </p>
+                        <div className="mt-2 flex items-center gap-2">
+                          {typeof value === "number" ? (
+                            <>
+                              <RatingStars rating={value} />
+                              <span className="text-[13px] font-semibold text-[#223654]">
+                                {value.toFixed(1)}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-[13px] text-[#94a3b8]">Not rated</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {review.reviewText ? (
+                    <p className="mt-4 text-[14px] leading-7 text-[#5f6d80]">
+                      {review.reviewText}
+                    </p>
+                  ) : (
+                    <p className="mt-4 text-[13px] text-[#94a3b8]">
+                      This buyer left ratings without a written review.
+                    </p>
+                  )}
+                </article>
+              ))}
+            </section>
+          </section>
+        )
       ) : null}
 
       {selectedProduct ? (

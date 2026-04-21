@@ -18,8 +18,14 @@ type PurchaseOrderListItem = {
   } | null;
 };
 
-type StatusFilter = "all" | "confirmed" | "processing" | "shipped" | "completed" | "cancelled";
-type SortOption = "newest" | "oldest" | "delivery" | "highest_total";
+type StatusFilter =
+  | "all"
+  | "confirmed"
+  | "processing"
+  | "shipped"
+  | "completed"
+  | "cancelled";
+type SortOption = "newest" | "oldest";
 
 const STATUS_FILTERS: Array<{
   key: StatusFilter;
@@ -39,41 +45,24 @@ const SORT_OPTIONS: Array<{
 }> = [
   { value: "newest", label: "Newest First" },
   { value: "oldest", label: "Oldest First" },
-  { value: "delivery", label: "Nearest Delivery" },
-  { value: "highest_total", label: "Highest Total" },
 ];
 
 const CARD_ACCENTS = [
-  { panelClassName: "bg-[#edf8ef] text-[#2f7a45]" },
-  { panelClassName: "bg-[#fff0ea] text-[#e25f42]" },
-  { panelClassName: "bg-[#e8efff] text-[#416eb7]" },
-  { panelClassName: "bg-[#fff7d8] text-[#b99114]" },
-  { panelClassName: "bg-[#fde7ff] text-[#c457db]" },
+  { panelClassName: "bg-[#eefaf3] text-[#4a9a70]" },
+  { panelClassName: "bg-[#fff0ea] text-[#ff5a44]" },
+  { panelClassName: "bg-[#e8efff] text-[#396cf0]" },
+  { panelClassName: "bg-[#fff6b8] text-[#b89618]" },
+  { panelClassName: "bg-[#f8d7ff] text-[#cc57df]" },
 ];
 
 function ChevronDownIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" aria-hidden="true">
       <path
         d="m7 10 5 5 5-5"
         fill="none"
         stroke="currentColor"
         strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function ArrowRightIcon() {
-  return (
-    <svg viewBox="0 0 20 20" className="h-4 w-4" aria-hidden="true">
-      <path
-        d="M4.5 10h11m-4-4 4 4-4 4"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -136,11 +125,7 @@ function toTitleCase(value: string) {
 }
 
 function getPurchaseOrderCode(order: PurchaseOrderListItem) {
-  if (!order.createdAt) {
-    return order.poNumber;
-  }
-
-  const createdAt = new Date(order.createdAt);
+  const createdAt = new Date(order.createdAt || "");
   const year = Number.isNaN(createdAt.getTime())
     ? new Date().getFullYear()
     : createdAt.getFullYear();
@@ -160,16 +145,7 @@ function getEstimatedDeliveryLabel(order: PurchaseOrderListItem) {
   return "To confirm";
 }
 
-function getSortTimestamp(order: PurchaseOrderListItem, sortBy: SortOption) {
-  if (sortBy === "delivery") {
-    if (order.preferredDeliveryDate) {
-      const deliveryTime = new Date(order.preferredDeliveryDate).getTime();
-      return Number.isNaN(deliveryTime) ? Number.MAX_SAFE_INTEGER : deliveryTime;
-    }
-
-    return Number.MAX_SAFE_INTEGER;
-  }
-
+function getSortTimestamp(order: PurchaseOrderListItem) {
   const createdTime = new Date(order.createdAt || "").getTime();
   return Number.isNaN(createdTime) ? 0 : createdTime;
 }
@@ -179,8 +155,8 @@ function getStatusBadge(status: string) {
     case "confirmed":
       return {
         label: "Confirmed",
-        className: "border-[#d8e4ff] bg-[#eef4ff] text-[#4f78d2]",
-        dotClassName: "bg-[#4f78d2]",
+        className: "border-[#d8e4ff] bg-[#eef4ff] text-[#3e70f5]",
+        dotClassName: "bg-[#3e70f5]",
       };
     case "processing":
       return {
@@ -197,14 +173,14 @@ function getStatusBadge(status: string) {
     case "completed":
       return {
         label: "Completed",
-        className: "border-[#d7f0dd] bg-[#edf8ef] text-[#2f7a45]",
-        dotClassName: "bg-[#2f7a45]",
+        className: "border-[#d7f0dd] bg-[#edf8ef] text-[#2f8d4d]",
+        dotClassName: "bg-[#2f8d4d]",
       };
     case "cancelled":
       return {
         label: "Cancelled",
-        className: "border-[#dde3eb] bg-[#eef2f7] text-[#6b7788]",
-        dotClassName: "bg-[#6b7788]",
+        className: "border-[#dde3eb] bg-[#eef2f7] text-[#5b6472]",
+        dotClassName: "bg-[#5b6472]",
       };
     default:
       return {
@@ -224,10 +200,10 @@ function OrderMetric({
 }) {
   return (
     <div>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#c0c8d4]">
+      <p className="text-[11px] font-medium uppercase leading-none tracking-[0.02em] text-[#c0c5ce]">
         {label}
       </p>
-      <p className="mt-1 text-[17px] font-semibold leading-tight text-[#223654]">
+      <p className="mt-[6px] text-[15px] font-semibold leading-none text-[#444f60]">
         {value}
       </p>
     </div>
@@ -279,136 +255,85 @@ export function BuyerPurchaseOrdersPage({
 
     sorted.sort((left, right) => {
       if (sortBy === "oldest") {
-        return getSortTimestamp(left, sortBy) - getSortTimestamp(right, sortBy);
+        return getSortTimestamp(left) - getSortTimestamp(right);
       }
 
-      if (sortBy === "delivery") {
-        return getSortTimestamp(left, sortBy) - getSortTimestamp(right, sortBy);
-      }
-
-      if (sortBy === "highest_total") {
-        return (right.totalAmount ?? 0) - (left.totalAmount ?? 0);
-      }
-
-      return getSortTimestamp(right, sortBy) - getSortTimestamp(left, sortBy);
+      return getSortTimestamp(right) - getSortTimestamp(left);
     });
 
     return sorted;
   }, [orders, selectedFilter, sortBy]);
 
   return (
-    <section className="space-y-5">
-      <section className="rounded-[28px] border border-[#e8edf5] bg-[linear-gradient(180deg,#ffffff_0%,#fbfcfe_100%)] px-5 py-6 shadow-[0_10px_30px_rgba(15,23,42,0.04)] sm:px-6">
-        <div className="flex flex-col gap-4">
-          <div>
-            <h1 className="text-[28px] font-semibold tracking-[-0.03em] text-[#223654]">
-              Purchase Orders
-            </h1>
-            <p className="mt-1 text-[15px] text-[#8a96a8]">
-              Track and manage all your orders from suppliers.
-            </p>
-          </div>
+    <section className="mx-auto w-full max-w-[1040px] pb-5 pt-1">
+      <section className="pb-5">
+        <h1 className="text-[36px] font-semibold tracking-[-0.04em] text-[#27456e]">
+          Purchase Orders
+        </h1>
+        <p className="mt-1 text-[15px] font-normal leading-6 text-[#a6adba]">
+          Track and manage all your orders from suppliers.
+        </p>
+      </section>
 
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap gap-2">
-              {STATUS_FILTERS.map((filter) => {
-                const isActive = selectedFilter === filter.key;
-                const showCount = filter.key === "all";
+      <section className="flex items-center justify-between gap-4 pb-5">
+        <div className="flex flex-wrap items-center gap-[9px]">
+          {STATUS_FILTERS.map((filter) => {
+            const isActive = selectedFilter === filter.key;
 
-                return (
-                  <button
-                    key={filter.key}
-                    type="button"
-                    aria-pressed={isActive}
-                    onClick={() => setSelectedFilter(filter.key)}
-                    className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[13px] font-medium transition ${
-                      isActive
-                        ? "border-[#294773] bg-[#294773] text-white"
-                        : "border-[#d9e1ec] bg-white text-[#526176] hover:border-[#c5d0df] hover:text-[#223654]"
-                    }`}
-                  >
-                    <span>{filter.label}</span>
-                    {showCount ? (
-                      <span
-                        className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold ${
-                          isActive
-                            ? "bg-white/18 text-white"
-                            : "bg-[#eef3f8] text-[#526176]"
-                        }`}
-                      >
-                        {filterCounts.all}
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-
-            <label className="inline-flex h-11 items-center gap-3 self-start rounded-[12px] border border-[#dce4ee] bg-white px-4 text-[13px] text-[#98a3b4] shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-              <span>Sort by</span>
-              <span className="relative inline-flex items-center text-[#4c5d73]">
-                <select
-                  value={sortBy}
-                  onChange={(event) => setSortBy(event.target.value as SortOption)}
-                  className="appearance-none bg-transparent pr-5 font-medium outline-none"
-                >
-                  {SORT_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <span className="pointer-events-none absolute right-0 text-[#a0abba]">
-                  <ChevronDownIcon />
-                </span>
-              </span>
-            </label>
-          </div>
+            return (
+              <button
+                key={filter.key}
+                type="button"
+                aria-pressed={isActive}
+                onClick={() => setSelectedFilter(filter.key)}
+                className={`inline-flex h-[34px] items-center rounded-full border px-[16px] text-[13px] font-medium leading-none transition ${
+                  isActive
+                    ? "border-[#213f69] bg-[#213f69] text-white"
+                    : "border-[#cfd6e2] bg-white text-[#929aa8] hover:border-[#c4cfdd] hover:text-[#38495f]"
+                }`}
+              >
+                <span>{filter.label}</span>
+                {filter.key === "all" ? (
+                  <span className="ml-[7px] inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-white/18 px-[4px] text-[10px] font-semibold text-white">
+                    {filterCounts.all}
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
         </div>
+
+        <label className="flex items-center gap-[10px] text-[13px] text-[#b1b7c3]">
+          <span>Sort by</span>
+          <span className="relative flex h-[34px] min-w-[116px] items-center rounded-[8px] border border-[#e3e7ee] bg-white px-[12px] text-[#59677a] shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+            <select
+              value={sortBy}
+              onChange={(event) => setSortBy(event.target.value as SortOption)}
+              className="w-full appearance-none bg-transparent pr-5 text-[12px] font-medium text-[#4e5b6f] outline-none"
+            >
+              {SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <span className="pointer-events-none absolute right-[10px] text-[#b1b7c3]">
+              <ChevronDownIcon />
+            </span>
+          </span>
+        </label>
       </section>
 
       {orders.length === 0 ? (
-        <section className="rounded-[24px] border border-[#e8edf5] bg-white px-6 py-10 text-center shadow-[0_10px_28px_rgba(15,23,42,0.04)]">
-          <h2 className="text-[20px] font-semibold text-[#223654]">
-            No purchase orders yet
-          </h2>
-          <p className="mx-auto mt-2 max-w-[560px] text-[14px] leading-6 text-[#8a96a8]">
-            Confirm an accepted quotation and your supplier orders will appear here
-            for tracking and coordination.
-          </p>
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-            <Link
-              href="/buyer/rfqs"
-              className="inline-flex h-11 items-center justify-center rounded-[12px] bg-[#243f68] px-5 text-[14px] font-semibold text-white transition hover:bg-[#1d3454]"
-            >
-              View My RFQs
-            </Link>
-            <Link
-              href="/buyer/sourcing-board"
-              className="inline-flex h-11 items-center justify-center rounded-[12px] border border-[#d7e0eb] bg-white px-5 text-[14px] font-semibold text-[#223654] transition hover:bg-[#f8fafc]"
-            >
-              Open Sourcing Board
-            </Link>
-          </div>
+        <section className="rounded-[14px] border border-dashed border-[#d9e0ea] bg-white px-6 py-10 text-center text-[14px] text-[#98a2b2]">
+          No purchase orders found yet.
         </section>
       ) : visibleOrders.length === 0 ? (
-        <section className="rounded-[24px] border border-dashed border-[#d7e1ec] bg-white px-6 py-8 text-center shadow-[0_10px_28px_rgba(15,23,42,0.03)]">
-          <h2 className="text-[18px] font-semibold text-[#223654]">
-            No orders in this view
-          </h2>
-          <p className="mt-2 text-[14px] text-[#8a96a8]">
-            Try another status filter to see the rest of your purchase orders.
-          </p>
-          <button
-            type="button"
-            onClick={() => setSelectedFilter("all")}
-            className="mt-4 inline-flex h-10 items-center justify-center rounded-[10px] border border-[#d7e0eb] bg-white px-4 text-[14px] font-medium text-[#223654] transition hover:bg-[#f8fafc]"
-          >
-            Show all orders
-          </button>
+        <section className="rounded-[14px] border border-dashed border-[#d9e0ea] bg-white px-6 py-10 text-center text-[14px] text-[#98a2b2]">
+          No purchase orders found for this filter.
         </section>
       ) : (
-        <div className="space-y-4">
+        <section className="space-y-3.5">
           {visibleOrders.map((order) => {
             const accent = CARD_ACCENTS[order.poId % CARD_ACCENTS.length];
             const statusBadge = getStatusBadge(order.status);
@@ -419,65 +344,64 @@ export function BuyerPurchaseOrdersPage({
                 key={order.poId}
                 href={`/buyer/purchase-orders/${order.poId}`}
                 aria-label={`Open purchase order ${getPurchaseOrderCode(order)}`}
-                className="group block rounded-[22px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#294773] focus-visible:ring-offset-2"
+                className="group block rounded-[14px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#213f69] focus-visible:ring-offset-2"
               >
-                <article className="overflow-hidden rounded-[22px] border border-[#e8edf5] bg-white shadow-[0_10px_28px_rgba(15,23,42,0.04)] transition group-hover:-translate-y-0.5 group-hover:shadow-[0_18px_38px_rgba(15,23,42,0.08)]">
-                  <div className="flex flex-col gap-4 px-4 py-4 sm:px-5 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="flex min-w-0 items-start gap-4">
+                <article className="overflow-hidden rounded-[14px] border border-[#e8ebf0] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)] transition group-hover:border-[#dfe5ee] group-hover:shadow-[0_6px_18px_rgba(15,23,42,0.05)]">
+                  <div className="flex items-start justify-between gap-4 px-[18px] py-[16px]">
+                    <div className="flex min-w-0 items-center gap-[12px]">
                       <div
-                        className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-[14px] text-[20px] font-semibold ${accent.panelClassName}`}
+                        className={`flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-[10px] text-[19px] font-medium leading-none ${accent.panelClassName}`}
                       >
                         {getInitials(supplierName)}
                       </div>
 
                       <div className="min-w-0">
-                        <p className="text-[21px] font-semibold leading-tight tracking-[-0.03em] text-[#223654] transition group-hover:text-[#294773]">
+                        <p className="truncate text-[14px] font-semibold leading-5 text-[#5f6a7b]">
                           {getPurchaseOrderCode(order)}
                         </p>
-                        <p className="mt-1 text-[15px] text-[#97a3b4]">{supplierName}</p>
+                        <p className="truncate text-[13px] leading-5 text-[#a7afbc]">
+                          {supplierName}
+                        </p>
                       </div>
                     </div>
 
-                    <div className="flex shrink-0 flex-col items-start gap-1 text-left lg:items-end lg:text-right">
-                      <p className="text-[28px] font-semibold tracking-[-0.03em] text-[#223654]">
+                    <div className="shrink-0 text-right">
+                      <p className="text-[17px] font-semibold leading-none tracking-[-0.03em] text-[#39485b]">
                         {formatCurrency(order.totalAmount)}
                       </p>
-                      <p className="text-[12px] text-[#b0bac7]">Order Total</p>
+                      <p className="mt-[7px] text-[12px] font-normal leading-none text-[#b2b8c4]">
+                        Order Total
+                      </p>
                     </div>
                   </div>
 
-                  <div className="grid gap-4 border-t border-[#edf2f7] px-4 py-4 sm:grid-cols-2 sm:px-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,0.9fr)_minmax(0,0.95fr)_minmax(0,0.95fr)_auto] xl:items-end">
-                    <OrderMetric label="Item" value={order.productName} />
-                    <OrderMetric label="Quantity" value={order.quantityLabel} />
-                    <OrderMetric label="Order Date" value={formatDate(order.createdAt)} />
-                    <OrderMetric
-                      label="Est. Delivery"
-                      value={getEstimatedDeliveryLabel(order)}
-                    />
+                  <div className="border-t border-[#edf0f4] px-[18px] py-[12px]">
+                    <div className="grid grid-cols-[1.15fr_0.8fr_0.9fr_0.9fr_auto] items-end gap-[18px]">
+                      <OrderMetric label="Item" value={order.productName} />
+                      <OrderMetric label="Quantity" value={order.quantityLabel} />
+                      <OrderMetric label="Order Date" value={formatDate(order.createdAt)} />
+                      <OrderMetric
+                        label="Est. Delivery"
+                        value={getEstimatedDeliveryLabel(order)}
+                      />
 
-                    <div className="flex xl:justify-end">
-                      <span
-                        className={`inline-flex items-center rounded-full border px-3 py-1.5 text-[12px] font-semibold ${statusBadge.className}`}
-                      >
+                      <div className="flex justify-end">
                         <span
-                          className={`mr-2 inline-flex h-2.5 w-2.5 rounded-full ${statusBadge.dotClassName}`}
-                        />
-                        {statusBadge.label}
-                      </span>
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-[10px] py-[5px] text-[12px] font-medium leading-none ${statusBadge.className}`}
+                        >
+                          <span
+                            className={`h-[7px] w-[7px] rounded-full ${statusBadge.dotClassName}`}
+                          />
+                          {statusBadge.label}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-
-                  <div className="flex items-center justify-end border-t border-[#f3f6fa] px-4 py-3 sm:px-5">
-                    <span className="inline-flex items-center gap-1 text-[14px] font-semibold text-[#2f6fed] transition group-hover:text-[#255fd0]">
-                      View Details
-                      <ArrowRightIcon />
-                    </span>
                   </div>
                 </article>
               </Link>
             );
           })}
-        </div>
+        </section>
       )}
     </section>
   );

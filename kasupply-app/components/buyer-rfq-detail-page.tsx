@@ -1,78 +1,113 @@
 import Link from "next/link";
-import { ModalShell } from "@/components/modals";
 import type { BuyerRfqDetailsData } from "@/lib/buyer/rfq-workflows";
+import { BuyerRfqCancelAction } from "@/components/buyer-rfq-cancel-action";
 import {
-  acceptOffer,
   acceptQuote,
-  cancelRFQ,
   declineQuote,
-  submitCounterOffer,
 } from "@/app/buyer/(protected)/rfqs/[rfqId]/actions";
-
-type DetailStateKey =
-  | "pending"
-  | "negotiating"
-  | "quoted"
-  | "confirmed"
-  | "closed";
 
 type BuyerRfqDetailPageProps = {
   data: BuyerRfqDetailsData;
-  modal?: string;
-  quoteId?: string;
-  engagementId?: string;
 };
 
+type DetailStateKey = "pending" | "responded" | "confirmed" | "closed";
+type StatusAction =
+  | {
+      kind: "submit";
+      label: string;
+      className: string;
+    }
+  | {
+      kind: "link";
+      label: string;
+      href: string;
+      className: string;
+    }
+  | {
+      kind: "button";
+      label: string;
+      className: string;
+    };
+
+const RFQ_BREADCRUMB_CLASS = "flex items-center gap-[7px] text-[14px] font-normal text-[#bcc2cb]";
+const RFQ_TITLE_CLASS = "text-[23px] font-semibold tracking-[-0.04em] text-[#455060]";
+const RFQ_META_CLASS = "mt-[5px] text-[14px] font-normal leading-none text-[#c1c6cf]";
+const RFQ_STATUS_BADGE_CLASS = "inline-flex items-center gap-1.5 rounded-full px-[11px] py-[5px] text-[14px] font-medium leading-none";
+const RFQ_SECTION_HEADING_CLASS = "text-[15px] font-semibold uppercase leading-none text-[#27456f]";
+const RFQ_SECTION_HEADER_ROW_CLASS = "border-b border-[#f0f2f5] px-[16px] py-[12px]";
+const RFQ_SUPPLIER_NAME_CLASS = "truncate text-[15px] font-semibold leading-none text-[#5d6778]";
+const RFQ_SUPPLIER_SUBTITLE_CLASS = "mt-[6px] truncate text-[13px] font-normal leading-none text-[#a7aebb]";
+
 function formatDate(value: string | null) {
-  if (!value) return "-";
+  if (!value) {
+    return "Not set";
+  }
 
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
 
   return new Intl.DateTimeFormat("en-PH", {
-    year: "numeric",
     month: "short",
     day: "numeric",
+    year: "numeric",
   }).format(parsed);
 }
 
 function formatShortDate(value: string | null) {
-  if (!value) return "-";
+  if (!value) {
+    return "Not set";
+  }
 
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
 
   return new Intl.DateTimeFormat("en-PH", {
     month: "short",
     day: "numeric",
-    year: "numeric",
   }).format(parsed);
 }
 
-function formatCurrency(value: number | null) {
-  if (value === null || Number.isNaN(value)) return "-";
-
-  return new Intl.NumberFormat("en-PH", {
-    style: "currency",
-    currency: "PHP",
-    maximumFractionDigits: 2,
-  }).format(value);
+function formatQuantity(quantity: number, unit: string) {
+  return `${new Intl.NumberFormat("en-PH").format(quantity)} ${unit}`;
 }
 
-function formatPricePerUnit(value: number | null, unit: string | null) {
-  if (value === null || Number.isNaN(value)) return "-";
+function formatTargetPrice(value: number | null, unit: string) {
+  if (value == null || Number.isNaN(value)) {
+    return "Open budget";
+  }
 
   const amount = new Intl.NumberFormat("en-PH", {
     minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
     maximumFractionDigits: 2,
   }).format(value);
 
-  return `P${amount}${unit ? ` / ${unit}` : ""}`;
+  return `\u20b1${amount} / ${unit}`;
 }
 
-function formatQuantity(quantity: number | null, unit: string | null) {
-  if (quantity == null) return "-";
-  return `${new Intl.NumberFormat("en-PH").format(quantity)}${unit ? ` ${unit}` : ""}`;
+function formatCurrency(value: number | null) {
+  if (value == null || Number.isNaN(value)) {
+    return "Not set";
+  }
+
+  return new Intl.NumberFormat("en-PH", {
+    style: "currency",
+    currency: "PHP",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function getReferenceCode(rfqId: number, createdAt: string) {
+  const createdDate = new Date(createdAt);
+  const year = Number.isNaN(createdDate.getTime())
+    ? new Date().getFullYear()
+    : createdDate.getFullYear();
+
+  return `RFQ-${year}-${String(rfqId).padStart(3, "0")}`;
 }
 
 function getInitials(value: string) {
@@ -83,123 +118,381 @@ function getInitials(value: string) {
     .map((part) => part.charAt(0).toUpperCase())
     .join("");
 
-  return initials || "SU";
+  return initials || "RF";
 }
 
-function getReferenceCode(rfqId: number, createdAt: string) {
-  const parsed = new Date(createdAt);
-  const year = Number.isNaN(parsed.getTime())
-    ? new Date().getFullYear()
-    : parsed.getFullYear();
+function getDetailState(data: BuyerRfqDetailsData): DetailStateKey {
+  const normalizedStatus = data.rfq.status.toLowerCase();
+  const hasAcceptedQuotation = data.engagements.some(
+    (engagement) =>
+      engagement.acceptedQuotation != null ||
+      engagement.status.toLowerCase() === "accepted",
+  );
+  const hasSupplierResponse = data.engagements.some(
+    (engagement) =>
+      engagement.quotations.length > 0 ||
+      engagement.latestSupplierOffer != null ||
+      ["quoted", "negotiating", "accepted"].includes(engagement.status.toLowerCase()),
+  );
 
-  return `RFQ-${year}-${String(rfqId).padStart(3, "0")}`;
+  if (
+    normalizedStatus === "cancelled" ||
+    normalizedStatus === "closed" ||
+    data.purchaseOrder != null
+  ) {
+    return "closed";
+  }
+
+  if (normalizedStatus === "fulfilled" || hasAcceptedQuotation) {
+    return "confirmed";
+  }
+
+  if (hasSupplierResponse) {
+    return "responded";
+  }
+
+  return "pending";
 }
 
 function getStatusBadgeClasses(state: DetailStateKey) {
-  switch (state) {
-    case "confirmed":
-      return "bg-[#edf8ef] text-[#2f7a45]";
-    case "closed":
-      return "bg-[#eef2f7] text-[#536275]";
-    case "quoted":
-    case "negotiating":
-      return "bg-[#e9efff] text-[#4269d0]";
-    case "pending":
-    default:
-      return "bg-[#fff1e5] text-[#f08b38]";
+  if (state === "confirmed") {
+    return "bg-[#edf9f1] text-[#2d9b63]";
   }
+
+  if (state === "responded") {
+    return "bg-[#eaf0ff] text-[#4673f4]";
+  }
+
+  if (state === "closed") {
+    return "bg-[#eef1f5] text-[#5b6472]";
+  }
+
+  return "bg-[#fff2e8] text-[#f58a33]";
+}
+
+function getStatusDotClasses(state: DetailStateKey) {
+  if (state === "confirmed") {
+    return "bg-[#2d9b63]";
+  }
+
+  if (state === "responded") {
+    return "bg-[#4673f4]";
+  }
+
+  if (state === "closed") {
+    return "bg-[#5b6472]";
+  }
+
+  return "bg-[#f58a33]";
 }
 
 function getStatusLabel(state: DetailStateKey) {
-  switch (state) {
-    case "confirmed":
-      return "Confirmed";
-    case "closed":
-      return "Closed";
-    case "quoted":
-    case "negotiating":
-      return "Responded";
-    case "pending":
-    default:
-      return "Pending";
+  if (state === "confirmed") {
+    return "Confirmed";
   }
+
+  if (state === "responded") {
+    return "Responded";
+  }
+
+  if (state === "closed") {
+    return "Closed";
+  }
+
+  return "Pending";
 }
 
 function getProgressStep(state: DetailStateKey) {
-  switch (state) {
-    case "closed":
-      return 4;
-    case "confirmed":
-      return 3;
-    case "quoted":
-    case "negotiating":
-      return 2;
-    case "pending":
-    default:
-      return 1;
-  }
-}
-
-function getOfferTotalAmount(params: {
-  pricePerUnit: number | null;
-  quantity: number | null;
-}) {
-  if (params.pricePerUnit == null || params.quantity == null) {
-    return null;
+  if (state === "confirmed") {
+    return 3;
   }
 
-  return params.pricePerUnit * params.quantity;
-}
-
-function buildDetailHref(
-  rfqId: number,
-  params: Record<string, string | number | null | undefined> = {}
-) {
-  const searchParams = new URLSearchParams();
-
-  for (const [key, value] of Object.entries(params)) {
-    if (value == null || value === "") continue;
-    searchParams.set(key, String(value));
+  if (state === "responded") {
+    return 2;
   }
 
-  const query = searchParams.toString();
-  return query ? `/buyer/rfqs/${rfqId}?${query}` : `/buyer/rfqs/${rfqId}`;
+  if (state === "closed") {
+    return 4;
+  }
+
+  return 1;
 }
 
-function Stepper({ currentStep }: { currentStep: number }) {
+function VerifiedBadge() {
+  return (
+    <span className="inline-flex h-[18px] items-center rounded-full border border-[#94cfaa] bg-[#f5fbf6] px-[6px] text-[10px] font-semibold leading-none text-[#4f996e]">
+      Verified
+    </span>
+  );
+}
+
+function StepCheckIcon() {
+  return (
+    <svg viewBox="0 0 16 16" className="h-[10px] w-[10px]" aria-hidden="true">
+      <path
+        d="M3.5 8.1 6.4 11l6.1-6.1"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function AlertIcon({ state }: { state: DetailStateKey }) {
+  const className =
+    state === "confirmed"
+      ? "bg-[#2f9b63]"
+      : state === "responded"
+        ? "bg-[#4673f4]"
+        : state === "closed"
+          ? "bg-[#6d7684]"
+          : "bg-[#ff7c22]";
+
+  const symbol =
+    state === "confirmed" ? "+" : state === "responded" ? ">" : state === "closed" ? "-" : "!";
+
+  return (
+    <span
+      className={`flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-[8px] text-[14px] font-semibold text-white ${className}`}
+    >
+      {symbol}
+    </span>
+  );
+}
+
+function ConfirmationAlertIcon() {
+  return (
+    <span className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-[8px] bg-[#2b814f] text-white">
+      <StepCheckIcon />
+    </span>
+  );
+}
+
+function ClosedAlertIcon() {
+  return (
+    <span className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-[8px] bg-[#8c95a4] text-white">
+      <StepCheckIcon />
+    </span>
+  );
+}
+
+function getAlertBoxClasses(state: DetailStateKey) {
+  if (state === "confirmed") {
+    return "border-[#9ed1ae] bg-[#f7fcf8]";
+  }
+
+  if (state === "responded") {
+    return "border-[#aec3ff] bg-[#f7f9ff]";
+  }
+
+  if (state === "closed") {
+    return "border-[#d7dce4] bg-[#fafbfd]";
+  }
+
+  return "border-[#ffa56c] bg-[#fffaf6]";
+}
+
+function getAlertHeadlineClasses(state: DetailStateKey) {
+  if (state === "confirmed") {
+    return "text-[#2f8f60]";
+  }
+
+  if (state === "responded") {
+    return "text-[#4673f4]";
+  }
+
+  if (state === "closed") {
+    return "text-[#6d7684]";
+  }
+
+  return "text-[#ff8a30]";
+}
+
+function getStatusCopy(params: {
+  state: DetailStateKey;
+  data: BuyerRfqDetailsData;
+  supplierName: string;
+}): {
+  sectionTitle: string;
+  headline: string;
+  message: string;
+  action: StatusAction;
+} {
+  const { data, state, supplierName } = params;
+  const acceptedEngagement =
+    data.engagements.find(
+      (engagement) =>
+        engagement.acceptedQuotation != null ||
+        engagement.status.toLowerCase() === "accepted",
+    ) ?? null;
+  const acceptedQuote = acceptedEngagement?.acceptedQuotation ?? null;
+  const activeResponseEngagement =
+    acceptedEngagement ??
+    data.engagements.find(
+      (engagement) =>
+        engagement.quotations.length > 0 ||
+        engagement.latestSupplierOffer != null ||
+        engagement.status.toLowerCase() === "quoted",
+    ) ??
+    data.engagements[0] ??
+    null;
+  const latestQuotation = activeResponseEngagement?.quotations[0] ?? null;
+  const latestOffer = activeResponseEngagement?.latestSupplierOffer ?? null;
+
+  if (state === "confirmed") {
+    const acceptedAt = formatDate(acceptedQuote?.createdAt ?? data.rfq.createdAt);
+    const agreedTerms = acceptedQuote
+      ? `${formatTargetPrice(acceptedQuote.pricePerUnit, data.rfq.unit)} for ${formatQuantity(
+          acceptedQuote.quantity,
+          data.rfq.unit,
+        )}`
+      : "the agreed quotation terms";
+
+    return {
+      sectionTitle: "Confirmed",
+      headline: "Supplier confirmed the order terms",
+      message: `${supplierName} confirmed this RFQ on ${acceptedAt}. The agreed terms are ${agreedTerms}. You can proceed with the next fulfillment step.`,
+      action: {
+        kind: "link",
+        label: "Proceed To PO",
+        href: "/buyer/purchase-orders",
+        className: "border-[#9ed1ae] text-[#2f8f60] hover:bg-[#f5fbf6]",
+      },
+    };
+  }
+
+  if (state === "responded") {
+    const responseDate = formatDate(
+      latestQuotation?.createdAt ?? latestOffer?.createdAt ?? data.rfq.createdAt,
+    );
+    const responseTerms = latestQuotation
+      ? `Latest quote: ${formatTargetPrice(
+          latestQuotation.pricePerUnit,
+          data.rfq.unit,
+        )} for ${formatQuantity(latestQuotation.quantity, data.rfq.unit)}.`
+      : latestOffer && latestOffer.pricePerUnit != null && latestOffer.quantity != null
+        ? `Latest supplier offer: ${formatTargetPrice(
+            latestOffer.pricePerUnit,
+            data.rfq.unit,
+          )} for ${formatQuantity(latestOffer.quantity, data.rfq.unit)}.`
+        : "A supplier response is ready for your review.";
+
+    return {
+      sectionTitle: "Supplier Response",
+      headline: "Supplier submitted a quote",
+      message: `${supplierName} responded on ${responseDate}. ${responseTerms} You can continue reviewing and negotiating from this RFQ.`,
+      action: {
+        kind: activeResponseEngagement?.conversationId ? "link" : "button",
+        label: activeResponseEngagement?.conversationId ? "Open Messages" : "Review Quote",
+        href:
+          activeResponseEngagement?.conversationId != null
+            ? `/buyer/messages?conversation=${activeResponseEngagement.conversationId}`
+            : "",
+        className: "border-[#a9befd] text-[#4673f4] hover:bg-[#f4f7ff]",
+      } as StatusAction,
+    };
+  }
+
+  if (state === "closed") {
+    if (data.purchaseOrder) {
+      const poDate = formatDate(data.purchaseOrder.confirmedAt ?? data.purchaseOrder.createdAt);
+
+      return {
+        sectionTitle: "RFQ Closed",
+        headline: "This request has moved to purchase order",
+        message: `This RFQ is now closed because Purchase Order #${data.purchaseOrder.poId} was created on ${poDate}. The supplier flow has already advanced beyond RFQ review.`,
+        action: {
+          kind: "link",
+          label: "View Purchase Order",
+          href: `/buyer/purchase-orders/${data.purchaseOrder.poId}`,
+          className: "border-[#d5dae3] text-[#6d7684] hover:bg-[#fafbfc]",
+        },
+      };
+    }
+
+    if (data.rfq.status.toLowerCase() === "cancelled") {
+      return {
+        sectionTitle: "RFQ Closed",
+        headline: "This request has been cancelled",
+        message: `This RFQ was cancelled after being sent to ${supplierName}. No further supplier action is expected for this request.`,
+        action: {
+          kind: "link",
+          label: "Back To RFQs",
+          href: "/buyer/rfqs",
+          className: "border-[#d5dae3] text-[#6d7684] hover:bg-[#fafbfc]",
+        },
+      };
+    }
+
+    return {
+      sectionTitle: "RFQ Closed",
+      headline: "This request has been closed",
+      message: `This RFQ is no longer active. ${supplierName} has already completed or closed the request, so no further supplier action is expected.`,
+      action: {
+        kind: "link",
+        label: "Back To RFQs",
+        href: "/buyer/rfqs",
+        className: "border-[#d5dae3] text-[#6d7684] hover:bg-[#fafbfc]",
+      },
+    };
+  }
+
+  return {
+    sectionTitle: "Awaiting Response",
+    headline: "Waiting for supplier's quote",
+    message: `Your RFQ was sent to ${supplierName} on ${formatShortDate(
+      data.rfq.createdAt,
+    )}. Suppliers typically respond within 1\u20132 business days.`,
+    action: {
+      kind: "submit",
+      label: "Cancel RFQ",
+      className: "border-[#ff9586] text-[#ff5a44] hover:bg-[#fff7f5]",
+    },
+  };
+}
+
+function ProgressTracker({ activeStep }: { activeStep: number }) {
   const steps = ["Sent", "Responded", "Confirmed", "PO Sent"];
 
   return (
-    <div className="flex items-center gap-2 overflow-x-auto py-1">
-      {steps.map((label, index) => {
+    <div className="flex w-full items-center pl-[6px]">
+      {steps.map((stepLabel, index) => {
         const stepNumber = index + 1;
-        const isComplete = currentStep >= stepNumber;
+        const isComplete = activeStep > stepNumber;
+        const isCurrent = activeStep === stepNumber;
+        const isActive = isComplete || isCurrent;
+        const isConnectorActive =
+          activeStep > stepNumber || (activeStep === 1 && stepNumber === 1);
 
         return (
-          <div key={label} className="flex min-w-max items-center">
-            <div className="flex items-center gap-2">
+          <div
+            key={stepLabel}
+            className={index < steps.length - 1 ? "flex min-w-0 flex-1 items-center" : "flex shrink-0 items-center"}
+          >
+            <div className="flex items-center gap-[8px]">
               <span
-                className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold ${
-                  isComplete
-                    ? "bg-[#223f68] text-white"
-                    : "bg-[#e5e7eb] text-[#b4bcc9]"
+                className={`flex h-[28px] w-[28px] items-center justify-center rounded-full text-[13px] font-medium leading-none ${
+                  isActive ? "bg-[#233f68] text-white" : "bg-[#e7e7e7] text-[#ffffff]"
                 }`}
               >
                 {stepNumber}
               </span>
               <span
-                className={`text-[13px] font-semibold ${
-                  isComplete ? "text-[#223654]" : "text-[#c1c8d2]"
+                className={`text-[15px] font-medium leading-none ${
+                  isActive ? "text-[#27456f]" : "text-[#d9d7d3]"
                 }`}
               >
-                {label}
+                {stepLabel}
               </span>
             </div>
 
             {index < steps.length - 1 ? (
-              <div
-                className={`mx-3 h-px w-24 sm:w-28 ${
-                  currentStep > stepNumber ? "bg-[#223f68]" : "bg-[#e5e7eb]"
+              <span
+                className={`ml-[16px] mr-[18px] block h-[1.5px] min-w-[96px] flex-1 ${
+                  isConnectorActive ? "bg-[#233f68]" : "bg-[#efefef]"
                 }`}
               />
             ) : null}
@@ -210,801 +503,609 @@ function Stepper({ currentStep }: { currentStep: number }) {
   );
 }
 
-function DetailMetric({
+function Field({
   label,
   value,
+  className = "",
 }: {
   label: string;
-  value: React.ReactNode;
+  value: string;
+  className?: string;
 }) {
   return (
-    <div>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#c0c8d4]">
+    <div className={className}>
+      <p className="text-[13px] font-medium uppercase leading-none text-[#b8bec8]">
         {label}
       </p>
-      <p className="mt-1 text-[16px] font-semibold text-[#223654]">{value}</p>
+      <p className="mt-[8px] text-[14px] font-normal leading-[1.35] text-[#374151]">
+        {value}
+      </p>
     </div>
   );
 }
 
-function TermsMetric({
+function QuoteMetric({
   label,
   value,
+  labelClassName = "text-[#1A6B3C]",
 }: {
   label: string;
-  value: React.ReactNode;
+  value: string;
+  labelClassName?: string;
 }) {
   return (
-    <div className="rounded-[14px] border border-[#e7edf5] bg-[#fbfcfe] px-4 py-4">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9aa7b8]">
+    <div className="rounded-[10px] border border-[#e7ebf1] bg-white px-[12px] py-[12px] shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+      <p className={`text-[14px] font-medium uppercase leading-none ${labelClassName}`}>
         {label}
       </p>
-      <p className="mt-1.5 text-[16px] font-semibold text-[#223654]">{value}</p>
+      <p className="mt-[10px] text-[15px] font-normal leading-none text-[#374151]">
+        {value}
+      </p>
     </div>
   );
 }
 
-function Callout({
-  tone,
-  title,
-  description,
-  action,
-}: {
-  tone: "warning" | "success" | "neutral";
-  title: string;
-  description: string;
-  action?: React.ReactNode;
-}) {
-  const toneClasses =
-    tone === "success"
-      ? "border-[#9fd2ae] bg-[#f4fbf5]"
-      : tone === "warning"
-        ? "border-[#ffb27d] bg-[#fff7f1]"
-        : "border-[#c8d8f0] bg-[#f4f8ff]";
-  const iconClasses =
-    tone === "success"
-      ? "bg-[#2f7a45] text-white"
-      : tone === "warning"
-        ? "bg-[#ff7a1c] text-white"
-        : "bg-[#223f68] text-white";
-  const icon = tone === "success" ? "+" : tone === "warning" ? "!" : ">";
-
+function MessageSquareIcon() {
   return (
-    <div className={`rounded-[16px] border px-4 py-4 ${toneClasses}`}>
-      <div className="flex items-start gap-3">
-        <span
-          className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] text-[14px] font-semibold ${iconClasses}`}
-        >
-          {icon}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-[14px] font-semibold text-[#223654]">{title}</p>
-          <p className="mt-1 text-[13px] leading-5 text-[#8a96a8]">{description}</p>
-        </div>
-        {action ? <div className="shrink-0">{action}</div> : null}
-      </div>
-    </div>
+    <svg viewBox="0 0 24 24" className="h-[16px] w-[16px]" aria-hidden="true">
+      <path
+        d="M7.25 7.25h9.5a1.5 1.5 0 0 1 1.5 1.5v6a1.5 1.5 0 0 1-1.5 1.5h-5.1l-3.5 2.78v-2.78h-.9a1.5 1.5 0 0 1-1.5-1.5v-6a1.5 1.5 0 0 1 1.5-1.5Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
-export function BuyerRfqDetailPage({
-  data,
-  modal,
-  quoteId,
-  engagementId,
-}: BuyerRfqDetailPageProps) {
+function ArrowRightIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-[16px] w-[16px]" aria-hidden="true">
+      <path
+        d="M9 6.75 14.25 12 9 17.25"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function BuyerRfqDetailPage({ data }: BuyerRfqDetailPageProps) {
+  const detailState = getDetailState(data);
   const primaryEngagement =
-    data.engagements.find((engagement) => engagement.acceptedQuotation) ??
-    data.engagements.find((engagement) =>
-      engagement.quotations.some((quotation) => quotation.status === "submitted")
+    data.engagements.find(
+      (engagement) =>
+        engagement.acceptedQuotation != null ||
+        engagement.status.toLowerCase() === "accepted" ||
+        engagement.quotations.length > 0 ||
+        engagement.status.toLowerCase() === "quoted",
     ) ??
-    data.engagements.find((engagement) => engagement.latestSupplierOffer) ??
     data.engagements[0] ??
     null;
-
-  const activeSubmittedQuote =
-    primaryEngagement?.quotations.find((quotation) => quotation.status === "submitted") ??
-    null;
-  const acceptedEngagement =
-    data.engagements.find((engagement) => engagement.acceptedQuotation) ?? null;
-  const acceptedQuote = acceptedEngagement?.acceptedQuotation ?? null;
-  const latestSupplierOffer = primaryEngagement?.latestSupplierOffer ?? null;
-  const hasAnyQuotation = data.engagements.some(
-    (engagement) => engagement.quotations.length > 0
-  );
-  const hasAnySupplierOffer = data.engagements.some((engagement) =>
-    engagement.offers.some((offer) => offer.offeredBy !== data.currentAuthUserId)
-  );
-  const workflowState: Exclude<DetailStateKey, "closed"> = acceptedQuote
-    ? "confirmed"
-    : hasAnyQuotation
-      ? "quoted"
-      : hasAnySupplierOffer
-        ? "negotiating"
-        : "pending";
-
-  const pageState: DetailStateKey =
-    data.rfq.status === "cancelled" || data.purchaseOrder || data.rfq.status === "closed"
-      ? "closed"
-      : workflowState;
-
-  const referenceCode = getReferenceCode(data.rfq.rfqId, data.rfq.createdAt);
-  const isCancelled = data.rfq.status === "cancelled";
-  const currentStep = isCancelled ? getProgressStep(workflowState) : getProgressStep(pageState);
-  const closedDate =
-    data.purchaseOrder?.confirmedAt ?? data.purchaseOrder?.createdAt ?? data.rfq.createdAt;
-  const supplierName = primaryEngagement?.supplierName ?? "Awaiting supplier response";
+  const supplierName =
+    primaryEngagement?.supplierName ??
+    data.requestMatches.suppliers[0]?.supplierName ??
+    "Awaiting supplier";
+  const supplierVerified =
+    primaryEngagement?.verifiedBadge ??
+    data.requestMatches.suppliers[0]?.verifiedBadge ??
+    false;
   const supplierSubtitle = [
     primaryEngagement?.businessType,
     primaryEngagement?.locationLabel,
   ]
     .filter(Boolean)
-    .join(" | ");
-  const profileHref = primaryEngagement
-    ? `/buyer/search/${primaryEngagement.supplierId}`
-    : "/buyer/search";
-  const messageSupplierHref = primaryEngagement
-    ? primaryEngagement.conversationId
-      ? `/buyer/messages?conversation=${primaryEngagement.conversationId}`
-      : `/buyer/messages?supplierId=${primaryEngagement.supplierId}&engagementId=${primaryEngagement.engagementId}`
-    : "/buyer/messages";
+    .join(" \u00b7 ");
+  const referenceCode = getReferenceCode(data.rfq.rfqId, data.rfq.createdAt);
+  const statusCopy = getStatusCopy({
+    data,
+    supplierName,
+    state: detailState,
+  });
+  const title = `${data.rfq.productName} \u2014 ${formatQuantity(
+    data.rfq.quantity,
+    data.rfq.unit,
+  )}`;
+  const preferredDelivery = formatDate(
+    data.rfq.preferredDeliveryDate ?? data.rfq.deadline,
+  );
+  const respondedEngagement =
+    data.engagements.find(
+      (engagement) =>
+        engagement.quotations.length > 0 ||
+        engagement.latestSupplierOffer != null ||
+        engagement.status.toLowerCase() === "quoted",
+    ) ?? primaryEngagement;
+  const acceptedEngagement =
+    data.engagements.find(
+      (engagement) =>
+        engagement.acceptedQuotation != null ||
+        engagement.status.toLowerCase() === "accepted",
+    ) ?? null;
+  const acceptedQuote = acceptedEngagement?.acceptedQuotation ?? null;
+  const respondedQuote = respondedEngagement?.quotations[0] ?? null;
+  const respondedOffer = respondedEngagement?.latestSupplierOffer ?? null;
+  const quotePrice =
+    respondedQuote?.pricePerUnit ??
+    (respondedOffer?.pricePerUnit != null ? respondedOffer.pricePerUnit : null);
+  const quoteQuantity =
+    respondedQuote?.quantity ??
+    (respondedOffer?.quantity != null ? respondedOffer.quantity : null);
+  const quoteMoq =
+    respondedQuote?.moq ?? (respondedOffer?.moq != null ? respondedOffer.moq : null);
+  const quoteLeadTime = respondedQuote?.leadTime ?? respondedOffer?.leadTime ?? "Not set";
+  const quoteNote =
+    respondedQuote?.notes ?? respondedOffer?.notes ?? "No supplier note provided.";
+  const quoteTotalAmount =
+    quotePrice != null && quoteQuantity != null ? quotePrice * quoteQuantity : null;
+  const confirmedQuotePrice = acceptedQuote?.pricePerUnit ?? null;
+  const confirmedQuoteQuantity = acceptedQuote?.quantity ?? null;
+  const confirmedQuoteMoq = acceptedQuote?.moq ?? null;
+  const confirmedQuoteLeadTime = acceptedQuote?.leadTime ?? "Not set";
+  const confirmedQuoteNote = acceptedQuote?.notes ?? "No supplier note provided.";
+  const confirmedQuoteTotalAmount =
+    confirmedQuotePrice != null && confirmedQuoteQuantity != null
+      ? confirmedQuotePrice * confirmedQuoteQuantity
+      : null;
+  const agreedDate = formatShortDate(acceptedQuote?.createdAt ?? data.rfq.createdAt);
+  const closedQuotePrice = confirmedQuotePrice ?? quotePrice;
+  const closedQuoteQuantity = confirmedQuoteQuantity ?? quoteQuantity;
+  const closedQuoteMoq = confirmedQuoteMoq ?? quoteMoq;
+  const closedQuoteLeadTime =
+    acceptedQuote?.leadTime ?? respondedQuote?.leadTime ?? respondedOffer?.leadTime ?? "Not set";
+  const closedQuoteNote =
+    acceptedQuote?.notes ?? respondedQuote?.notes ?? respondedOffer?.notes ?? "No supplier note provided.";
+  const closedQuoteTotalAmount =
+    closedQuotePrice != null && closedQuoteQuantity != null
+      ? closedQuotePrice * closedQuoteQuantity
+      : null;
+  const closedDateSource =
+    data.purchaseOrder?.confirmedAt ??
+    data.purchaseOrder?.createdAt ??
+    acceptedQuote?.createdAt ??
+    data.rfq.createdAt;
+  const closedDate = formatShortDate(closedDateSource);
+  const closedDateLong = formatDate(closedDateSource);
   const purchaseOrderHref =
     acceptedQuote != null
       ? `/buyer/purchase-orders?rfqId=${data.rfq.rfqId}&quoteId=${acceptedQuote.quoteId}`
       : "/buyer/purchase-orders";
   const newRfqHref =
     primaryEngagement != null
-      ? `/buyer/rfqs/new?supplierId=${primaryEngagement.supplierId}&productId=${data.rfq.productId}`
-      : "/buyer/search";
-
-  const negotiationDefaults = {
-    pricePerUnit: activeSubmittedQuote?.pricePerUnit ?? latestSupplierOffer?.pricePerUnit ?? null,
-    quantity: activeSubmittedQuote?.quantity ?? latestSupplierOffer?.quantity ?? data.rfq.quantity,
-    moq: activeSubmittedQuote?.moq ?? latestSupplierOffer?.moq ?? null,
-    leadTime: activeSubmittedQuote?.leadTime ?? latestSupplierOffer?.leadTime ?? "",
-    notes: latestSupplierOffer?.notes ?? activeSubmittedQuote?.notes ?? "",
-  };
-
-  const showCancelModal = modal === "cancel";
-  const showNegotiateModal = modal === "negotiate" && primaryEngagement != null;
-  const showDeclineQuoteModal =
-    modal === "decline-quote" &&
-    activeSubmittedQuote != null &&
-    primaryEngagement != null &&
-    (!quoteId || Number(quoteId) === activeSubmittedQuote.quoteId) &&
-    (!engagementId || Number(engagementId) === primaryEngagement.engagementId);
+      ? `/buyer/rfqs/new?supplierId=${primaryEngagement.supplierId}${
+          data.rfq.productId != null ? `&productId=${data.rfq.productId}` : ""
+        }`
+      : "/buyer/rfqs/new";
+  const showClosedSummary =
+    detailState === "closed" &&
+    data.rfq.status.toLowerCase() !== "cancelled" &&
+    (acceptedQuote != null || data.purchaseOrder != null || closedQuotePrice != null);
+  const negotiationHref =
+    respondedEngagement?.conversationId != null
+      ? `/buyer/messages?conversation=${respondedEngagement.conversationId}`
+      : respondedEngagement != null
+        ? `/buyer/messages?supplierId=${respondedEngagement.supplierId}&engagementId=${respondedEngagement.engagementId}`
+        : "/buyer/messages";
 
   return (
-    <>
-      <main className="mx-auto max-w-[1120px] space-y-6 px-6 py-8">
-        <div>
-          <nav className="flex flex-wrap items-center gap-2 text-[13px] text-[#a0abbb]">
-          <Link href="/buyer/rfqs" className="transition hover:text-[#223654]">
+    <main className="mx-auto w-full max-w-[1042px] pb-5 pt-[2px]">
+      <section className="pb-[10px]">
+        <nav className={RFQ_BREADCRUMB_CLASS}>
+          <Link href="/buyer/rfqs" className="transition hover:text-[#7f8a99]">
             My RFQs
           </Link>
           <span>&gt;</span>
-          <span>{referenceCode}</span>
+          <span className="font-normal text-[#6A717F]">{referenceCode}</span>
         </nav>
+      </section>
+
+      <section className="flex items-start justify-between gap-6 pb-[20px]">
+        <div>
+          <h1 className={RFQ_TITLE_CLASS}>{title}</h1>
+          <p className={RFQ_META_CLASS}>
+            {referenceCode} {"\u00b7"} Sent {formatDate(data.rfq.createdAt)}
+          </p>
         </div>
-        <section className="rounded-[28px] border border-[#e8edf5] bg-white px-5 py-5 shadow-[0_10px_28px_rgba(15,23,42,0.04)] sm:px-6">
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div>
 
-                <h1 className="mt-2 text-[28px] font-semibold tracking-[-0.03em] text-[#223654]">
-                  {data.rfq.productName} - {formatQuantity(data.rfq.quantity, data.rfq.unit)}
-                </h1>
-                <p className="mt-1 text-[14px] text-[#98a3b4]">
-                  {referenceCode} | Sent {formatShortDate(data.rfq.createdAt)} | Deadline{" "}
-                  {formatShortDate(data.rfq.deadline)}
-                </p>
-              </div>
+        <div className="pt-[4px]">
+          <span
+            className={`${RFQ_STATUS_BADGE_CLASS} ${getStatusBadgeClasses(detailState)}`}
+          >
+            <span
+              className={`h-[7px] w-[7px] rounded-full ${getStatusDotClasses(
+                detailState,
+              )}`}
+            />
+            {getStatusLabel(detailState)}
+          </span>
+        </div>
+      </section>
 
-              <span
-                className={`inline-flex w-fit items-center rounded-full px-3 py-1.5 text-[12px] font-semibold ${getStatusBadgeClasses(
-                  pageState
-                )}`}
-              >
-                <span className="mr-1.5 text-[11px] leading-none">&bull;</span>
-                {getStatusLabel(pageState)}
-              </span>
+      <section className="pb-[28px]">
+        <ProgressTracker activeStep={getProgressStep(detailState)} />
+      </section>
+
+      <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+        <div className={RFQ_SECTION_HEADER_ROW_CLASS}>
+          <h2 className={RFQ_SECTION_HEADING_CLASS}>Supplier Info</h2>
+        </div>
+
+        <div className="flex items-center justify-between gap-4 px-[18px] py-[16px]">
+          <div className="flex min-w-0 items-center gap-[12px]">
+            <div className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-[#eefaf3] text-[22px] font-medium leading-none text-[#4f9b72]">
+              {getInitials(supplierName)}
             </div>
-
-            <Stepper currentStep={currentStep} />
-          </div>
-        </section>
-
-        <section className="rounded-[24px] border border-[#e8edf5] bg-white px-5 py-5 shadow-[0_10px_28px_rgba(15,23,42,0.04)] sm:px-6">
-          <div className="mb-4 flex items-center justify-between gap-4">
-            <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[#223654]">
-              Supplier Info
-            </h2>
-            <div className="flex flex-wrap items-center gap-2">
-              {primaryEngagement ? (
-                <Link
-                  href={messageSupplierHref}
-                  className="inline-flex h-9 items-center justify-center rounded-[10px] border border-[#d9e2ee] bg-white px-4 text-[13px] font-medium text-[#223654] transition hover:bg-[#f8fafc]"
-                >
-                  Message Supplier
-                </Link>
-              ) : null}
-              <Link
-                href={profileHref}
-                className="inline-flex h-9 items-center justify-center rounded-[10px] border border-[#d9e2ee] bg-white px-4 text-[13px] font-medium text-[#223654] transition hover:bg-[#f8fafc]"
-              >
-                View Profile
-              </Link>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            {primaryEngagement?.avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={primaryEngagement.avatarUrl}
-                alt={`${supplierName} avatar`}
-                className="h-14 w-14 rounded-[14px] border border-[#e6edf6] object-cover"
-              />
-            ) : (
-              <div className="flex h-14 w-14 items-center justify-center rounded-[14px] bg-[#edf8ef] text-[20px] font-semibold text-[#2f7a45]">
-                {getInitials(supplierName)}
-              </div>
-            )}
 
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-[18px] font-semibold text-[#223654]">{supplierName}</p>
-                {primaryEngagement?.verifiedBadge ? (
-                  <span className="rounded-full border border-[#99cfaa] bg-[#f3fbf4] px-2 py-1 text-[11px] font-semibold text-[#2f7a45]">
-                    Verified
-                  </span>
-                ) : null}
+              <div className="flex items-center gap-[6px]">
+                <p className={RFQ_SUPPLIER_NAME_CLASS}>{supplierName}</p>
+                {supplierVerified ? <VerifiedBadge /> : null}
               </div>
-              <p className="mt-1 text-[14px] text-[#8a96a8]">
-                {supplierSubtitle || "Supplier information will appear here once the request is received."}
+              <p className={RFQ_SUPPLIER_SUBTITLE_CLASS}>
+                {supplierSubtitle || "Supplier details will appear once available."}
               </p>
             </div>
           </div>
-        </section>
 
-        <section className="rounded-[24px] border border-[#e8edf5] bg-white px-5 py-5 shadow-[0_10px_28px_rgba(15,23,42,0.04)] sm:px-6">
-          <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[#223654]">
-            RFQ Details
-          </h2>
+          <Link
+            href={
+              primaryEngagement ? `/buyer/search/${primaryEngagement.supplierId}` : "/buyer/search"
+            }
+            className="inline-flex h-[30px] shrink-0 items-center justify-center rounded-[8px] border border-[#e2e5ea] bg-white px-[14px] text-[11px] font-semibold text-[#5f6877] transition hover:bg-[#f8fafc]"
+          >
+            View Profile
+          </Link>
+        </div>
+      </section>
 
-          <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
-            <DetailMetric label="Product" value={data.rfq.productName} />
-            <DetailMetric
-              label="Quantity"
-              value={formatQuantity(data.rfq.quantity, data.rfq.unit)}
-            />
-            <DetailMetric
+      <section className="mt-[10px] overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+        <div className={RFQ_SECTION_HEADER_ROW_CLASS}>
+          <h2 className={RFQ_SECTION_HEADING_CLASS}>RFQ Details</h2>
+        </div>
+
+        <div className="px-[16px] py-[16px]">
+          <div className="grid grid-cols-2 gap-x-[66px] gap-y-[18px]">
+            <Field label="Product" value={data.rfq.productName} />
+            <Field label="Quantity" value={formatQuantity(data.rfq.quantity, data.rfq.unit)} />
+            <Field
               label="Target Price"
-              value={formatPricePerUnit(data.rfq.targetPricePerUnit, data.rfq.unit)}
+              value={formatTargetPrice(data.rfq.targetPricePerUnit, data.rfq.unit)}
             />
-            <DetailMetric
-              label="Preferred Delivery"
-              value={formatDate(data.rfq.preferredDeliveryDate)}
-            />
-            <DetailMetric
-              label="RFQ Deadline"
-              value={formatDate(data.rfq.deadline)}
-            />
+            <Field label="Preferred Delivery" value={preferredDelivery} />
           </div>
 
-          <div className="mt-5 grid gap-5 sm:grid-cols-2">
-            <DetailMetric
+          <div className="mt-[18px]">
+            <Field
               label="Delivery Location"
               value={data.rfq.deliveryLocation || "Not specified"}
             />
           </div>
 
-          <div className="mt-5 grid gap-5">
-            <DetailMetric
+          <div className="mt-[18px]">
+            <Field
               label="Notes"
-              value={data.rfq.specifications || "No specifications provided."}
+              value={data.rfq.specifications || "No notes provided."}
+              className="max-w-[770px]"
             />
           </div>
-        </section>
+        </div>
+      </section>
 
-        {pageState === "pending" ? (
-          <section className="rounded-[24px] border border-[#e8edf5] bg-white px-5 py-5 shadow-[0_10px_28px_rgba(15,23,42,0.04)] sm:px-6">
-            <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[#223654]">
-              Awaiting Response
-            </h2>
+      {detailState !== "responded" && detailState !== "confirmed" && !showClosedSummary ? (
+        <section className="mt-[10px] overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+          <div className={RFQ_SECTION_HEADER_ROW_CLASS}>
+            <h2 className={RFQ_SECTION_HEADING_CLASS}>{statusCopy.sectionTitle}</h2>
+          </div>
 
-            <div className="mt-5 space-y-4">
-              <Callout
-                tone="warning"
-                title="Waiting for supplier&apos;s quote"
-                description={`Your RFQ was sent to ${supplierName} on ${formatShortDate(
-                  data.rfq.createdAt
-                )}. Suppliers typically respond within 1-2 business days.`}
-              />
-
-              <Link
-                href={buildDetailHref(data.rfq.rfqId, { modal: "cancel" })}
-                className="inline-flex h-11 w-full items-center justify-center rounded-[12px] border border-[#ffb3ae] bg-white text-[14px] font-semibold text-[#ff5b4d] transition hover:bg-[#fff6f5]"
-              >
-                Cancel RFQ
-              </Link>
-            </div>
-          </section>
-        ) : null}
-
-        {pageState === "negotiating" && primaryEngagement && latestSupplierOffer ? (
-          <section className="rounded-[24px] border border-[#e8edf5] bg-white px-5 py-5 shadow-[0_10px_28px_rgba(15,23,42,0.04)] sm:px-6">
-            <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[#223654]">
-              Latest Negotiation Offer
-            </h2>
-
-            <div className="mt-5 grid gap-3 md:grid-cols-4">
-              <TermsMetric
-                label="Quoted Price"
-                value={formatPricePerUnit(latestSupplierOffer.pricePerUnit, data.rfq.unit)}
-              />
-              <TermsMetric
-                label="Total Amount"
-                value={formatCurrency(
-                  getOfferTotalAmount({
-                    pricePerUnit: latestSupplierOffer.pricePerUnit,
-                    quantity: latestSupplierOffer.quantity,
-                  })
-                )}
-              />
-              <TermsMetric label="Lead Time" value={latestSupplierOffer.leadTime || "-"} />
-              <TermsMetric
-                label="Minimum Order Qty."
-                value={formatQuantity(latestSupplierOffer.moq, data.rfq.unit)}
-              />
-            </div>
-
-            <div className="mt-4 rounded-[16px] border border-[#e7edf5] bg-[#fbfcfe] px-4 py-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9aa7b8]">
-                Supplier&apos;s Note
-              </p>
-              <p className="mt-2 text-[14px] leading-6 text-[#5b697d]">
-                {latestSupplierOffer.notes || "No supplier note was added for this negotiation round."}
-              </p>
-            </div>
-
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <form action={acceptOffer}>
-                <input type="hidden" name="rfqId" value={data.rfq.rfqId} />
-                <input type="hidden" name="engagementId" value={primaryEngagement.engagementId} />
-                <input type="hidden" name="offerId" value={latestSupplierOffer.offerId} />
-                <button
-                  type="submit"
-                  className="inline-flex h-12 w-full items-center justify-center rounded-[12px] bg-[#1f7a45] text-[14px] font-semibold text-white transition hover:bg-[#1a673b]"
-                >
-                  Accept Offer
-                </button>
-              </form>
-
-              <Link
-                href={buildDetailHref(data.rfq.rfqId, {
-                  modal: "negotiate",
-                  engagementId: primaryEngagement.engagementId,
-                })}
-                className="inline-flex h-12 w-full items-center justify-center rounded-[12px] border border-[#c8d8f0] bg-white text-[14px] font-semibold text-[#223f68] transition hover:bg-[#f8fbff]"
-                >
-                  Negotiate
-                </Link>
-
-              <Link
-                href={buildDetailHref(data.rfq.rfqId, { modal: "cancel" })}
-                className="inline-flex h-12 w-full items-center justify-center rounded-[12px] border border-[#ffb3ae] bg-white text-[14px] font-semibold text-[#ff5b4d] transition hover:bg-[#fff6f5]"
-              >
-                Cancel RFQ
-              </Link>
-            </div>
-          </section>
-        ) : null}
-
-        {pageState === "quoted" && primaryEngagement && activeSubmittedQuote ? (
-          <section className="rounded-[24px] border border-[#e8edf5] bg-white px-5 py-5 shadow-[0_10px_28px_rgba(15,23,42,0.04)] sm:px-6">
-            <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[#223654]">
-              Supplier&apos;s Quote
-            </h2>
-
-            <div className="mt-5 grid gap-3 md:grid-cols-4">
-              <TermsMetric
-                label="Quoted Price"
-                value={formatPricePerUnit(activeSubmittedQuote.pricePerUnit, data.rfq.unit)}
-              />
-              <TermsMetric
-                label="Total Amount"
-                value={formatCurrency(
-                  getOfferTotalAmount({
-                    pricePerUnit: activeSubmittedQuote.pricePerUnit,
-                    quantity: activeSubmittedQuote.quantity,
-                  })
-                )}
-              />
-              <TermsMetric label="Lead Time" value={activeSubmittedQuote.leadTime || "-"} />
-              <TermsMetric
-                label="Minimum Order Qty."
-                value={formatQuantity(activeSubmittedQuote.moq, data.rfq.unit)}
-              />
-            </div>
-
-            <div className="mt-4 rounded-[16px] border border-[#e7edf5] bg-[#fbfcfe] px-4 py-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9aa7b8]">
-                Supplier&apos;s Note
-              </p>
-              <p className="mt-2 text-[14px] leading-6 text-[#5b697d]">
-                {activeSubmittedQuote.notes || "No supplier note was added to this quotation."}
-              </p>
-            </div>
-
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <form action={acceptQuote}>
-                <input type="hidden" name="rfqId" value={data.rfq.rfqId} />
-                <input type="hidden" name="engagementId" value={primaryEngagement.engagementId} />
-                <input type="hidden" name="quoteId" value={activeSubmittedQuote.quoteId} />
-                <button
-                  type="submit"
-                  className="inline-flex h-12 w-full items-center justify-center rounded-[12px] bg-[#1f7a45] text-[14px] font-semibold text-white transition hover:bg-[#1a673b]"
-                >
-                  Accept Quote
-                </button>
-              </form>
-
-              <Link
-                href={buildDetailHref(data.rfq.rfqId, {
-                  modal: "decline-quote",
-                  quoteId: activeSubmittedQuote.quoteId,
-                  engagementId: primaryEngagement.engagementId,
-                })}
-                className="inline-flex h-12 w-full items-center justify-center rounded-[12px] border border-[#ffb3ae] bg-white text-[14px] font-semibold text-[#ff5b4d] transition hover:bg-[#fff6f5]"
-                >
-                  Decline
-                </Link>
-
-              <Link
-                href={buildDetailHref(data.rfq.rfqId, { modal: "cancel" })}
-                className="inline-flex h-12 w-full items-center justify-center rounded-[12px] border border-[#ffb3ae] bg-white text-[14px] font-semibold text-[#ff5b4d] transition hover:bg-[#fff6f5]"
-              >
-                Cancel RFQ
-              </Link>
-            </div>
-
-            <div className="mt-4">
-              <Callout
-                tone="neutral"
-                title="Negotiate with Supplier"
-                description="You may open a counter-offer if you want to revise the final terms before moving to purchase order."
-                action={
-                  <Link
-                    href={buildDetailHref(data.rfq.rfqId, {
-                      modal: "negotiate",
-                      engagementId: primaryEngagement.engagementId,
-                    })}
-                    className="inline-flex h-10 items-center justify-center rounded-[10px] border border-[#c8d8f0] bg-white px-4 text-[13px] font-semibold text-[#223f68] transition hover:bg-[#f8fbff]"
+          <div className="px-[16px] py-[16px]">
+            <div
+              className={`rounded-[10px] border px-[12px] py-[11px] ${getAlertBoxClasses(
+                detailState,
+              )}`}
+            >
+              <div className="flex items-start gap-[10px]">
+                <AlertIcon state={detailState} />
+                <div className="min-w-0 pt-[1px]">
+                  <p
+                    className={`text-[14px] font-semibold leading-none ${getAlertHeadlineClasses(
+                      detailState,
+                    )}`}
                   >
-                    Negotiate
-                  </Link>
+                    {statusCopy.headline}
+                  </p>
+                  <p className="mt-[8px] max-w-[640px] text-[12px] leading-[1.45] text-[#b0b6c1]">
+                    {statusCopy.message}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {statusCopy.action.kind === "submit" ? (
+              <BuyerRfqCancelAction
+                rfqId={data.rfq.rfqId}
+                label={statusCopy.action.label}
+                className={`mt-[12px] inline-flex h-[34px] w-full items-center justify-center rounded-[7px] border bg-white text-[13px] font-semibold transition ${statusCopy.action.className}`}
+              />
+            ) : statusCopy.action.kind === "link" ? (
+              <Link
+                href={statusCopy.action.href}
+                className={`mt-[12px] inline-flex h-[34px] w-full items-center justify-center rounded-[7px] border bg-white text-[13px] font-semibold transition ${statusCopy.action.className}`}
+              >
+                {statusCopy.action.label}
+              </Link>
+            ) : (
+              <button
+                type="button"
+                className={`mt-[12px] inline-flex h-[34px] w-full items-center justify-center rounded-[7px] border bg-white text-[13px] font-semibold transition ${statusCopy.action.className}`}
+              >
+                {statusCopy.action.label}
+              </button>
+            )}
+          </div>
+        </section>
+      ) : null}
+
+      {showClosedSummary ? (
+        <section className="mt-[10px] overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+          <div className={`flex items-center justify-between ${RFQ_SECTION_HEADER_ROW_CLASS}`}>
+            <h2 className={RFQ_SECTION_HEADING_CLASS}>Final Summary</h2>
+            <p className="text-[11px] font-medium leading-none text-[#bfc5cf]">
+              Closed on {closedDate}
+            </p>
+          </div>
+
+          <div className="px-[16px] py-[16px]">
+            <div className="rounded-[10px] border border-[#b9c0cb] bg-[#fcfdff] px-[12px] py-[11px]">
+              <div className="flex items-start gap-[10px]">
+                <ClosedAlertIcon />
+                <div className="min-w-0 pt-[1px]">
+                  <p className="text-[14px] font-semibold leading-none text-[#6a7381]">
+                    This RFQ has been completed
+                  </p>
+                  <p className="mt-[8px] max-w-[640px] text-[12px] leading-[1.45] text-[#adb5c1]">
+                    Order was fulfilled and marked complete on {closedDateLong}.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-[10px] grid grid-cols-4 gap-[8px]">
+              <QuoteMetric
+                label="Quoted Price"
+                value={formatTargetPrice(closedQuotePrice, data.rfq.unit)}
+                labelClassName="text-[#b4bbc6]"
+              />
+              <QuoteMetric
+                label="Total Amount"
+                value={formatCurrency(closedQuoteTotalAmount)}
+                labelClassName="text-[#b4bbc6]"
+              />
+              <QuoteMetric
+                label="Lead Time"
+                value={closedQuoteLeadTime}
+                labelClassName="text-[#b4bbc6]"
+              />
+              <QuoteMetric
+                label="Minimum Order Qty."
+                value={
+                  closedQuoteMoq != null
+                    ? formatQuantity(closedQuoteMoq, data.rfq.unit)
+                    : "Not set"
+                }
+                labelClassName="text-[#b4bbc6]"
+              />
+            </div>
+
+            <div className="mt-[10px] rounded-[12px] border border-[#e7ebf1] bg-[#fbfcfd] px-[14px] py-[14px]">
+              <p className="text-[11px] font-medium uppercase leading-none text-[#c2c8d1]">
+                Supplier&apos;s Note
+              </p>
+              <p className="mt-[10px] text-[14px] leading-[1.45] text-[#7a8594]">
+                {closedQuoteNote}
+              </p>
+            </div>
+
+            <Link
+              href={newRfqHref}
+              className="mt-[12px] inline-flex h-[34px] w-full items-center justify-center rounded-[7px] border border-[#8e99a8] bg-white text-[13px] font-semibold text-[#4f5b6a] transition hover:bg-[#f8fafc]"
+            >
+              Send a new RFQ to this Supplier
+            </Link>
+          </div>
+        </section>
+      ) : null}
+
+      {detailState === "confirmed" && acceptedEngagement && acceptedQuote ? (
+        <section className="mt-[10px] overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+          <div className={`flex items-center justify-between ${RFQ_SECTION_HEADER_ROW_CLASS}`}>
+            <h2 className={RFQ_SECTION_HEADING_CLASS}>Agreed Terms</h2>
+            <p className="text-[11px] font-medium leading-none text-[#bfc5cf]">
+              Agreed on {agreedDate}
+            </p>
+          </div>
+
+          <div className="px-[16px] py-[16px]">
+            <div className="rounded-[10px] border border-[#9fd1ad] bg-[#fbfffc] px-[12px] py-[11px]">
+              <div className="flex items-start gap-[10px]">
+                <ConfirmationAlertIcon />
+                <div className="min-w-0 pt-[1px]">
+                  <p className="text-[14px] font-semibold leading-none text-[#2c8754]">
+                    Both parties have agreed on terms
+                  </p>
+                  <p className="mt-[8px] max-w-[640px] text-[12px] leading-[1.45] text-[#a8b1be]">
+                    Send a Purchase Order to confirm and begin coordination with the supplier.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-[10px] grid grid-cols-4 gap-[8px]">
+              <QuoteMetric
+                label="Quoted Price"
+                value={formatTargetPrice(confirmedQuotePrice, data.rfq.unit)}
+              />
+              <QuoteMetric
+                label="Total Amount"
+                value={formatCurrency(confirmedQuoteTotalAmount)}
+              />
+              <QuoteMetric label="Lead Time" value={confirmedQuoteLeadTime} />
+              <QuoteMetric
+                label="Minimum Order Qty."
+                value={
+                  confirmedQuoteMoq != null
+                    ? formatQuantity(confirmedQuoteMoq, data.rfq.unit)
+                    : "Not set"
                 }
               />
             </div>
-          </section>
-        ) : null}
 
-        {pageState === "confirmed" && primaryEngagement && acceptedQuote ? (
-          <section className="rounded-[24px] border border-[#e8edf5] bg-white px-5 py-5 shadow-[0_10px_28px_rgba(15,23,42,0.04)] sm:px-6">
-            <div className="flex items-center justify-between gap-4">
-              <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[#223654]">
-                Agreed Terms
-              </h2>
-              <span className="text-[12px] text-[#a2adbd]">
-                Agreed on {formatShortDate(acceptedQuote.createdAt)}
-              </span>
+            <div className="mt-[10px] rounded-[12px] border border-[#e7ebf1] bg-[#fbfcfd] px-[14px] py-[14px]">
+              <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                Supplier&apos;s Note
+              </p>
+              <p className="mt-[10px] text-[14px] leading-[1.45] text-[#374151]">
+                {confirmedQuoteNote}
+              </p>
             </div>
 
-            <div className="mt-5 space-y-4">
-              <Callout
-                tone="success"
-                title="Both parties have agreed on terms"
-                description="Send a purchase order to confirm and begin coordination with the supplier."
-              />
+            <Link
+              href={purchaseOrderHref}
+              className="mt-[12px] inline-flex h-[34px] w-full items-center justify-center rounded-[7px] bg-[#227546] text-[13px] font-semibold text-white transition hover:bg-[#1b633b]"
+            >
+              Send Purchase Order
+            </Link>
+          </div>
+        </section>
+      ) : null}
 
-              <div className="grid gap-3 md:grid-cols-4">
-                <TermsMetric
+      {detailState === "responded" && respondedEngagement ? (
+        <>
+          <section className="mt-[10px] overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+            <div className={RFQ_SECTION_HEADER_ROW_CLASS}>
+              <h2 className={RFQ_SECTION_HEADING_CLASS}>Supplier&apos;s Quote</h2>
+            </div>
+
+            <div className="px-[16px] py-[16px]">
+              <div className="grid grid-cols-4 gap-[8px]">
+                <QuoteMetric
                   label="Quoted Price"
-                  value={formatPricePerUnit(acceptedQuote.pricePerUnit, data.rfq.unit)}
+                  value={formatTargetPrice(quotePrice, data.rfq.unit)}
                 />
-                <TermsMetric
+                <QuoteMetric
                   label="Total Amount"
-                  value={formatCurrency(
-                    getOfferTotalAmount({
-                      pricePerUnit: acceptedQuote.pricePerUnit,
-                      quantity: acceptedQuote.quantity,
-                    })
-                  )}
+                  value={formatCurrency(quoteTotalAmount)}
                 />
-                <TermsMetric label="Lead Time" value={acceptedQuote.leadTime || "-"} />
-                <TermsMetric
+                <QuoteMetric label="Lead Time" value={quoteLeadTime || "Not set"} />
+                <QuoteMetric
                   label="Minimum Order Qty."
-                  value={formatQuantity(acceptedQuote.moq, data.rfq.unit)}
+                  value={
+                    quoteMoq != null
+                      ? formatQuantity(quoteMoq, data.rfq.unit)
+                      : "Not set"
+                  }
                 />
               </div>
 
-              <div className="rounded-[16px] border border-[#e7edf5] bg-[#fbfcfe] px-4 py-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9aa7b8]">
+              <div className="mt-[10px] rounded-[12px] border border-[#e7ebf1] bg-[#fbfcfd] px-[14px] py-[14px]">
+                <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
                   Supplier&apos;s Note
                 </p>
-                <p className="mt-2 text-[14px] leading-6 text-[#5b697d]">
-                  {acceptedQuote.notes || "No supplier note was added to the accepted quotation."}
+                <p className="mt-[10px] text-[14px] leading-[1.45] text-[#374151]">
+                  {quoteNote}
                 </p>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Link
-                  href={purchaseOrderHref}
-                  className="inline-flex h-12 w-full items-center justify-center rounded-[12px] bg-[#1f7a45] text-[14px] font-semibold text-white transition hover:bg-[#1a673b]"
-                >
-                  Send Purchase Order
-                </Link>
+              <div className="mt-[10px] grid grid-cols-2 gap-[8px]">
+                {respondedQuote ? (
+                  <form action={acceptQuote}>
+                    <input type="hidden" name="rfqId" value={data.rfq.rfqId} />
+                    <input
+                      type="hidden"
+                      name="engagementId"
+                      value={respondedEngagement.engagementId}
+                    />
+                    <input
+                      type="hidden"
+                      name="quoteId"
+                      value={respondedQuote.quoteId}
+                    />
+                    <button
+                      type="submit"
+                      className="inline-flex h-[40px] w-full items-center justify-center rounded-[6px] bg-[#227546] text-[13px] font-medium text-white transition hover:bg-[#1b633b]"
+                    >
+                      Accept Quote
+                    </button>
+                  </form>
+                ) : (
+                  <button
+                    type="button"
+                    className="inline-flex h-[40px] w-full items-center justify-center rounded-[6px] bg-[#227546] text-[13px] font-medium text-white transition hover:bg-[#1b633b]"
+                  >
+                    Accept Quote
+                  </button>
+                )}
 
-                <Link
-                  href={buildDetailHref(data.rfq.rfqId, { modal: "cancel" })}
-                  className="inline-flex h-12 w-full items-center justify-center rounded-[12px] border border-[#ffb3ae] bg-white text-[14px] font-semibold text-[#ff5b4d] transition hover:bg-[#fff6f5]"
-                >
-                  Cancel RFQ
-                </Link>
+                {respondedQuote ? (
+                  <form action={declineQuote}>
+                    <input type="hidden" name="rfqId" value={data.rfq.rfqId} />
+                    <input
+                      type="hidden"
+                      name="engagementId"
+                      value={respondedEngagement.engagementId}
+                    />
+                    <input
+                      type="hidden"
+                      name="quoteId"
+                      value={respondedQuote.quoteId}
+                    />
+                    <button
+                      type="submit"
+                      className="inline-flex h-[40px] w-full items-center justify-center rounded-[6px] border border-[#ff6a5f] bg-white text-[13px] font-medium text-[#ff5549] transition hover:bg-[#fff8f7]"
+                    >
+                      Decline
+                    </button>
+                  </form>
+                ) : (
+                  <button
+                    type="button"
+                    className="inline-flex h-[40px] w-full items-center justify-center rounded-[6px] border border-[#ff6a5f] bg-white text-[13px] font-medium text-[#ff5549] transition hover:bg-[#fff8f7]"
+                  >
+                    Decline
+                  </button>
+                )}
               </div>
             </div>
           </section>
-        ) : null}
 
-        {pageState === "closed" ? (
-          <section className="rounded-[24px] border border-[#e8edf5] bg-white px-5 py-5 shadow-[0_10px_28px_rgba(15,23,42,0.04)] sm:px-6">
-            <div className="flex items-center justify-between gap-4">
-              <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[#223654]">
-                {isCancelled ? "Cancellation Summary" : "Final Summary"}
-              </h2>
-              <span className="text-[12px] text-[#a2adbd]">
-                Closed on {formatShortDate(closedDate)}
+          <Link
+            href={negotiationHref}
+            className="mt-[12px] flex items-center justify-between rounded-[10px] border border-[#8aa4cc] bg-[#f5f9ff] px-[14px] py-[12px] shadow-[0_1px_1px_rgba(15,23,42,0.02)] transition hover:bg-[#edf5ff]"
+          >
+            <div className="flex items-center gap-[12px]">
+              <span className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-[8px] bg-[#24436f] text-white">
+                <MessageSquareIcon />
               </span>
-            </div>
-
-            <div className="mt-5 space-y-4">
-              <Callout
-                tone={isCancelled ? "warning" : "success"}
-                title={
-                  isCancelled ? "This RFQ has been cancelled" : "This RFQ has been completed"
-                }
-                description={
-                  isCancelled
-                    ? `This request was cancelled and marked closed on ${formatShortDate(closedDate)}.`
-                    : `Order was finalized and marked closed on ${formatShortDate(closedDate)}.`
-                }
-              />
-
-              {acceptedQuote ? (
-                <>
-                  <div className="grid gap-3 md:grid-cols-4">
-                    <TermsMetric
-                      label="Quoted Price"
-                      value={formatPricePerUnit(acceptedQuote.pricePerUnit, data.rfq.unit)}
-                    />
-                    <TermsMetric
-                      label="Total Amount"
-                      value={formatCurrency(
-                        getOfferTotalAmount({
-                          pricePerUnit: acceptedQuote.pricePerUnit,
-                          quantity: acceptedQuote.quantity,
-                        })
-                      )}
-                    />
-                    <TermsMetric label="Lead Time" value={acceptedQuote.leadTime || "-"} />
-                    <TermsMetric
-                      label="Minimum Order Qty."
-                      value={formatQuantity(acceptedQuote.moq, data.rfq.unit)}
-                    />
-                  </div>
-
-                  <div className="rounded-[16px] border border-[#e7edf5] bg-[#fbfcfe] px-4 py-4">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9aa7b8]">
-                      Supplier&apos;s Note
-                    </p>
-                    <p className="mt-2 text-[14px] leading-6 text-[#5b697d]">
-                      {acceptedQuote.notes || "No supplier note was added to the accepted quotation."}
-                    </p>
-                  </div>
-                </>
-              ) : null}
-
-              <Link
-                href={newRfqHref}
-                className="inline-flex h-12 w-full items-center justify-center rounded-[12px] border border-[#d7e0eb] bg-white text-[14px] font-semibold text-[#223654] transition hover:bg-[#f8fafc]"
-              >
-                Send a new RFQ to this Supplier
-              </Link>
-            </div>
-          </section>
-        ) : null}
-      </main>
-
-      {showCancelModal ? (
-        <ModalShell
-          maxWidthClassName="max-w-md"
-          panelClassName="rounded-[28px] border border-[#e2e8f0] bg-white p-8 shadow-[0_26px_80px_rgba(15,23,42,0.18)]"
-          overlayClassName="bg-[#0f172a]/45 px-4"
-        >
-          <div className="text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#eef4fb] text-[24px] text-[#223f68]">
-              ?
-            </div>
-            <h2 className="mt-4 text-[28px] font-semibold tracking-[-0.03em] text-[#223654]">
-              Cancel this RFQ?
-            </h2>
-            <p className="mt-2 text-[14px] leading-6 text-[#8a96a8]">
-              Are you sure you want to cancel this request? The supplier will be notified.
-            </p>
-
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <Link
-                href={buildDetailHref(data.rfq.rfqId)}
-                className="inline-flex h-11 items-center justify-center rounded-[12px] bg-[#223f68] text-[14px] font-semibold text-white transition hover:bg-[#1d3454]"
-              >
-                Keep
-              </Link>
-
-              <form action={cancelRFQ}>
-                <input type="hidden" name="rfqId" value={data.rfq.rfqId} />
-                <button
-                  type="submit"
-                  className="inline-flex h-11 w-full items-center justify-center rounded-[12px] bg-[#9aa5b5] text-[14px] font-semibold text-white transition hover:bg-[#7f8a99]"
-                >
-                  Cancel RFQ
-                </button>
-              </form>
-            </div>
-          </div>
-        </ModalShell>
-      ) : null}
-
-      {showDeclineQuoteModal && activeSubmittedQuote && primaryEngagement ? (
-        <ModalShell
-          maxWidthClassName="max-w-md"
-          panelClassName="rounded-[28px] border border-[#e2e8f0] bg-white p-8 shadow-[0_26px_80px_rgba(15,23,42,0.18)]"
-          overlayClassName="bg-[#0f172a]/45 px-4"
-        >
-          <div className="text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#eef4fb] text-[24px] text-[#223f68]">
-              x
-            </div>
-            <h2 className="mt-4 text-[28px] font-semibold tracking-[-0.03em] text-[#223654]">
-              Decline this quote?
-            </h2>
-            <p className="mt-2 text-[14px] leading-6 text-[#8a96a8]">
-              Decline the quote from {primaryEngagement.supplierName}? They will be notified.
-            </p>
-
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <Link
-                href={buildDetailHref(data.rfq.rfqId)}
-                className="inline-flex h-11 items-center justify-center rounded-[12px] bg-[#223f68] text-[14px] font-semibold text-white transition hover:bg-[#1d3454]"
-              >
-                Keep
-              </Link>
-
-              <form action={declineQuote}>
-                <input type="hidden" name="rfqId" value={data.rfq.rfqId} />
-                <input type="hidden" name="engagementId" value={primaryEngagement.engagementId} />
-                <input type="hidden" name="quoteId" value={activeSubmittedQuote.quoteId} />
-                <button
-                  type="submit"
-                  className="inline-flex h-11 w-full items-center justify-center rounded-[12px] bg-[#9aa5b5] text-[14px] font-semibold text-white transition hover:bg-[#7f8a99]"
-                >
-                  Decline
-                </button>
-              </form>
-            </div>
-          </div>
-        </ModalShell>
-      ) : null}
-
-      {showNegotiateModal && primaryEngagement ? (
-        <ModalShell
-          maxWidthClassName="max-w-2xl"
-          panelClassName="rounded-[28px] border border-[#e2e8f0] bg-white p-8 shadow-[0_26px_80px_rgba(15,23,42,0.18)]"
-          overlayClassName="bg-[#0f172a]/45 px-4 py-8"
-        >
-          <div>
-            <h2 className="text-[28px] font-semibold tracking-[-0.03em] text-[#223654]">
-              Negotiate with {primaryEngagement.supplierName}
-            </h2>
-            <p className="mt-2 text-[14px] leading-6 text-[#8a96a8]">
-              Send a counter-offer with your preferred pricing and delivery terms.
-            </p>
-
-            <form action={submitCounterOffer} className="mt-6 space-y-5">
-              <input type="hidden" name="rfqId" value={data.rfq.rfqId} />
-              <input type="hidden" name="engagementId" value={primaryEngagement.engagementId} />
-
-              <div className="grid gap-4 md:grid-cols-3">
-                <label className="space-y-2">
-                  <span className="text-[13px] font-semibold text-[#223654]">
-                    Price per Unit
-                  </span>
-                  <input
-                    type="number"
-                    name="pricePerUnit"
-                    min="0"
-                    step="0.01"
-                    defaultValue={negotiationDefaults.pricePerUnit ?? ""}
-                    className="w-full rounded-[12px] border border-[#d7dee8] bg-white px-4 py-3 text-[14px] text-[#223654] outline-none transition focus:border-[#223654]"
-                    placeholder="Optional"
-                  />
-                </label>
-
-                <label className="space-y-2">
-                  <span className="text-[13px] font-semibold text-[#223654]">Quantity</span>
-                  <input
-                    type="number"
-                    name="quantity"
-                    min="1"
-                    defaultValue={negotiationDefaults.quantity ?? ""}
-                    className="w-full rounded-[12px] border border-[#d7dee8] bg-white px-4 py-3 text-[14px] text-[#223654] outline-none transition focus:border-[#223654]"
-                    placeholder="Optional"
-                  />
-                </label>
-
-                <label className="space-y-2">
-                  <span className="text-[13px] font-semibold text-[#223654]">MOQ</span>
-                  <input
-                    type="number"
-                    name="moq"
-                    min="1"
-                    defaultValue={negotiationDefaults.moq ?? ""}
-                    className="w-full rounded-[12px] border border-[#d7dee8] bg-white px-4 py-3 text-[14px] text-[#223654] outline-none transition focus:border-[#223654]"
-                    placeholder="Optional"
-                  />
-                </label>
+              <div>
+                <p className="text-[14px] font-semibold leading-none text-[#35527d]">
+                  Negotiate with Supplier
+                </p>
+                <p className="mt-[6px] text-[13px] leading-none text-[#9aa7bb]">
+                  You may open a conversation with the supplier to clarify details before confirming the quote.
+                </p>
               </div>
+            </div>
 
-              <label className="block space-y-2">
-                <span className="text-[13px] font-semibold text-[#223654]">Lead Time</span>
-                <input
-                  type="text"
-                  name="leadTime"
-                  defaultValue={negotiationDefaults.leadTime}
-                  className="w-full rounded-[12px] border border-[#d7dee8] bg-white px-4 py-3 text-[14px] text-[#223654] outline-none transition focus:border-[#223654]"
-                  placeholder="Optional"
-                />
-              </label>
-
-              <label className="block space-y-2">
-                <span className="text-[13px] font-semibold text-[#223654]">Notes</span>
-                <textarea
-                  name="notes"
-                  rows={5}
-                  defaultValue={negotiationDefaults.notes}
-                  className="w-full rounded-[12px] border border-[#d7dee8] bg-white px-4 py-3 text-[14px] text-[#223654] outline-none transition focus:border-[#223654]"
-                  placeholder="Explain your proposed terms"
-                />
-              </label>
-
-              <div className="flex flex-wrap justify-end gap-3">
-                <Link
-                  href={buildDetailHref(data.rfq.rfqId)}
-                  className="inline-flex h-11 items-center justify-center rounded-[12px] border border-[#d7e0eb] bg-white px-5 text-[14px] font-semibold text-[#223654] transition hover:bg-[#f8fafc]"
-                >
-                  Close
-                </Link>
-                <button
-                  type="submit"
-                  className="inline-flex h-11 items-center justify-center rounded-[12px] bg-[#223f68] px-5 text-[14px] font-semibold text-white transition hover:bg-[#1d3454]"
-                >
-                  Submit Counter Offer
-                </button>
-              </div>
-            </form>
-          </div>
-        </ModalShell>
+            <span className="text-[#c3cddd]">
+              <ArrowRightIcon />
+            </span>
+          </Link>
+        </>
       ) : null}
-    </>
+    </main>
   );
 }

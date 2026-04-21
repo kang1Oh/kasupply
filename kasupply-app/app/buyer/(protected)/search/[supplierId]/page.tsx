@@ -32,6 +32,19 @@ function formatMemberSince(value: string | null) {
   return `Member Since ${date.getFullYear()}`;
 }
 
+function formatReviewSummary(params: {
+  reviewCount: number;
+  averageOverallRating: number | null;
+}) {
+  if (params.reviewCount === 0 || params.averageOverallRating == null) {
+    return "No reviews yet";
+  }
+
+  return `${params.averageOverallRating.toFixed(1)} rating · ${params.reviewCount} review${
+    params.reviewCount === 1 ? "" : "s"
+  }`;
+}
+
 export default async function SupplierProfilePage({
   params,
 }: SupplierProfilePageProps) {
@@ -65,6 +78,7 @@ export default async function SupplierProfilePage({
   const memberSince = formatMemberSince(
     supplier.certifications[0]?.verifiedAt ?? null
   );
+  const reviewSummaryLabel = formatReviewSummary(supplier.reviewSummary);
 
   return (
     <main className="mx-auto flex w-full max-w-[1180px] flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
@@ -181,7 +195,7 @@ export default async function SupplierProfilePage({
                       fill="currentColor"
                     />
                   </svg>
-                  No reviews yet
+                  {reviewSummaryLabel}
                 </span>
 
                 <span className="text-[#d0d7e2]">&bull;</span>

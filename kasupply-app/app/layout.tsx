@@ -3,6 +3,10 @@ import { Outfit } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 
+const outfit = Outfit({
+  subsets: ["latin"],
+});
+
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
   : "http://localhost:3000";
@@ -12,12 +16,6 @@ export const metadata: Metadata = {
   title: "KaSupply",
   description: "KaSupply connects buyers with trusted local suppliers.",
 };
-
-const outfit = Outfit({
-  variable: "--font-outfit",
-  display: "swap",
-  subsets: ["latin"],
-});
 
 export default function RootLayout({
   children,

@@ -1,5 +1,6 @@
 "use server";
 
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
@@ -8,9 +9,9 @@ import {
   type PurchaseOrderView,
 } from "../data";
 import {
-  updatePurchaseOrderDeliveryFee,
   updatePurchaseOrderStatus,
 } from "../actions";
+import { PurchaseOrderDetailActions } from "./detail-actions";
 
 function BellIcon() {
   return (
@@ -89,6 +90,21 @@ function formatDateTime(dateString: string | null | undefined) {
   });
 }
 
+function formatPurchaseOrderDisplayNumber(
+  poId: number | null | undefined,
+  createdAt: string | null | undefined,
+) {
+  if (poId == null || Number.isNaN(poId)) {
+    return "PO-Not set";
+  }
+
+  const parsed = createdAt ? new Date(createdAt) : null;
+  const year =
+    parsed && !Number.isNaN(parsed.getTime()) ? parsed.getFullYear() : new Date().getFullYear();
+
+  return `PO-${year}-${String(poId).padStart(4, "0")}`;
+}
+
 function getInitials(name: string) {
   return name
     .split(/\s+/)
@@ -104,31 +120,37 @@ function getStatusBadge(status: PurchaseOrderView["status"]) {
       return {
         label: "Confirmed",
         className: "bg-[#EEF4FF] text-[#356CF9]",
+        dotClassName: "bg-[#356CF9]",
       };
     case "processing":
       return {
         label: "Processing",
         className: "bg-[#FFF1E7] text-[#FF8A2A]",
+        dotClassName: "bg-[#FF8A2A]",
       };
     case "shipped":
       return {
         label: "Shipped",
         className: "bg-[#F5E8FF] text-[#A54FF6]",
+        dotClassName: "bg-[#A54FF6]",
       };
     case "completed":
       return {
         label: "Completed",
         className: "bg-[#E9F9EE] text-[#27814A]",
+        dotClassName: "bg-[#27814A]",
       };
     case "cancelled":
       return {
         label: "Closed",
         className: "bg-[#EFF2F6] text-[#6B7280]",
+        dotClassName: "bg-[#6B7280]",
       };
     default:
       return {
         label: "Confirmed",
         className: "bg-[#EEF4FF] text-[#356CF9]",
+        dotClassName: "bg-[#356CF9]",
       };
   }
 }
@@ -153,16 +175,23 @@ function getActiveStep(status: PurchaseOrderView["status"]) {
 function SectionCard({
   title,
   right,
+  titleClassName,
   children,
 }: {
   title: string;
   right?: ReactNode;
+  titleClassName?: string;
   children: ReactNode;
 }) {
   return (
     <section className="overflow-hidden rounded-[18px] border border-[#E4ECF5] bg-white shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
       <div className="flex items-center justify-between border-b border-[#E9EEF5] px-[22px] py-[14px]">
-        <h2 className="text-[13px] font-semibold uppercase tracking-[0.01em] text-[#183B6B]">
+        <h2
+          className={
+            titleClassName ??
+            "text-[14px] font-semibold uppercase tracking-[0.01em] text-[#183B6B]"
+          }
+        >
           {title}
         </h2>
         {right}
@@ -182,8 +211,8 @@ function Tracker({
   }>;
 }) {
   return (
-    <div className="rounded-[16px] border border-[#E5ECF5] bg-white px-[20px] py-[18px]">
-      <div className="grid grid-cols-4 items-start gap-[14px]">
+    <div className="flex items-center justify-center">
+      <div className="grid w-full max-w-[1120px] grid-cols-4 items-start gap-0">
         {steps.map((step, index) => {
           const stepNumber = index + 1;
           const isCompleted = step.state === "completed";
@@ -198,26 +227,50 @@ function Tracker({
             : isActive
               ? "text-[#2F6BFF]"
               : "text-[#9AA5B5]";
+          const previousStep = index > 0 ? steps[index - 1] : null;
           const lineClass =
-            index === 0
-              ? ""
-              : isCompleted || isActive
-                ? "bg-[#2F6BFF]"
-                : "bg-[#C9D2DD]";
+            previousStep?.state === "completed" ? "bg-[#1F436E]" : "bg-[#C9D2DD]";
+          const trailingLineClass =
+            step.state === "completed" || isActive ? "bg-[#1F436E]" : "bg-[#C9D2DD]";
 
           return (
-            <div key={step.label} className="relative flex flex-col items-center text-center">
+            <div key={step.label} className="relative flex flex-col items-center px-[8px] text-center">
               {index > 0 ? (
                 <span
-                  className={`absolute left-[-50%] top-[14px] h-[2px] w-full ${lineClass}`}
+                  className={`absolute top-[16px] h-[2px] rounded-full ${lineClass}`}
+                  style={{ left: "calc(-50% + 22px)", width: "calc(100% - 44px)" }}
+                />
+              ) : null}
+              {index === 0 ? (
+                <span
+                  className="absolute top-[16px] h-[2px] w-[36px] rounded-full bg-[#1F436E]"
+                  style={{ left: "calc(50% - 58px)" }}
+                />
+              ) : null}
+              {index === steps.length - 1 ? (
+                <span
+                  className={`absolute top-[16px] h-[2px] w-[36px] rounded-full ${trailingLineClass}`}
+                  style={{ right: "calc(50% - 58px)" }}
                 />
               ) : null}
               <div
-                className={`relative z-[1] flex h-[28px] w-[28px] items-center justify-center rounded-full border text-[13px] font-semibold ${circleClass}`}
+                className={`relative z-[1] flex h-[32px] w-[32px] items-center justify-center rounded-full border text-[13px] font-medium ${circleClass} ${isCompleted ? "text-transparent" : ""}`}
               >
-                {isCompleted ? "✓" : stepNumber}
+                {isCompleted ? (
+                  <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
+                    <path
+                      d="m7 12 3 3 7-7"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                ) : (
+                  stepNumber
+                )}
               </div>
-              <p className={`mt-[10px] text-[11px] font-semibold uppercase ${labelClass}`}>
+              <p className={`mt-[12px] text-[11px] font-semibold uppercase ${labelClass}`}>
                 {step.label}
               </p>
               <p className="mt-[2px] text-[11px] text-[#9AA5B5]">{step.date}</p>
@@ -250,6 +303,7 @@ export default async function SupplierPurchaseOrderDetailPage({
   const buyerName = order.buyerInfo?.businessName ?? order.buyer;
   const buyerSubtitle = order.buyerInfo?.location ?? "Buyer";
   const buyerInitials = getInitials(buyerName || "BU");
+  const poDisplayNumber = formatPurchaseOrderDisplayNumber(order.poId, order.orderDate);
   const subtotal = order.subtotal ?? order.totalAmount - (order.deliveryFee ?? 0);
   const total = order.totalAmount;
   const expectedDelivery = order.preferredDeliveryDate ?? order.deadline;
@@ -261,13 +315,9 @@ export default async function SupplierPurchaseOrderDetailPage({
     order.specifications ??
     order.quotationNotes ??
     "No buyer notes provided.";
-  const deliveryFeeValue =
-    order.deliveryFee === null || order.deliveryFee === undefined
-      ? ""
-      : String(order.deliveryFee);
-  const messageHref = order.conversationId
-    ? `/supplier/messages?conversationId=${order.conversationId}`
-    : "/supplier/messages";
+  const paymentSummarySuffix = order.paymentMethod
+    ? ` via ${order.paymentMethod}`
+    : "";
   const purchaseOrderProgressSteps = [
     {
       label: "Confirmed",
@@ -316,13 +366,11 @@ export default async function SupplierPurchaseOrderDetailPage({
   ] as const;
 
   return (
-    <div className="min-h-screen bg-[#F5F8FC]">
-      <div className="border-b border-[#E2EAF3] bg-white px-[20px] py-[10px]">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-[10px] text-[12px] text-[#9AA5B5]">
-            <Link href="/supplier/dashboard" className="transition hover:text-[#1F436E]">
-              KaSupply
-            </Link>
+    <div className="-m-6 min-h-screen bg-[#F7F9FC]">
+      <div className="border-b border-[#E8EDF4] bg-white">
+        <div className="flex items-center justify-between px-[18px] py-[15px]">
+          <div className="flex items-center gap-2 text-[12px] text-[#A4ACB9]">
+            <span className="font-normal">KaSupply</span>
             <span>›</span>
             <Link
               href="/supplier/purchase-orders"
@@ -331,18 +379,20 @@ export default async function SupplierPurchaseOrderDetailPage({
               Purchase Orders
             </Link>
             <span>›</span>
-            <span className="font-semibold text-[#3A4B66]">{order.poNumber}</span>
+            <span className="font-semibold text-[#506073]">{poDisplayNumber}</span>
           </div>
-          <div className="flex items-center gap-[10px] text-[#A9B3C4]">
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              className="flex h-[34px] w-[34px] items-center justify-center rounded-[10px] border border-[#E6ECF3] bg-white transition hover:border-[#D4DCE6] hover:text-[#1F436E]"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-[11px] border border-[#E6ECF3] bg-[#FBFCFE] text-[#B1B8C5]"
+              aria-label="Notifications"
             >
               <BellIcon />
             </button>
             <button
               type="button"
-              className="flex h-[34px] w-[34px] items-center justify-center rounded-[10px] border border-[#E6ECF3] bg-white transition hover:border-[#D4DCE6] hover:text-[#1F436E]"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-[11px] border border-[#E6ECF3] bg-[#FBFCFE] text-[#B1B8C5]"
+              aria-label="Messages"
             >
               <MessageIcon />
             </button>
@@ -350,78 +400,85 @@ export default async function SupplierPurchaseOrderDetailPage({
         </div>
       </div>
 
-      <div className="px-[24px] py-[22px]">
-        <div className="space-y-[14px] rounded-[20px] border border-[#E4ECF5] bg-white p-[22px] shadow-[0_10px_26px_rgba(15,23,42,0.04)]">
-          <div className="flex items-start justify-between gap-[16px]">
+      <div className="px-[20px] py-[18px]">
+        <section>
+          <div className="flex flex-col gap-[8px] px-[6px] py-[4px] lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <h1 className="text-[16px] font-semibold text-[#243B68]">{order.poNumber}</h1>
-              <p className="mt-[4px] text-[13px] text-[#A4AFBF]">
+              <h1 className="text-[18px] font-semibold text-[#223654]">{poDisplayNumber}</h1>
+              <p className="mt-[4px] text-[15px] text-[#A0A9B8]">
                 Placed on {formatDate(order.orderDate)}
               </p>
             </div>
             <span
-              className={`inline-flex items-center rounded-full px-[12px] py-[6px] text-[12px] font-semibold ${statusBadge.className}`}
+              className={`inline-flex h-[30px] items-center gap-[8px] rounded-full px-[14px] text-[11px] font-semibold ${statusBadge.className}`}
             >
               • {statusBadge.label}
             </span>
           </div>
 
-          <Tracker
-            steps={
-              purchaseOrderProgressSteps as unknown as Array<{
-                label: string;
-                date: string;
-                state: "completed" | "active" | "pending";
-              }>
-            }
-          />
-        </div>
+          <div className="mt-[12px] rounded-[18px] border border-[#E4ECF5] bg-white px-[28px] py-[24px] shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+            <Tracker
+              steps={
+                purchaseOrderProgressSteps as unknown as Array<{
+                  label: string;
+                  date: string;
+                  state: "completed" | "active" | "pending";
+                }>
+              }
+            />
+          </div>
+        </section>
 
         <div className="mt-[14px] space-y-[14px]">
           <SectionCard title="Buyer Info">
-            <div className="flex items-center gap-[14px] rounded-[14px] border border-[#EEF3F8] bg-white px-[10px] py-[10px]">
-              <div className="flex h-[44px] w-[44px] items-center justify-center rounded-[12px] bg-[#EFFBF2] text-[24px] font-semibold text-[#27814A]">
+            <div className="flex items-start gap-[14px]">
+              <div className="mt-[2px] flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-[#EDF9F1] text-[18px] font-medium text-[#2E8B57]">
                 {buyerInitials}
               </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-[10px]">
-                  <h2 className="truncate text-[14px] font-semibold text-[#324766]">
+              <div className="min-w-0 pt-[1px]">
+                <div className="flex flex-wrap items-center gap-[8px]">
+                  <h2 className="truncate text-[15px] font-semibold text-[#223654]">
                     {buyerName}
                   </h2>
-                  <span className="inline-flex items-center rounded-full border border-[#7BC79D] px-[8px] py-[2px] text-[11px] font-medium text-[#27814A]">
+                  <span className="inline-flex h-[22px] items-center rounded-[6px] border border-[#B8E0C7] bg-[#F4FCF7] px-[8px] text-[10px] font-semibold text-[#2F8C57]">
                     ✓ Verified
                   </span>
                 </div>
-                <p className="mt-[3px] text-[12px] text-[#99A7B8]">{buyerSubtitle}</p>
+                <p className="mt-[2px] text-[14px] text-[#8E99AB]">
+                  {buyerSubtitle || "Buyer profile details not available"}
+                </p>
               </div>
             </div>
           </SectionCard>
 
-          <SectionCard title="Order Summary">
-            <div className="overflow-hidden rounded-[14px] border border-[#EEF2F7]">
-              <div className="grid grid-cols-[2.2fr_0.8fr_0.8fr_0.8fr] gap-[12px] border-b border-[#EDF2F7] px-[14px] py-[10px] text-[11px] font-semibold uppercase tracking-[0.02em] text-[#A4AFBF]">
+          <SectionCard
+            title="Order Summary"
+            titleClassName="text-[14px] font-semibold uppercase tracking-[0.01em] text-[#223F68]"
+          >
+            <div>
+              <div className="grid grid-cols-[2.2fr_0.8fr_0.8fr_0.8fr] gap-[12px] border-b border-[#EDF2F7] px-[14px] pb-[12px] pt-[3px] text-[13px] font-semibold uppercase tracking-[0.02em] text-[#A4AFBF]">
                 <span>Item</span>
                 <span className="text-right">Qty</span>
                 <span className="text-right">Unit Price</span>
                 <span className="text-right">Total</span>
               </div>
-              <div className="grid grid-cols-[2.2fr_0.8fr_0.8fr_0.8fr] gap-[12px] border-b border-[#EDF2F7] px-[14px] py-[14px] text-[14px] text-[#334155]">
-                <span className="font-medium text-[#1F2F4A]">{order.productName}</span>
-                <span className="text-right">{order.quantityLabel}</span>
-                <span className="text-right">
+              <div className="grid grid-cols-[2.2fr_0.8fr_0.8fr_0.8fr] gap-[12px] border-b border-[#EDF2F7] px-[14px] py-[18px] text-[15px] text-[#334155]">
+                <span className="font-medium text-[#334155]">{order.productName}</span>
+                <span className="text-right font-normal text-[#8E99AB]">{order.quantityLabel}</span>
+                <span className="text-right font-normal text-[#8E99AB]">
                   {formatCurrency(order.pricePerUnit)}
                   {order.unit ? ` / ${order.unit}` : ""}
                 </span>
-                <span className="text-right font-medium text-[#1F2F4A]">
+                <span className="text-right font-normal text-[#8E99AB]">
                   {formatCurrency(order.totalAmount - (order.deliveryFee ?? 0))}
                 </span>
               </div>
-              <div className="space-y-[6px] px-[14px] py-[14px] text-[13px]">
-                <div className="flex items-center justify-between text-[#A4AFBF]">
+              <div className="space-y-[8px] px-[14px] py-[16px] text-[13px]">
+                <div className="flex items-center justify-between font-normal text-[#B5BCC8]">
                   <span>Subtotal</span>
                   <span>{formatCurrency(subtotal)}</span>
                 </div>
-                <div className="flex items-center justify-between text-[#A4AFBF]">
+                <div className="flex items-center justify-between font-normal text-[#B5BCC8]">
                   <span>Delivery Fee</span>
                   <span>
                     {order.deliveryFee === null || order.deliveryFee === undefined
@@ -429,47 +486,13 @@ export default async function SupplierPurchaseOrderDetailPage({
                       : formatCurrency(order.deliveryFee)}
                   </span>
                 </div>
-                <div className="mt-[10px] flex items-center justify-between border-t border-[#EDF2F7] pt-[10px] text-[14px] font-semibold text-[#1F2F4A]">
-                  <span>Total</span>
-                  <span>{formatCurrency(total)}</span>
+                <div className="mt-[14px] flex items-center justify-between border-t border-[#EDF2F7] pt-[14px] text-[15px] font-semibold text-[#334155]">
+                  <span>TOTAL</span>
+                  <span className="text-[18px] font-semibold">{formatCurrency(total)}</span>
                 </div>
               </div>
             </div>
           </SectionCard>
-
-          {order.status === "confirmed" ? (
-            <SectionCard title="Set Delivery Fee">
-              <form action={updatePurchaseOrderDeliveryFee} className="space-y-[12px]">
-                <input type="hidden" name="po_id" value={order.poId} />
-                <div className="grid gap-[12px] md:grid-cols-[1fr_220px] md:items-end">
-                  <div>
-                    <label className="block text-[13px] font-medium text-[#324766]">
-                      Delivery fee
-                    </label>
-                    <p className="mt-[4px] text-[12px] text-[#A4AFBF]">
-                      Leave blank if delivery is free.
-                    </p>
-                  </div>
-                  <input
-                    type="number"
-                    step="0.01"
-                    name="delivery_fee"
-                    defaultValue={deliveryFeeValue}
-                    placeholder="₱ 0.00"
-                    className="h-[40px] rounded-[10px] border border-[#D7E2EE] px-[12px] text-[14px] text-[#243B68] outline-none transition focus:border-[#2F6BFF] focus:ring-2 focus:ring-[#2F6BFF]/10"
-                  />
-                </div>
-                <div className="flex justify-end">
-                  <button
-                    type="submit"
-                    className="inline-flex h-[38px] items-center justify-center rounded-[10px] bg-[#1F436E] px-[16px] text-[13px] font-semibold text-white transition hover:bg-[#19385B]"
-                  >
-                    Save Delivery Fee
-                  </button>
-                </div>
-              </form>
-            </SectionCard>
-          ) : null}
 
           <SectionCard title="More Details">
             <div className="grid gap-[18px] md:grid-cols-2">
@@ -515,22 +538,21 @@ export default async function SupplierPurchaseOrderDetailPage({
           </SectionCard>
 
           {order.status === "processing" ? (
-            <div className="rounded-[14px] border border-[#FFD4B3] bg-[#FFF8F2] px-[16px] py-[14px]">
-              <div className="flex items-start gap-[12px]">
-                <div className="mt-[1px] flex h-[34px] w-[34px] items-center justify-center rounded-[10px] bg-[#FF8A2A] text-white">
-                  <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none">
-                    <path
-                      d="M7 12h10M12 7l5 5-5 5"
-                      stroke="currentColor"
-                      strokeWidth="1.9"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+            <div className="rounded-[14px] border border-[#FF8A2A] bg-[#FDFFFE] px-[14px] py-[12px]">
+              <div className="flex items-start gap-[10px]">
+                <div className="mt-[1px] flex h-[44px] w-[44px] items-center justify-center rounded-[14px] bg-[#FF7A1A] text-white">
+                  <Image
+                    src="/icons/order_processed.svg"
+                    alt=""
+                    width={22}
+                    height={22}
+                    className="h-[22px] w-[22px]"
+                    aria-hidden="true"
+                  />
                 </div>
-                <div>
-                  <p className="text-[14px] font-semibold text-[#FF8A2A]">Order is being processed</p>
-                  <p className="mt-[4px] text-[12px] text-[#A27242]">
+                <div className="min-w-0">
+                  <p className="text-[14px] font-semibold text-[#FF6B00]">Order is being processed</p>
+                  <p className="mt-[2px] text-[13px] font-normal leading-[1.45] text-[#A2A8B3]">
                     You are currently preparing this order. Mark as shipped once it has been dispatched to the buyer.
                   </p>
                 </div>
@@ -543,43 +565,39 @@ export default async function SupplierPurchaseOrderDetailPage({
               <div className="rounded-[14px] border border-[#8ED2A8] bg-[#F4FFF8] px-[16px] py-[14px]">
                 <div className="flex items-start gap-[12px]">
                   <div className="mt-[1px] flex h-[34px] w-[34px] items-center justify-center rounded-[10px] bg-[#27814A] text-white">
-                    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none">
-                      <path
-                        d="m7 12 3 3 7-7"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
+                    <Image
+                      src="/icons/order_arrived.svg"
+                      alt=""
+                      width={22}
+                      height={22}
+                      className="h-[22px] w-[22px]"
+                      aria-hidden="true"
+                    />
                   </div>
                   <div>
                     <p className="text-[14px] font-semibold text-[#27814A]">Order completed successfully</p>
-                    <p className="mt-[4px] text-[12px] text-[#5A8A69]">
-                      This order was fulfilled and marked complete on {formatDate(order.completedAt ?? order.orderDate)}. Total payment collected via COD: {formatCurrency(total)}.
+                    <p className="mt-[4px] text-[12px] text-[#A2A8B3]">
+                      This order was fulfilled and marked complete on {formatDate(order.completedAt ?? order.orderDate)}. Total payment collected{paymentSummarySuffix}: {formatCurrency(total)}.
                     </p>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="rounded-[14px] border border-[#C9B7FF] bg-[#FBF8FF] px-[16px] py-[14px]">
+              <div className="rounded-[14px] border border-[#4E13B3] bg-[#FBF8FF] px-[16px] py-[14px]">
                 <div className="flex items-start gap-[12px]">
-                  <div className="mt-[1px] flex h-[34px] w-[34px] items-center justify-center rounded-[10px] bg-[#6F3DF4] text-white">
-                    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none">
-                      <path
-                        d="M7 7h6v6H7zM13 10h2.5l2 2v4H15"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                      <circle cx="9.5" cy="17" r="1.5" stroke="currentColor" strokeWidth="1.8" />
-                      <circle cx="17" cy="17" r="1.5" stroke="currentColor" strokeWidth="1.8" />
-                    </svg>
+                  <div className="mt-[1px] flex h-[34px] w-[34px] items-center justify-center rounded-[10px] bg-[#4E13B3] text-white">
+                    <Image
+                      src="/icons/order_arrived.svg"
+                      alt=""
+                      width={22}
+                      height={22}
+                      className="h-[22px] w-[22px]"
+                      aria-hidden="true"
+                    />
                   </div>
                   <div>
-                    <p className="text-[14px] font-semibold text-[#6F3DF4]">Order on its way</p>
-                    <p className="mt-[4px] text-[12px] text-[#8E75C9]">
+                    <p className="text-[14px] font-semibold text-[#4E13B3]">Order on its way</p>
+                    <p className="mt-[4px] text-[12px] text-[#A2A8B3]">
                       Order was dispatched on {formatDate(expectedDelivery ?? order.orderDate)}. Waiting for the buyer to confirm receipt.
                     </p>
                   </div>
@@ -613,99 +631,52 @@ export default async function SupplierPurchaseOrderDetailPage({
             <div className="rounded-[14px] border border-[#8ED2A8] bg-[#F4FFF8] px-[16px] py-[14px]">
               <div className="flex items-start gap-[12px]">
                 <div className="mt-[1px] flex h-[34px] w-[34px] items-center justify-center rounded-[10px] bg-[#27814A] text-white">
-                  <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none">
-                    <path
-                      d="m7 12 3 3 7-7"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+                  <Image
+                    src="/icons/order_arrived.svg"
+                    alt=""
+                    width={22}
+                    height={22}
+                    className="h-[22px] w-[22px]"
+                    aria-hidden="true"
+                  />
                 </div>
                 <div>
                   <p className="text-[14px] font-semibold text-[#27814A]">Order completed successfully</p>
-                  <p className="mt-[4px] text-[12px] text-[#5A8A69]">
-                    This order was fulfilled and marked complete on {formatDate(order.completedAt ?? order.orderDate)}. Total payment collected via COD: {formatCurrency(total)}.
+                  <p className="mt-[4px] text-[12px] text-[#A2A8B3]">
+                    This order was fulfilled and marked complete on {formatDate(order.completedAt ?? order.orderDate)}. Total payment collected{paymentSummarySuffix}: {formatCurrency(total)}.
                   </p>
                 </div>
               </div>
             </div>
           ) : null}
 
-          <div className="grid gap-[12px] md:grid-cols-2">
-            {order.status === "confirmed" ? (
-              <>
-                <form action={updatePurchaseOrderStatus}>
-                  <input type="hidden" name="po_id" value={order.poId} />
-                  <input type="hidden" name="status" value="processing" />
-                  <button
-                    type="submit"
-                    className="flex h-[44px] w-full items-center justify-center rounded-[10px] bg-[#1F436E] text-[14px] font-semibold text-white transition hover:bg-[#19385B]"
-                  >
-                    Mark as Processing
-                  </button>
-                </form>
-                <form action={updatePurchaseOrderStatus}>
-                  <input type="hidden" name="po_id" value={order.poId} />
-                  <input type="hidden" name="status" value="cancelled" />
-                  <button
-                    type="submit"
-                    className="flex h-[44px] w-full items-center justify-center rounded-[10px] border border-[#FF5B47] bg-white text-[14px] font-semibold text-[#FF5B47] transition hover:bg-[#FFF5F4]"
-                  >
-                    Cancel Order
-                  </button>
-                </form>
-              </>
-            ) : null}
+          {(order.status === "confirmed" || order.status === "processing") ? (
+            <PurchaseOrderDetailActions
+              poId={order.poId}
+              status={order.status}
+              updateStatusAction={updatePurchaseOrderStatus}
+            />
+          ) : null}
 
-            {order.status === "processing" ? (
-              <>
-                <form action={updatePurchaseOrderStatus}>
-                  <input type="hidden" name="po_id" value={order.poId} />
-                  <input type="hidden" name="status" value="shipped" />
-                  <button
-                    type="submit"
-                    className="flex h-[44px] w-full items-center justify-center rounded-[10px] bg-[#1F436E] text-[14px] font-semibold text-white transition hover:bg-[#19385B]"
-                  >
-                    Mark as Shipped
-                  </button>
-                </form>
-                <form action={updatePurchaseOrderStatus}>
-                  <input type="hidden" name="po_id" value={order.poId} />
-                  <input type="hidden" name="status" value="cancelled" />
-                  <button
-                    type="submit"
-                    className="flex h-[44px] w-full items-center justify-center rounded-[10px] border border-[#FF5B47] bg-white text-[14px] font-semibold text-[#FF5B47] transition hover:bg-[#FFF5F4]"
-                  >
-                    Cancel Order
-                  </button>
-                </form>
-              </>
-            ) : null}
+          {order.status === "shipped" ? (
+            <div className="grid gap-[12px] md:grid-cols-2">
+              <PurchaseOrderDetailActions
+                poId={order.poId}
+                status="shipped"
+                updateStatusAction={updatePurchaseOrderStatus}
+              />
+              <Link
+                href="/supplier/purchase-orders"
+                className="flex h-[44px] w-full items-center justify-center rounded-[10px] border border-[#D6DFEA] bg-white text-[14px] font-medium text-[#8A97A8] transition hover:border-[#B9C7D8] hover:text-[#243B68]"
+              >
+                Back to Orders
+              </Link>
+            </div>
+          ) : null}
 
-            {order.status === "shipped" ? (
-              <>
-                <form action={updatePurchaseOrderStatus}>
-                  <input type="hidden" name="po_id" value={order.poId} />
-                  <input type="hidden" name="status" value="completed" />
-                  <button
-                    type="submit"
-                    className="flex h-[44px] w-full items-center justify-center rounded-[10px] bg-[#1F436E] text-[14px] font-semibold text-white transition hover:bg-[#19385B]"
-                  >
-                    Mark as Completed
-                  </button>
-                </form>
-                <Link
-                  href="/supplier/purchase-orders"
-                  className="flex h-[44px] w-full items-center justify-center rounded-[10px] border border-[#D6DFEA] bg-white text-[14px] font-medium text-[#8A97A8] transition hover:border-[#B9C7D8] hover:text-[#243B68]"
-                >
-                  Back to Orders
-                </Link>
-              </>
-            ) : null}
-
-            {order.status === "completed" ? (
+          {order.status === "completed" || order.status === "cancelled" ? (
+            <div className="grid gap-[12px] md:grid-cols-2">
+              {order.status === "completed" ? (
               <Link
                 href="/supplier/purchase-orders"
                 className="flex h-[44px] items-center justify-center rounded-[10px] border border-[#D6DFEA] bg-white text-[14px] font-medium text-[#8A97A8] transition hover:border-[#B9C7D8] hover:text-[#243B68] md:col-span-2"
@@ -714,7 +685,7 @@ export default async function SupplierPurchaseOrderDetailPage({
               </Link>
             ) : null}
 
-            {order.status === "cancelled" ? (
+              {order.status === "cancelled" ? (
               <Link
                 href="/supplier/purchase-orders"
                 className="flex h-[44px] items-center justify-center rounded-[10px] border border-[#D6DFEA] bg-white text-[14px] font-medium text-[#8A97A8] transition hover:border-[#B9C7D8] hover:text-[#243B68]"
@@ -722,9 +693,11 @@ export default async function SupplierPurchaseOrderDetailPage({
                 Back to Orders
               </Link>
             ) : null}
-          </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
   );
 }
+

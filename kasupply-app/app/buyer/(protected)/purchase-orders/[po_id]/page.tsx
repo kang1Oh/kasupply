@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { ModalShell } from "@/components/modals";
 import { cancelPurchaseOrder, uploadPurchaseOrderReceipt } from "../actions";
 import { getBuyerPurchaseOrderDetail } from "../data";
+import { CompletedOrderActions } from "./completed-order-actions";
+import { ReceiptUploadDetailPanel } from "./receipt-upload-detail-panel";
 import { ReceiptUploadWidget } from "./receipt-upload-widget";
 
 function formatCurrency(value: number | null) {
@@ -54,6 +56,16 @@ function toTitleCase(value: string | null) {
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function formatBusinessType(value: string | null | undefined) {
+  if (!value) return null;
+
+  return value
+    .split(/[_\s/]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" / ");
 }
 
 function getInitials(value: string | null | undefined) {
@@ -155,6 +167,445 @@ function DetailMetric({
         {value}
       </div>
     </div>
+  );
+}
+
+function formatUnitPrice(value: number | null, unit: string | null) {
+  if (value === null || Number.isNaN(value)) {
+    return "Not available";
+  }
+
+  const formatted = formatCurrency(value);
+  return unit ? `${formatted} / ${unit}` : formatted;
+}
+
+function VerifiedBadge() {
+  return (
+    <span className="inline-flex h-[18px] items-center rounded-full border border-[#94cfaa] bg-[#f5fbf6] px-[6px] text-[10px] font-semibold leading-none text-[#4f996e]">
+      Verified
+    </span>
+  );
+}
+
+function ConfirmedProgressCard() {
+  const steps = [
+    { label: "Confirmed", active: true },
+    { label: "Processing", active: false, number: 2 },
+    { label: "Shipped", active: false, number: 3 },
+    { label: "Completed", active: false, number: 4 },
+  ];
+
+  return (
+    <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+      <div className="px-[18px] py-[18px]">
+        <div className="flex items-start justify-between gap-[14px]">
+          {steps.map((step, index) => (
+            <div key={step.label} className="flex flex-1 items-start">
+              <div className="flex min-w-0 flex-1 flex-col items-center text-center">
+                <span
+                  className={`flex h-[28px] w-[28px] items-center justify-center rounded-full text-[12px] font-semibold leading-none ${
+                    step.active
+                      ? "bg-[#3d73f1] text-white"
+                      : "bg-[#aeb6c3] text-white"
+                  }`}
+                >
+                  {step.active ? (
+                    <svg viewBox="0 0 16 16" className="h-[12px] w-[12px]" aria-hidden="true">
+                      <path
+                        d="M3.5 8.1 6.4 11l6.1-6.1"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  ) : (
+                    step.number
+                  )}
+                </span>
+                <p
+                  className={`mt-[12px] text-[11px] font-semibold uppercase leading-none ${
+                    step.active ? "text-[#3d73f1]" : "text-[#9da7b6]"
+                  }`}
+                >
+                  {step.label}
+                </p>
+                <p className="mt-[8px] text-[12px] leading-none text-[#c8ced8]">-</p>
+              </div>
+
+              {index < steps.length - 1 ? (
+                <span className="mt-[14px] block h-px flex-1 bg-[#cfd7e4]" />
+              ) : null}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ProcessingProgressCard({
+  confirmedAt,
+  processingAt,
+}: {
+  confirmedAt: string | null;
+  processingAt: string | null;
+}) {
+  const steps = [
+    {
+      label: "Confirmed",
+      tone: "completed" as const,
+      content: (
+        <svg viewBox="0 0 16 16" className="h-[12px] w-[12px]" aria-hidden="true">
+          <path
+            d="M3.5 8.1 6.4 11l6.1-6.1"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      ),
+      timestamp: confirmedAt ? formatStepTimestamp(confirmedAt) : "-",
+    },
+    {
+      label: "Processing",
+      tone: "active" as const,
+      content: (
+        <svg viewBox="0 0 16 16" className="h-[12px] w-[12px]" aria-hidden="true">
+          <path
+            d="M3.5 8.1 6.4 11l6.1-6.1"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      ),
+      timestamp: processingAt ? formatStepTimestamp(processingAt) : "-",
+    },
+    {
+      label: "Shipped",
+      tone: "pending" as const,
+      content: 3,
+      timestamp: "-",
+    },
+    {
+      label: "Completed",
+      tone: "pending" as const,
+      content: 4,
+      timestamp: "-",
+    },
+  ];
+
+  return (
+    <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+      <div className="px-[18px] py-[18px]">
+        <div className="flex items-start justify-between gap-[14px]">
+          {steps.map((step, index) => (
+            <div key={step.label} className="flex flex-1 items-start">
+              <div className="flex min-w-0 flex-1 flex-col items-center text-center">
+                <span
+                  className={`flex h-[28px] w-[28px] items-center justify-center rounded-full text-[12px] font-semibold leading-none ${
+                    step.tone === "completed"
+                      ? "bg-[#233f68] text-white"
+                      : step.tone === "active"
+                        ? "bg-[#3d73f1] text-white"
+                        : "bg-[#aeb6c3] text-white"
+                  }`}
+                >
+                  {step.content}
+                </span>
+                <p
+                  className={`mt-[12px] text-[11px] font-semibold uppercase leading-none ${
+                    step.tone === "active"
+                      ? "text-[#3d73f1]"
+                      : step.tone === "completed"
+                        ? "text-[#233f68]"
+                        : "text-[#9da7b6]"
+                  }`}
+                >
+                  {step.label}
+                </p>
+                <p
+                  className={`mt-[8px] text-[11px] leading-none ${
+                    step.tone === "pending" ? "text-[#c8ced8]" : "text-[#9aa4b3]"
+                  }`}
+                >
+                  {step.timestamp}
+                </p>
+              </div>
+
+              {index < steps.length - 1 ? (
+                <span className="mt-[14px] block h-px flex-1 bg-[#cfd7e4]" />
+              ) : null}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ShippedProgressCard({
+  confirmedAt,
+  processingAt,
+  shippedAt,
+}: {
+  confirmedAt: string | null;
+  processingAt: string | null;
+  shippedAt: string | null;
+}) {
+  const steps = [
+    {
+      label: "Confirmed",
+      tone: "completed" as const,
+      content: (
+        <svg viewBox="0 0 16 16" className="h-[12px] w-[12px]" aria-hidden="true">
+          <path
+            d="M3.5 8.1 6.4 11l6.1-6.1"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      ),
+      timestamp: confirmedAt ? formatStepTimestamp(confirmedAt) : "-",
+    },
+    {
+      label: "Processing",
+      tone: "completed" as const,
+      content: (
+        <svg viewBox="0 0 16 16" className="h-[12px] w-[12px]" aria-hidden="true">
+          <path
+            d="M3.5 8.1 6.4 11l6.1-6.1"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      ),
+      timestamp: processingAt ? formatStepTimestamp(processingAt) : "-",
+    },
+    {
+      label: "Shipped",
+      tone: "active" as const,
+      content: 3,
+      timestamp: shippedAt ? formatStepTimestamp(shippedAt) : "-",
+    },
+    {
+      label: "Completed",
+      tone: "pending" as const,
+      content: 4,
+      timestamp: "-",
+    },
+  ];
+
+  return (
+    <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+      <div className="px-[18px] py-[18px]">
+        <div className="flex items-start justify-between gap-[14px]">
+          {steps.map((step, index) => (
+            <div key={step.label} className="flex flex-1 items-start">
+              <div className="flex min-w-0 flex-1 flex-col items-center text-center">
+                <span
+                  className={`flex h-[28px] w-[28px] items-center justify-center rounded-full text-[12px] font-semibold leading-none ${
+                    step.tone === "completed"
+                      ? "bg-[#233f68] text-white"
+                      : step.tone === "active"
+                        ? "bg-[#3d73f1] text-white"
+                        : "bg-[#aeb6c3] text-white"
+                  }`}
+                >
+                  {step.content}
+                </span>
+                <p
+                  className={`mt-[12px] text-[11px] font-semibold uppercase leading-none ${
+                    step.tone === "active"
+                      ? "text-[#3d73f1]"
+                      : step.tone === "completed"
+                        ? "text-[#233f68]"
+                        : "text-[#9da7b6]"
+                  }`}
+                >
+                  {step.label}
+                </p>
+                <p
+                  className={`mt-[8px] text-[11px] leading-none ${
+                    step.tone === "pending" ? "text-[#c8ced8]" : "text-[#9aa4b3]"
+                  }`}
+                >
+                  {step.timestamp}
+                </p>
+              </div>
+
+              {index < steps.length - 1 ? (
+                <span className="mt-[14px] block h-px flex-1 bg-[#cfd7e4]" />
+              ) : null}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function UploadReceiptProgressCard({
+  confirmedAt,
+  processingAt,
+  shippedAt,
+  completedAt,
+}: {
+  confirmedAt: string | null;
+  processingAt: string | null;
+  shippedAt: string | null;
+  completedAt: string | null;
+}) {
+  const steps = [
+    {
+      label: "Confirmed",
+      tone: "completed" as const,
+      content: (
+        <svg viewBox="0 0 16 16" className="h-[12px] w-[12px]" aria-hidden="true">
+          <path
+            d="M3.5 8.1 6.4 11l6.1-6.1"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      ),
+      timestamp: confirmedAt ? formatStepTimestamp(confirmedAt) : "-",
+    },
+    {
+      label: "Processing",
+      tone: "completed" as const,
+      content: (
+        <svg viewBox="0 0 16 16" className="h-[12px] w-[12px]" aria-hidden="true">
+          <path
+            d="M3.5 8.1 6.4 11l6.1-6.1"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      ),
+      timestamp: processingAt ? formatStepTimestamp(processingAt) : "-",
+    },
+    {
+      label: "Shipped",
+      tone: "completed" as const,
+      content: (
+        <svg viewBox="0 0 16 16" className="h-[12px] w-[12px]" aria-hidden="true">
+          <path
+            d="M3.5 8.1 6.4 11l6.1-6.1"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      ),
+      timestamp: shippedAt ? formatStepTimestamp(shippedAt) : "-",
+    },
+    {
+      label: "Completed",
+      tone: "active" as const,
+      content: 4,
+      timestamp: completedAt ? formatStepTimestamp(completedAt) : "-",
+    },
+  ];
+
+  return (
+    <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+      <div className="px-[18px] py-[18px]">
+        <div className="flex items-start justify-between gap-[14px]">
+          {steps.map((step, index) => (
+            <div key={step.label} className="flex flex-1 items-start">
+              <div className="flex min-w-0 flex-1 flex-col items-center text-center">
+                <span
+                  className={`flex h-[28px] w-[28px] items-center justify-center rounded-full text-[12px] font-semibold leading-none ${
+                    step.tone === "completed"
+                      ? "bg-[#233f68] text-white"
+                      : "bg-[#3d73f1] text-white"
+                  }`}
+                >
+                  {step.content}
+                </span>
+                <p
+                  className={`mt-[12px] text-[11px] font-semibold uppercase leading-none ${
+                    step.tone === "active" ? "text-[#3d73f1]" : "text-[#233f68]"
+                  }`}
+                >
+                  {step.label}
+                </p>
+                <p className="mt-[8px] text-[11px] leading-none text-[#9aa4b3]">
+                  {step.timestamp}
+                </p>
+              </div>
+
+              {index < steps.length - 1 ? (
+                <span className="mt-[14px] block h-px flex-1 bg-[#cfd7e4]" />
+              ) : null}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PaymentReceiptCard({
+  receiptFileUrl,
+  receiptFilePath,
+}: {
+  receiptFileUrl: string | null;
+  receiptFilePath: string | null;
+}) {
+  if (!receiptFileUrl) {
+    return null;
+  }
+
+  return (
+    <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+      <div className="flex items-center justify-between gap-4 px-[16px] py-[14px]">
+        <div className="min-w-0">
+          <p className="text-[12px] font-semibold leading-none text-[#5a6678]">
+            Payment Receipt
+          </p>
+          <p className="mt-[6px] text-[12px] leading-[1.45] text-[#b0b7c2]">
+            Payment receipt uploaded. Awaiting supplier verification.
+          </p>
+        </div>
+
+        <a
+          href={receiptFileUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex h-[32px] shrink-0 items-center justify-center rounded-[8px] border border-[#d8dee7] bg-white px-[14px] text-[11px] font-semibold text-[#5f6877] transition hover:bg-[#f8fafc]"
+        >
+          View Receipt
+        </a>
+      </div>
+
+      {!isImageFile(receiptFileUrl) && receiptFilePath ? (
+        <div className="border-t border-[#f0f2f5] px-[16px] py-[10px] text-[11px] text-[#a0a9b7]">
+          {getFileName(receiptFilePath)}
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -374,6 +825,7 @@ export default async function BuyerPurchaseOrderDetailPage({
   searchParams?: Promise<{
     modal?: string;
     receiptError?: string;
+    step?: string;
   }>;
 }) {
   const resolvedParams = await params;
@@ -389,6 +841,8 @@ export default async function BuyerPurchaseOrderDetailPage({
     typeof resolvedSearchParams.receiptError === "string"
       ? resolvedSearchParams.receiptError
       : null;
+  const currentStep =
+    typeof resolvedSearchParams.step === "string" ? resolvedSearchParams.step : null;
 
   if (!order) {
     notFound();
@@ -399,12 +853,19 @@ export default async function BuyerPurchaseOrderDetailPage({
     ? `/buyer/messages?conversation=${order.conversationId}`
     : "/buyer/messages";
   const supplierProfileHref = order.supplierId
-    ? `/buyer/suppliers/${order.supplierId}`
+    ? `/buyer/search/${order.supplierId}`
     : messageSupplierHref;
+  const supplierReviewHref = `/buyer/purchase-orders/${order.poId}/review`;
   const showCancelModal = resolvedSearchParams.modal === "cancel" && canCancelOrder;
   const referenceCode = getPurchaseOrderCode(order.poId, order.createdAt);
-  const placedOnDate = formatDate(order.confirmedAt ?? order.createdAt);
+  const placedOnDate = formatDate(order.createdAt);
   const supplierName = order.supplierInfo?.businessName ?? "Unknown supplier";
+  const supplierSubtitle = [
+    formatBusinessType(order.supplierInfo?.businessType ?? null),
+    order.supplierInfo?.location ?? null,
+  ]
+    .filter(Boolean)
+    .join(" \u00b7 ");
   const stepTimeline = {
     confirmed: order.confirmedAt ?? order.createdAt,
     processing: order.status === "processing" ? order.updatedAt : null,
@@ -419,18 +880,1171 @@ export default async function BuyerPurchaseOrderDetailPage({
   const shouldShowReceiptUpload =
     order.status === "shipped" &&
     ["not_uploaded", "rejected"].includes(order.receiptStatus);
+  const shouldPromptReceiptConfirmation =
+    order.status === "shipped" && order.receiptStatus === "not_uploaded";
+  const shouldShowReceiptResubmission =
+    order.status === "shipped" && order.receiptStatus === "rejected";
   const shouldShowReceiptPendingReview =
     order.status === "shipped" && order.receiptStatus === "pending_review";
   const shouldShowReceiptApproved =
     order.status === "shipped" && order.receiptStatus === "approved";
   const showCompletedReceipt = order.status === "completed" && Boolean(order.receiptFileUrl);
+  const shouldOpenReceiptUploadStep =
+    currentStep === "upload-receipt" || shouldShowReceiptResubmission;
   const notesFromBuyer = [order.additionalNotes, order.quotationNotes]
     .filter(Boolean)
     .join(" ");
+  const confirmedNotes = order.additionalNotes || order.specifications || "No additional instructions provided.";
+  const processingNotes = confirmedNotes;
+  const shippedNotes = confirmedNotes;
+  const processingStartedAt = order.updatedAt ?? order.confirmedAt ?? order.createdAt;
+  const shippedAt = order.updatedAt ?? order.confirmedAt ?? order.createdAt;
+  const uploadReceiptCompletedAt = order.completedAt ?? null;
   const deliveryFeeLabel =
     order.status === "confirmed" && (!order.deliveryFee || order.deliveryFee <= 0)
       ? "Not yet set"
       : formatCurrency(order.deliveryFee);
+  const processingDeliveryFeeLabel =
+    order.deliveryFee === null || order.deliveryFee === undefined
+      ? "Not yet set"
+      : formatCurrency(order.deliveryFee);
+  const shippedDeliveryFeeLabel = processingDeliveryFeeLabel;
+
+  if (order.status === "completed" && order.receiptFileUrl) {
+    return (
+      <>
+        <main className="mx-auto w-full max-w-[1042px] space-y-[10px] pb-2">
+          <section className="pb-[4px]">
+            <nav className="flex items-center gap-[7px] text-[11px] font-medium text-[#bcc2cb]">
+              <Link href="/buyer/purchase-orders" className="transition hover:text-[#7f8a99]">
+                Purchase Order
+              </Link>
+              <span>&gt;</span>
+              <span>{referenceCode}</span>
+            </nav>
+          </section>
+
+          <section className="flex items-start justify-between gap-6 pb-[6px]">
+            <div>
+              <h1 className="text-[32px] font-semibold tracking-[-0.04em] text-[#455060]">
+                {referenceCode}
+              </h1>
+              <p className="mt-[5px] text-[14px] font-normal leading-none text-[#c1c6cf]">
+                Placed on {placedOnDate} {"\u00b7"} {supplierName}
+              </p>
+            </div>
+
+            <div className="pt-[4px]">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#d7f0dd] bg-[#edf8ef] px-[11px] py-[5px] text-[12px] font-medium leading-none text-[#2f7a45]">
+                <span className="h-[7px] w-[7px] rounded-full bg-[#2f7a45]" />
+                Completed
+              </span>
+            </div>
+          </section>
+
+          <UploadReceiptProgressCard
+            confirmedAt={order.confirmedAt ?? order.createdAt}
+            processingAt={processingStartedAt}
+            shippedAt={shippedAt}
+            completedAt={uploadReceiptCompletedAt}
+          />
+
+          <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+            <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
+              <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
+                Supplier Info
+              </h2>
+            </div>
+
+            <div className="flex items-center justify-between gap-4 px-[18px] py-[16px]">
+              <div className="flex min-w-0 items-center gap-[12px]">
+                <div className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-[#eefaf3] text-[22px] font-medium leading-none text-[#4f9b72]">
+                  {getInitials(supplierName)}
+                </div>
+
+                <div className="min-w-0">
+                  <div className="flex items-center gap-[6px]">
+                    <p className="truncate text-[14px] font-semibold leading-none text-[#5d6778]">
+                      {supplierName}
+                    </p>
+                    {order.supplierInfo?.verifiedBadge ? <VerifiedBadge /> : null}
+                  </div>
+                  <p className="mt-[6px] truncate text-[13px] font-normal leading-none text-[#a7aebb]">
+                    {supplierSubtitle || "Supplier details will appear once available."}
+                  </p>
+                </div>
+              </div>
+
+              <Link
+                href={supplierProfileHref}
+                className="inline-flex h-[28px] shrink-0 items-center justify-center rounded-[8px] border border-[#e2e5ea] bg-white px-[14px] text-[11px] font-semibold text-[#5f6877] transition hover:bg-[#f8fafc]"
+              >
+                View Profile
+              </Link>
+            </div>
+          </section>
+
+          <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+            <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
+              <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
+                Order Summary
+              </h2>
+            </div>
+
+            <div className="px-[16px] py-[14px]">
+              <div className="grid grid-cols-[minmax(0,1.4fr)_0.7fr_0.7fr_0.7fr] gap-[18px] text-[11px] font-medium uppercase leading-none tracking-[0.02em] text-[#c0c5ce]">
+                <span>Item</span>
+                <span className="text-right">Qty</span>
+                <span className="text-right">Unit Price</span>
+                <span className="text-right">Total</span>
+              </div>
+
+              <div className="mt-[16px] grid grid-cols-[minmax(0,1.4fr)_0.7fr_0.7fr_0.7fr] gap-[18px] border-b border-[#edf0f4] pb-[14px] text-[14px] leading-none text-[#445062]">
+                <span className="font-semibold">{order.productName}</span>
+                <span className="text-right text-[#8f98a7]">{order.quantityLabel}</span>
+                <span className="text-right text-[#8f98a7]">
+                  {formatUnitPrice(order.pricePerUnit, order.unit)}
+                </span>
+                <span className="text-right font-semibold">{formatCurrency(order.subtotal)}</span>
+              </div>
+
+              <div className="pt-[8px] text-[14px]">
+                <div className="flex items-center justify-between py-[4px] text-[#b0b6c1]">
+                  <span>Subtotal</span>
+                  <span>{formatCurrency(order.subtotal)}</span>
+                </div>
+                <div className="flex items-center justify-between py-[4px] text-[#b0b6c1]">
+                  <span>Delivery Fee</span>
+                  <span>{shippedDeliveryFeeLabel}</span>
+                </div>
+                <div className="mt-[6px] flex items-center justify-between border-t border-[#edf0f4] pt-[10px] text-[16px] font-semibold text-[#2f3948]">
+                  <span>TOTAL</span>
+                  <span>{formatCurrency(orderSummaryTotal)}</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+            <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
+              <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
+                More Details
+              </h2>
+            </div>
+
+            <div className="px-[16px] py-[16px]">
+              <div className="grid grid-cols-2 gap-x-[66px] gap-y-[18px]">
+                <div>
+                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                    Deliver To
+                  </p>
+                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
+                    {order.deliveryLocation || "Not specified"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                    Expected Delivery
+                  </p>
+                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
+                    {formatDate(order.preferredDeliveryDate ?? order.deadline)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                    Payment Method
+                  </p>
+                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
+                    {order.paymentMethod || "Not specified"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                    Payment Terms
+                  </p>
+                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
+                    {order.termsAndConditions || "Not specified"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-[18px]">
+                <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                  Notes From Buyer
+                </p>
+                <p className="mt-[8px] max-w-[780px] text-[14px] font-semibold leading-[1.4] text-[#4c5767]">
+                  {shippedNotes}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <PaymentReceiptCard
+            receiptFileUrl={order.receiptFileUrl}
+            receiptFilePath={order.receiptFilePath}
+          />
+
+          <section className="rounded-[10px] border border-[#9fd2ae] bg-[#f4fbf5] px-[12px] py-[11px]">
+            <div className="flex items-start gap-[10px]">
+              <span className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-[8px] bg-[#267c46] text-white">
+                <svg viewBox="0 0 16 16" className="h-[12px] w-[12px]" aria-hidden="true">
+                  <path
+                    d="M3.5 8.1 6.4 11l6.1-6.1"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+              <div className="min-w-0 pt-[1px]">
+                <p className="text-[14px] font-semibold leading-none text-[#2f7a45]">
+                  Order completed successfully
+                </p>
+                <p className="mt-[8px] text-[12px] leading-[1.45] text-[#7f90aa]">
+                  This order was fulfilled and marked complete on {formatDate(order.completedAt)}. Total payment collected via COD: {formatCurrency(orderSummaryTotal)}.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <CompletedOrderActions
+            disputeHref={messageSupplierHref}
+            reviewHref={supplierReviewHref}
+          />
+        </main>
+      </>
+    );
+  }
+
+  if (order.status === "confirmed") {
+    return (
+      <>
+        <main className="mx-auto w-full max-w-[1042px] space-y-[10px] pb-2">
+          <section className="pb-[4px]">
+            <nav className="flex items-center gap-[7px] text-[11px] font-medium text-[#bcc2cb]">
+              <Link href="/buyer/purchase-orders" className="transition hover:text-[#7f8a99]">
+                Purchase Order
+              </Link>
+              <span>&gt;</span>
+              <span>{referenceCode}</span>
+            </nav>
+          </section>
+
+          <section className="flex items-start justify-between gap-6 pb-[6px]">
+            <div>
+              <h1 className="text-[32px] font-semibold tracking-[-0.04em] text-[#455060]">
+                {referenceCode}
+              </h1>
+              <p className="mt-[5px] text-[14px] font-normal leading-none text-[#c1c6cf]">
+                Placed on {placedOnDate} {"\u00b7"} {supplierName}
+              </p>
+            </div>
+
+            <div className="pt-[4px]">
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full border px-[11px] py-[5px] text-[12px] font-medium leading-none ${getStatusBadgeClasses(
+                  order.status,
+                )}`}
+              >
+                <span className="h-[7px] w-[7px] rounded-full bg-[#f08b38]" />
+                Confirmed
+              </span>
+            </div>
+          </section>
+
+          <ConfirmedProgressCard />
+
+          <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+            <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
+              <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
+                Supplier Info
+              </h2>
+            </div>
+
+            <div className="flex items-center justify-between gap-4 px-[18px] py-[16px]">
+              <div className="flex min-w-0 items-center gap-[12px]">
+                <div className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-[#eefaf3] text-[22px] font-medium leading-none text-[#4f9b72]">
+                  {getInitials(supplierName)}
+                </div>
+
+                <div className="min-w-0">
+                  <div className="flex items-center gap-[6px]">
+                    <p className="truncate text-[14px] font-semibold leading-none text-[#5d6778]">
+                      {supplierName}
+                    </p>
+                    {order.supplierInfo?.verifiedBadge ? <VerifiedBadge /> : null}
+                  </div>
+                  <p className="mt-[6px] truncate text-[13px] font-normal leading-none text-[#a7aebb]">
+                    {supplierSubtitle || "Supplier details will appear once available."}
+                  </p>
+                </div>
+              </div>
+
+              <Link
+                href={supplierProfileHref}
+                className="inline-flex h-[28px] shrink-0 items-center justify-center rounded-[8px] border border-[#e2e5ea] bg-white px-[14px] text-[11px] font-semibold text-[#5f6877] transition hover:bg-[#f8fafc]"
+              >
+                View Profile
+              </Link>
+            </div>
+          </section>
+
+          <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+            <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
+              <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
+                Order Summary
+              </h2>
+            </div>
+
+            <div className="px-[16px] py-[14px]">
+              <div className="grid grid-cols-[minmax(0,1.4fr)_0.7fr_0.7fr_0.7fr] gap-[18px] text-[11px] font-medium uppercase leading-none tracking-[0.02em] text-[#c0c5ce]">
+                <span>Item</span>
+                <span className="text-right">Qty</span>
+                <span className="text-right">Unit Price</span>
+                <span className="text-right">Total</span>
+              </div>
+
+              <div className="mt-[16px] grid grid-cols-[minmax(0,1.4fr)_0.7fr_0.7fr_0.7fr] gap-[18px] border-b border-[#edf0f4] pb-[14px] text-[14px] leading-none text-[#445062]">
+                <span className="font-semibold">{order.productName}</span>
+                <span className="text-right text-[#8f98a7]">{order.quantityLabel}</span>
+                <span className="text-right text-[#8f98a7]">
+                  {formatUnitPrice(order.pricePerUnit, order.unit)}
+                </span>
+                <span className="text-right font-semibold">{formatCurrency(order.subtotal)}</span>
+              </div>
+
+              <div className="pt-[8px] text-[14px]">
+                <div className="flex items-center justify-between py-[4px] text-[#b0b6c1]">
+                  <span>Subtotal</span>
+                  <span>{formatCurrency(order.subtotal)}</span>
+                </div>
+                <div className="flex items-center justify-between py-[4px] text-[#b0b6c1]">
+                  <span>Delivery Fee</span>
+                  <span>{deliveryFeeLabel}</span>
+                </div>
+                <div className="mt-[6px] flex items-center justify-between border-t border-[#edf0f4] pt-[10px] text-[16px] font-semibold text-[#2f3948]">
+                  <span>TOTAL</span>
+                  <span>{formatCurrency(orderSummaryTotal)}</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+            <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
+              <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
+                More Details
+              </h2>
+            </div>
+
+            <div className="px-[16px] py-[16px]">
+              <div className="grid grid-cols-2 gap-x-[66px] gap-y-[18px]">
+                <div>
+                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                    Deliver To
+                  </p>
+                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
+                    {order.deliveryLocation || "Not specified"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                    Expected Delivery
+                  </p>
+                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
+                    {formatDate(order.preferredDeliveryDate ?? order.deadline)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                    Payment Method
+                  </p>
+                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
+                    {order.paymentMethod || "Not specified"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                    Payment Terms
+                  </p>
+                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
+                    {order.termsAndConditions || "Not specified"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-[18px]">
+                <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                  Notes From Buyer
+                </p>
+                <p className="mt-[8px] max-w-[780px] text-[14px] font-semibold leading-[1.4] text-[#4c5767]">
+                  {confirmedNotes}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-[10px] border border-[#9db8ff] bg-[#f7faff] px-[12px] py-[11px]">
+            <div className="flex items-start gap-[10px]">
+              <span className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-[8px] bg-[#3f73e0] text-white">
+                <svg viewBox="0 0 16 16" className="h-[12px] w-[12px]" aria-hidden="true">
+                  <path
+                    d="M3.5 8.1 6.4 11l6.1-6.1"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+              <div className="min-w-0 pt-[1px]">
+                <p className="text-[14px] font-semibold leading-none text-[#2b5bc7]">
+                  Purchase Order Sent
+                </p>
+                <p className="mt-[8px] text-[12px] leading-[1.45] text-[#7f90aa]">
+                  The purchase order has been successfully submitted to the supplier. Please wait for confirmation.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <div className="flex items-center justify-end gap-[12px] pt-[2px]">
+            <Link
+              href={buildDetailHref(order.poId, { modal: "cancel" })}
+              className="inline-flex h-[38px] items-center justify-center px-[6px] text-[13px] font-semibold text-[#ff5a47] transition hover:text-[#ef4638]"
+            >
+              Cancel Order
+            </Link>
+            <button
+              type="button"
+              disabled
+              className="inline-flex h-[38px] min-w-[132px] items-center justify-center rounded-[8px] bg-[#cfd5de] px-[18px] text-[13px] font-semibold text-white"
+            >
+              Mark as Completed
+            </button>
+          </div>
+        </main>
+
+        {showCancelModal ? (
+          <ModalShell
+            title="Cancel this order?"
+            description="The supplier will be notified and this purchase order will be voided."
+            closeHref={buildDetailHref(order.poId)}
+            closeLabel="Keep"
+            maxWidthClassName="max-w-md"
+            panelClassName="rounded-[28px] border border-[#e8edf5] bg-white p-6 shadow-[0_24px_70px_rgba(15,23,42,0.2)]"
+            overlayClassName="bg-[#0f172a]/35 p-4"
+          >
+            <form action={cancelPurchaseOrder} className="mt-2 flex justify-end">
+              <input type="hidden" name="poId" value={order.poId} />
+              <button
+                type="submit"
+                className="inline-flex h-11 items-center justify-center rounded-[12px] bg-[#93a4bd] px-5 text-[14px] font-semibold text-white transition hover:bg-[#7f92ae]"
+              >
+                Cancel Order
+              </button>
+            </form>
+          </ModalShell>
+        ) : null}
+      </>
+    );
+  }
+
+  if (order.status === "processing") {
+    return (
+      <>
+        <main className="mx-auto w-full max-w-[1042px] space-y-[10px] pb-2">
+          <section className="pb-[4px]">
+            <nav className="flex items-center gap-[7px] text-[11px] font-medium text-[#bcc2cb]">
+              <Link href="/buyer/purchase-orders" className="transition hover:text-[#7f8a99]">
+                Purchase Order
+              </Link>
+              <span>&gt;</span>
+              <span>{referenceCode}</span>
+            </nav>
+          </section>
+
+          <section className="flex items-start justify-between gap-6 pb-[6px]">
+            <div>
+              <h1 className="text-[32px] font-semibold tracking-[-0.04em] text-[#455060]">
+                {referenceCode}
+              </h1>
+              <p className="mt-[5px] text-[14px] font-normal leading-none text-[#c1c6cf]">
+                Placed on {placedOnDate} {"\u00b7"} {supplierName}
+              </p>
+            </div>
+
+            <div className="pt-[4px]">
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full border px-[11px] py-[5px] text-[12px] font-medium leading-none ${getStatusBadgeClasses(
+                  order.status,
+                )}`}
+              >
+                <span className="h-[7px] w-[7px] rounded-full bg-[#f08b38]" />
+                Processing
+              </span>
+            </div>
+          </section>
+
+          <ProcessingProgressCard
+            confirmedAt={order.confirmedAt ?? order.createdAt}
+            processingAt={processingStartedAt}
+          />
+
+          <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+            <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
+              <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
+                Supplier Info
+              </h2>
+            </div>
+
+            <div className="flex items-center justify-between gap-4 px-[18px] py-[16px]">
+              <div className="flex min-w-0 items-center gap-[12px]">
+                <div className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-[#eefaf3] text-[22px] font-medium leading-none text-[#4f9b72]">
+                  {getInitials(supplierName)}
+                </div>
+
+                <div className="min-w-0">
+                  <div className="flex items-center gap-[6px]">
+                    <p className="truncate text-[14px] font-semibold leading-none text-[#5d6778]">
+                      {supplierName}
+                    </p>
+                    {order.supplierInfo?.verifiedBadge ? <VerifiedBadge /> : null}
+                  </div>
+                  <p className="mt-[6px] truncate text-[13px] font-normal leading-none text-[#a7aebb]">
+                    {supplierSubtitle || "Supplier details will appear once available."}
+                  </p>
+                </div>
+              </div>
+
+              <Link
+                href={supplierProfileHref}
+                className="inline-flex h-[28px] shrink-0 items-center justify-center rounded-[8px] border border-[#e2e5ea] bg-white px-[14px] text-[11px] font-semibold text-[#5f6877] transition hover:bg-[#f8fafc]"
+              >
+                View Profile
+              </Link>
+            </div>
+          </section>
+
+          <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+            <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
+              <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
+                Order Summary
+              </h2>
+            </div>
+
+            <div className="px-[16px] py-[14px]">
+              <div className="grid grid-cols-[minmax(0,1.4fr)_0.7fr_0.7fr_0.7fr] gap-[18px] text-[11px] font-medium uppercase leading-none tracking-[0.02em] text-[#c0c5ce]">
+                <span>Item</span>
+                <span className="text-right">Qty</span>
+                <span className="text-right">Unit Price</span>
+                <span className="text-right">Total</span>
+              </div>
+
+              <div className="mt-[16px] grid grid-cols-[minmax(0,1.4fr)_0.7fr_0.7fr_0.7fr] gap-[18px] border-b border-[#edf0f4] pb-[14px] text-[14px] leading-none text-[#445062]">
+                <span className="font-semibold">{order.productName}</span>
+                <span className="text-right text-[#8f98a7]">{order.quantityLabel}</span>
+                <span className="text-right text-[#8f98a7]">
+                  {formatUnitPrice(order.pricePerUnit, order.unit)}
+                </span>
+                <span className="text-right font-semibold">{formatCurrency(order.subtotal)}</span>
+              </div>
+
+              <div className="pt-[8px] text-[14px]">
+                <div className="flex items-center justify-between py-[4px] text-[#b0b6c1]">
+                  <span>Subtotal</span>
+                  <span>{formatCurrency(order.subtotal)}</span>
+                </div>
+                <div className="flex items-center justify-between py-[4px] text-[#b0b6c1]">
+                  <span>Delivery Fee</span>
+                  <span>{processingDeliveryFeeLabel}</span>
+                </div>
+                <div className="mt-[6px] flex items-center justify-between border-t border-[#edf0f4] pt-[10px] text-[16px] font-semibold text-[#2f3948]">
+                  <span>TOTAL</span>
+                  <span>{formatCurrency(orderSummaryTotal)}</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+            <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
+              <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
+                More Details
+              </h2>
+            </div>
+
+            <div className="px-[16px] py-[16px]">
+              <div className="grid grid-cols-2 gap-x-[66px] gap-y-[18px]">
+                <div>
+                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                    Deliver To
+                  </p>
+                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
+                    {order.deliveryLocation || "Not specified"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                    Expected Delivery
+                  </p>
+                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
+                    {formatDate(order.preferredDeliveryDate ?? order.deadline)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                    Payment Method
+                  </p>
+                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
+                    {order.paymentMethod || "Not specified"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                    Payment Terms
+                  </p>
+                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
+                    {order.termsAndConditions || "Not specified"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-[18px]">
+                <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                  Notes From Buyer
+                </p>
+                <p className="mt-[8px] max-w-[780px] text-[14px] font-semibold leading-[1.4] text-[#4c5767]">
+                  {processingNotes}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-[10px] border border-[#ffbe92] bg-[#fff8f2] px-[12px] py-[11px]">
+            <div className="flex items-start gap-[10px]">
+              <span className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-[8px] bg-[#ff7a1a] text-white">
+                <svg viewBox="0 0 16 16" className="h-[12px] w-[12px]" aria-hidden="true">
+                  <path
+                    d="M3.5 8.1 6.4 11l6.1-6.1"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+              <div className="min-w-0 pt-[1px]">
+                <p className="text-[14px] font-semibold leading-none text-[#f08b38]">
+                  Order is being processed
+                </p>
+                <p className="mt-[8px] text-[12px] leading-[1.45] text-[#8c97a7]">
+                  You are currently preparing this order. Mark as shipped once it has been dispatched to the buyer.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <div className="flex items-center justify-end gap-[12px] pt-[2px]">
+            <Link
+              href={buildDetailHref(order.poId, { modal: "cancel" })}
+              className="inline-flex h-[38px] items-center justify-center px-[6px] text-[13px] font-semibold text-[#ff5a47] transition hover:text-[#ef4638]"
+            >
+              Cancel Order
+            </Link>
+            <button
+              type="button"
+              disabled
+              className="inline-flex h-[38px] min-w-[132px] items-center justify-center rounded-[8px] bg-[#cfd5de] px-[18px] text-[13px] font-semibold text-white"
+            >
+              Mark as Completed
+            </button>
+          </div>
+        </main>
+
+        {showCancelModal ? (
+          <ModalShell
+            title="Cancel this order?"
+            description="The supplier will be notified and this purchase order will be voided."
+            closeHref={buildDetailHref(order.poId)}
+            closeLabel="Keep"
+            maxWidthClassName="max-w-md"
+            panelClassName="rounded-[28px] border border-[#e8edf5] bg-white p-6 shadow-[0_24px_70px_rgba(15,23,42,0.2)]"
+            overlayClassName="bg-[#0f172a]/35 p-4"
+          >
+            <form action={cancelPurchaseOrder} className="mt-2 flex justify-end">
+              <input type="hidden" name="poId" value={order.poId} />
+              <button
+                type="submit"
+                className="inline-flex h-11 items-center justify-center rounded-[12px] bg-[#93a4bd] px-5 text-[14px] font-semibold text-white transition hover:bg-[#7f92ae]"
+              >
+                Cancel Order
+              </button>
+            </form>
+          </ModalShell>
+        ) : null}
+      </>
+    );
+  }
+
+  if (order.status === "shipped") {
+    if (shouldOpenReceiptUploadStep) {
+      return (
+        <>
+          <main className="mx-auto w-full max-w-[1042px] space-y-[10px] pb-2">
+            <section className="pb-[4px]">
+              <nav className="flex items-center gap-[7px] text-[11px] font-medium text-[#bcc2cb]">
+                <Link href="/buyer/purchase-orders" className="transition hover:text-[#7f8a99]">
+                  Purchase Order
+                </Link>
+                <span>&gt;</span>
+                <span>{referenceCode}</span>
+              </nav>
+            </section>
+
+            <section className="flex items-start justify-between gap-6 pb-[6px]">
+              <div>
+                <h1 className="text-[32px] font-semibold tracking-[-0.04em] text-[#455060]">
+                  {referenceCode}
+                </h1>
+                <p className="mt-[5px] text-[14px] font-normal leading-none text-[#c1c6cf]">
+                  Placed on {placedOnDate} {"\u00b7"} {supplierName}
+                </p>
+              </div>
+
+              <div className="pt-[4px]">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#d7f0dd] bg-[#edf8ef] px-[11px] py-[5px] text-[12px] font-medium leading-none text-[#2f7a45]">
+                  <span className="h-[7px] w-[7px] rounded-full bg-[#2f7a45]" />
+                  Completed
+                </span>
+              </div>
+            </section>
+
+            <UploadReceiptProgressCard
+              confirmedAt={order.confirmedAt ?? order.createdAt}
+              processingAt={processingStartedAt}
+              shippedAt={shippedAt}
+              completedAt={uploadReceiptCompletedAt}
+            />
+
+            <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+              <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
+                <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
+                  Supplier Info
+                </h2>
+              </div>
+
+              <div className="flex items-center justify-between gap-4 px-[18px] py-[16px]">
+                <div className="flex min-w-0 items-center gap-[12px]">
+                  <div className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-[#eefaf3] text-[22px] font-medium leading-none text-[#4f9b72]">
+                    {getInitials(supplierName)}
+                  </div>
+
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-[6px]">
+                      <p className="truncate text-[14px] font-semibold leading-none text-[#5d6778]">
+                        {supplierName}
+                      </p>
+                      {order.supplierInfo?.verifiedBadge ? <VerifiedBadge /> : null}
+                    </div>
+                    <p className="mt-[6px] truncate text-[13px] font-normal leading-none text-[#a7aebb]">
+                      {supplierSubtitle || "Supplier details will appear once available."}
+                    </p>
+                  </div>
+                </div>
+
+                <Link
+                  href={supplierProfileHref}
+                  className="inline-flex h-[28px] shrink-0 items-center justify-center rounded-[8px] border border-[#e2e5ea] bg-white px-[14px] text-[11px] font-semibold text-[#5f6877] transition hover:bg-[#f8fafc]"
+                >
+                  View Profile
+                </Link>
+              </div>
+            </section>
+
+            <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+              <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
+                <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
+                  Order Summary
+                </h2>
+              </div>
+
+              <div className="px-[16px] py-[14px]">
+                <div className="grid grid-cols-[minmax(0,1.4fr)_0.7fr_0.7fr_0.7fr] gap-[18px] text-[11px] font-medium uppercase leading-none tracking-[0.02em] text-[#c0c5ce]">
+                  <span>Item</span>
+                  <span className="text-right">Qty</span>
+                  <span className="text-right">Unit Price</span>
+                  <span className="text-right">Total</span>
+                </div>
+
+                <div className="mt-[16px] grid grid-cols-[minmax(0,1.4fr)_0.7fr_0.7fr_0.7fr] gap-[18px] border-b border-[#edf0f4] pb-[14px] text-[14px] leading-none text-[#445062]">
+                  <span className="font-semibold">{order.productName}</span>
+                  <span className="text-right text-[#8f98a7]">{order.quantityLabel}</span>
+                  <span className="text-right text-[#8f98a7]">
+                    {formatUnitPrice(order.pricePerUnit, order.unit)}
+                  </span>
+                  <span className="text-right font-semibold">{formatCurrency(order.subtotal)}</span>
+                </div>
+
+                <div className="pt-[8px] text-[14px]">
+                  <div className="flex items-center justify-between py-[4px] text-[#b0b6c1]">
+                    <span>Subtotal</span>
+                    <span>{formatCurrency(order.subtotal)}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-[4px] text-[#b0b6c1]">
+                    <span>Delivery Fee</span>
+                    <span>{shippedDeliveryFeeLabel}</span>
+                  </div>
+                  <div className="mt-[6px] flex items-center justify-between border-t border-[#edf0f4] pt-[10px] text-[16px] font-semibold text-[#2f3948]">
+                    <span>TOTAL</span>
+                    <span>{formatCurrency(orderSummaryTotal)}</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+              <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
+                <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
+                  More Details
+                </h2>
+              </div>
+
+              <div className="px-[16px] py-[16px]">
+                <div className="grid grid-cols-2 gap-x-[66px] gap-y-[18px]">
+                  <div>
+                    <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                      Deliver To
+                    </p>
+                    <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
+                      {order.deliveryLocation || "Not specified"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                      Expected Delivery
+                    </p>
+                    <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
+                      {formatDate(order.preferredDeliveryDate ?? order.deadline)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                      Payment Method
+                    </p>
+                    <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
+                      {order.paymentMethod || "Not specified"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                      Payment Terms
+                    </p>
+                    <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
+                      {order.termsAndConditions || "Not specified"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-[18px]">
+                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                    Notes From Buyer
+                  </p>
+                  <p className="mt-[8px] max-w-[780px] text-[14px] font-semibold leading-[1.4] text-[#4c5767]">
+                    {shippedNotes}
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            {shouldShowReceiptUpload ? (
+              <ReceiptUploadDetailPanel
+                poId={order.poId}
+                mode={order.receiptStatus === "rejected" ? "resubmit" : "first_upload"}
+                currentFileName={order.receiptFilePath ? getFileName(order.receiptFilePath) : null}
+                reviewNotes={order.receiptReviewNotes}
+                submitAction={uploadPurchaseOrderReceipt}
+              />
+            ) : null}
+
+            {receiptError ? (
+              <NotificationCard
+                tone="red"
+                title="Receipt upload failed"
+                description={receiptError}
+              />
+            ) : null}
+
+            {shouldShowReceiptPendingReview ? (
+              <>
+                <ReceiptPreview
+                  receiptFileUrl={order.receiptFileUrl}
+                  receiptFilePath={order.receiptFilePath}
+                  description="Your receipt has been uploaded and is awaiting supplier verification."
+                />
+                <NotificationCard
+                  tone="slate"
+                  title="Receipt submitted for review"
+                  description="The supplier is reviewing your proof of payment. Once approved, they can proceed with the completion flow."
+                />
+              </>
+            ) : null}
+
+            {shouldShowReceiptApproved ? (
+              <>
+                <ReceiptPreview
+                  receiptFileUrl={order.receiptFileUrl}
+                  receiptFilePath={order.receiptFilePath}
+                  description="The supplier has approved your uploaded receipt."
+                />
+                <NotificationCard
+                  tone="green"
+                  title="Receipt approved"
+                  description="Your payment receipt was accepted. The supplier may now complete this purchase order."
+                />
+              </>
+            ) : null}
+
+            <div className="flex items-center justify-end gap-[12px] pt-[2px]">
+              <Link
+                href={messageSupplierHref}
+                className="inline-flex h-[38px] items-center justify-center px-[6px] text-[13px] font-semibold text-[#ff5a47] transition hover:text-[#ef4638]"
+              >
+                Raise Dispute
+              </Link>
+              <button
+                type="button"
+                disabled
+                className="inline-flex h-[38px] min-w-[132px] items-center justify-center rounded-[8px] bg-[#cfd5de] px-[18px] text-[13px] font-semibold text-white"
+              >
+                Mark as Completed
+              </button>
+            </div>
+          </main>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <main className="mx-auto w-full max-w-[1042px] space-y-[10px] pb-2">
+          <section className="pb-[4px]">
+            <nav className="flex items-center gap-[7px] text-[11px] font-medium text-[#bcc2cb]">
+              <Link href="/buyer/purchase-orders" className="transition hover:text-[#7f8a99]">
+                Purchase Order
+              </Link>
+              <span>&gt;</span>
+              <span>{referenceCode}</span>
+            </nav>
+          </section>
+
+          <section className="flex items-start justify-between gap-6 pb-[6px]">
+            <div>
+              <h1 className="text-[32px] font-semibold tracking-[-0.04em] text-[#455060]">
+                {referenceCode}
+              </h1>
+              <p className="mt-[5px] text-[14px] font-normal leading-none text-[#c1c6cf]">
+                Placed on {placedOnDate} {"\u00b7"} {supplierName}
+              </p>
+            </div>
+
+            <div className="pt-[4px]">
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full border px-[11px] py-[5px] text-[12px] font-medium leading-none ${getStatusBadgeClasses(
+                  order.status,
+                )}`}
+              >
+                <span className="h-[7px] w-[7px] rounded-full bg-[#a15bd3]" />
+                Shipped
+              </span>
+            </div>
+          </section>
+
+          <ShippedProgressCard
+            confirmedAt={order.confirmedAt ?? order.createdAt}
+            processingAt={order.confirmedAt ?? null}
+            shippedAt={shippedAt}
+          />
+
+          <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+            <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
+              <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
+                Supplier Info
+              </h2>
+            </div>
+
+            <div className="flex items-center justify-between gap-4 px-[18px] py-[16px]">
+              <div className="flex min-w-0 items-center gap-[12px]">
+                <div className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-[#eefaf3] text-[22px] font-medium leading-none text-[#4f9b72]">
+                  {getInitials(supplierName)}
+                </div>
+
+                <div className="min-w-0">
+                  <div className="flex items-center gap-[6px]">
+                    <p className="truncate text-[14px] font-semibold leading-none text-[#5d6778]">
+                      {supplierName}
+                    </p>
+                    {order.supplierInfo?.verifiedBadge ? <VerifiedBadge /> : null}
+                  </div>
+                  <p className="mt-[6px] truncate text-[13px] font-normal leading-none text-[#a7aebb]">
+                    {supplierSubtitle || "Supplier details will appear once available."}
+                  </p>
+                </div>
+              </div>
+
+              <Link
+                href={supplierProfileHref}
+                className="inline-flex h-[28px] shrink-0 items-center justify-center rounded-[8px] border border-[#e2e5ea] bg-white px-[14px] text-[11px] font-semibold text-[#5f6877] transition hover:bg-[#f8fafc]"
+              >
+                View Profile
+              </Link>
+            </div>
+          </section>
+
+          <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+            <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
+              <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
+                Order Summary
+              </h2>
+            </div>
+
+            <div className="px-[16px] py-[14px]">
+              <div className="grid grid-cols-[minmax(0,1.4fr)_0.7fr_0.7fr_0.7fr] gap-[18px] text-[11px] font-medium uppercase leading-none tracking-[0.02em] text-[#c0c5ce]">
+                <span>Item</span>
+                <span className="text-right">Qty</span>
+                <span className="text-right">Unit Price</span>
+                <span className="text-right">Total</span>
+              </div>
+
+              <div className="mt-[16px] grid grid-cols-[minmax(0,1.4fr)_0.7fr_0.7fr_0.7fr] gap-[18px] border-b border-[#edf0f4] pb-[14px] text-[14px] leading-none text-[#445062]">
+                <span className="font-semibold">{order.productName}</span>
+                <span className="text-right text-[#8f98a7]">{order.quantityLabel}</span>
+                <span className="text-right text-[#8f98a7]">
+                  {formatUnitPrice(order.pricePerUnit, order.unit)}
+                </span>
+                <span className="text-right font-semibold">{formatCurrency(order.subtotal)}</span>
+              </div>
+
+              <div className="pt-[8px] text-[14px]">
+                <div className="flex items-center justify-between py-[4px] text-[#b0b6c1]">
+                  <span>Subtotal</span>
+                  <span>{formatCurrency(order.subtotal)}</span>
+                </div>
+                <div className="flex items-center justify-between py-[4px] text-[#b0b6c1]">
+                  <span>Delivery Fee</span>
+                  <span>{shippedDeliveryFeeLabel}</span>
+                </div>
+                <div className="mt-[6px] flex items-center justify-between border-t border-[#edf0f4] pt-[10px] text-[16px] font-semibold text-[#2f3948]">
+                  <span>TOTAL</span>
+                  <span>{formatCurrency(orderSummaryTotal)}</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+            <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
+              <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
+                More Details
+              </h2>
+            </div>
+
+            <div className="px-[16px] py-[16px]">
+              <div className="grid grid-cols-2 gap-x-[66px] gap-y-[18px]">
+                <div>
+                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                    Deliver To
+                  </p>
+                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
+                    {order.deliveryLocation || "Not specified"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                    Expected Delivery
+                  </p>
+                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
+                    {formatDate(order.preferredDeliveryDate ?? order.deadline)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                    Payment Method
+                  </p>
+                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
+                    {order.paymentMethod || "Not specified"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                    Payment Terms
+                  </p>
+                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
+                    {order.termsAndConditions || "Not specified"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-[18px]">
+                <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                  Notes From Buyer
+                </p>
+                <p className="mt-[8px] max-w-[780px] text-[14px] font-semibold leading-[1.4] text-[#4c5767]">
+                  {shippedNotes}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-[10px] border border-[#d4b6fa] bg-[#fbf7ff] px-[12px] py-[11px]">
+            <div className="flex items-start gap-[10px]">
+              <span className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-[8px] bg-[#6f35d4] text-white">
+                <svg viewBox="0 0 16 16" className="h-[12px] w-[12px]" aria-hidden="true">
+                  <path
+                    d="M3.5 8.1 6.4 11l6.1-6.1"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+              <div className="min-w-0 pt-[1px]">
+                <p className="text-[14px] font-semibold leading-none text-[#6f35d4]">
+                  Order on its way
+                </p>
+                <p className="mt-[8px] text-[12px] leading-[1.45] text-[#8c97a7]">
+                  Order was dispatched on {formatDate(shippedAt)}. Waiting for the buyer to confirm receipt. Collect COD payment upon delivery.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <div className="flex items-center justify-end gap-[12px] pt-[2px]">
+            <Link
+              href="/buyer/purchase-orders"
+              className="inline-flex h-[38px] items-center justify-center px-[6px] text-[13px] font-semibold text-[#ff5a47] transition hover:text-[#ef4638]"
+            >
+              Back to Orders
+            </Link>
+            {shouldPromptReceiptConfirmation ? (
+              <Link
+                href={buildDetailHref(order.poId, { step: "upload-receipt" })}
+                className="inline-flex h-[38px] min-w-[132px] items-center justify-center rounded-[8px] bg-[#6f35d4] px-[18px] text-[13px] font-semibold text-white transition hover:bg-[#5f2abd]"
+              >
+                Confirm Receipt
+              </Link>
+            ) : null}
+          </div>
+        </main>
+      </>
+    );
+  }
 
   return (
     <>

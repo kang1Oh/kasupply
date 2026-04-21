@@ -1,7 +1,12 @@
 export { AccountActivatedModal } from "./account-activated-modal";
 export { AccountConfirmModal } from "./account-confirm-modal";
+export { CancelRfqModal } from "./CancelRfqModal";
 export { CheckMarkModalIcon } from "./check-mark-modal-icon";
+export { ConfirmationModal } from "./ConfirmationModal";
 export { ConfirmModal } from "./confirm-modal";
 export { ModalField } from "./modal-field";
 export { ModalShell } from "./modal-shell";
+export { OrderCompletedModal } from "./order-completed-modal";
+export { RemoveProductModal } from "./RemoveProductModal";
+export { ReviewSubmittedModal } from "./ReviewSubmittedModal";
 export { TrashCanModalIcon } from "./trash-can-modal-icon";
