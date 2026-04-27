@@ -27,7 +27,7 @@ export function ModalShell({
   maxWidthClassName = "max-w-3xl",
   panelClassName = "rounded-2xl bg-white p-6 shadow-2xl",
   panelOverflowClassName = "overflow-y-auto",
-  overlayClassName = "bg-black/50 p-4",
+  overlayClassName = "bg-[rgba(15,23,42,0.18)] p-4 backdrop-blur-[2px]",
   contentClassName,
   headerActions,
 }: ModalShellProps) {
@@ -57,10 +57,12 @@ export function ModalShell({
 
   return createPortal(
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-none ${overlayClassName}`}
+      className={`fixed inset-0 z-[70] flex items-center justify-center overflow-hidden overscroll-none ${overlayClassName}`}
     >
       <div
         className={`max-h-[90vh] w-full ${panelOverflowClassName} ${maxWidthClassName} ${panelClassName}`}
+        role="dialog"
+        aria-modal="true"
       >
         {title || description || closeHref || headerActions ? (
           <div className="mb-5 flex items-start justify-between gap-4">

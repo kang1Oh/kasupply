@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AccountConfirmModal, TrashCanModalIcon } from "@/components/modals";
+import { RemoveSavedSupplierModal } from "@/components/modals";
 
 type SavedSupplier = {
   supplierId: number;
@@ -124,22 +124,10 @@ export function BuyerSavedSuppliersSection({
         ))
       )}
 
-      <AccountConfirmModal
-        isOpen={pendingRemoval != null}
-        icon={<TrashCanModalIcon size={50} />}
-        title="Remove saved supplier?"
-        description={
-          <>
-            Remove{" "}
-            <span className="font-medium text-[#243f68]">
-              {pendingRemoval?.businessName ?? ""}
-            </span>{" "}
-            from your saved suppliers?
-          </>
-        }
-        cancelLabel="Cancel"
-        confirmLabel="Remove"
-        onCancel={() => setPendingRemoval(null)}
+      <RemoveSavedSupplierModal
+        open={pendingRemoval != null}
+        supplierName={pendingRemoval?.businessName ?? null}
+        onClose={() => setPendingRemoval(null)}
         onConfirm={handleConfirmRemove}
       />
     </>

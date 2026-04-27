@@ -1,0 +1,890 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.9.0
+2 info using node@v24.14.0
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:C:\dev\kasupply\kasupply-app\.npmrc
+5 silly config load:file:C:\Users\diane\.npmrc
+6 silly config load:file:C:\Users\diane\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm install
+8 verbose argv "install" "--cache" ".npm-cache"
+9 verbose logfile logs-max:10 dir:C:\dev\kasupply\kasupply-app\.npm-cache\_logs\2026-04-22T02_32_31_714Z-
+10 verbose logfile C:\dev\kasupply\kasupply-app\.npm-cache\_logs\2026-04-22T02_32_31_714Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:2348810240 maxSize:587202560 maxEntrySize:293601280
+13 verbose shrinkwrap failed to load node_modules/.package-lock.json out of date, updated: node_modules
+14 http fetch GET https://registry.npmjs.org/npm attempt 1 failed with EACCES
+15 silly idealTree buildDeps
+16 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\any-base' ]
+17 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\await-to-js' ]
+18 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\bmp-ts' ]
+19 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\exif-parser' ]
+20 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\file-type' ]
+21 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\gifwrap' ]
+22 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\ieee754' ]
+23 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\image-q' ]
+24 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\jimp' ]
+25 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\jpeg-js' ]
+26 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\mime' ]
+27 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\omggif' ]
+28 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\pako' ]
+29 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\parse-bmfont-ascii' ]
+30 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\parse-bmfont-xml' ]
+31 silly reify mark retired [
+31 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\parse-bmfont-binary'
+31 silly reify ]
+32 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\pixelmatch' ]
+33 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\pngjs' ]
+34 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\sax' ]
+35 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\simple-xml-to-json' ]
+36 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\strtok3' ]
+37 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\tinycolor2' ]
+38 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\token-types' ]
+39 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\ts-custom-error' ]
+40 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\uint8array-extras' ]
+41 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\utif2' ]
+42 silly reify mark retired [
+42 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\xml-parse-from-string'
+42 silly reify ]
+43 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\xml2js' ]
+44 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\xmlbuilder' ]
+45 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\zod' ]
+46 silly reify mark retired [
+46 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@borewit\\text-codec'
+46 silly reify ]
+47 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\core' ]
+48 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\diff' ]
+49 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\file-ops' ]
+50 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\js-gif' ]
+51 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\js-bmp' ]
+52 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\js-jpeg' ]
+53 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\js-png' ]
+54 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\js-tiff' ]
+55 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-blit' ]
+56 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-blur' ]
+57 silly reify mark retired [
+57 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-circle'
+57 silly reify ]
+58 silly reify mark retired [
+58 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-color'
+58 silly reify ]
+59 silly reify mark retired [
+59 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-contain'
+59 silly reify ]
+60 silly reify mark retired [
+60 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-cover'
+60 silly reify ]
+61 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-crop' ]
+62 silly reify mark retired [
+62 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-displace'
+62 silly reify ]
+63 silly reify mark retired [
+63 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-dither'
+63 silly reify ]
+64 silly reify mark retired [
+64 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-fisheye'
+64 silly reify ]
+65 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-flip' ]
+66 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-hash' ]
+67 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-mask' ]
+68 silly reify mark retired [
+68 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-print'
+68 silly reify ]
+69 silly reify mark retired [
+69 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-quantize'
+69 silly reify ]
+70 silly reify mark retired [
+70 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-resize'
+70 silly reify ]
+71 silly reify mark retired [
+71 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-threshold'
+71 silly reify ]
+72 silly reify mark retired [
+72 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-rotate'
+72 silly reify ]
+73 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\types' ]
+74 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\utils' ]
+75 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@tokenizer\\token' ]
+76 silly reify mark retired [
+76 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@tokenizer\\inflate'
+76 silly reify ]
+77 silly reify mark retired [ 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@zxing\\library' ]
+78 silly reify mark retired [
+78 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@zxing\\text-encoding'
+78 silly reify ]
+79 silly reify moves {
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\any-base': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.any-base-bGwDeyrl',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\await-to-js': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.await-to-js-by1TC7NB',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\bmp-ts': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.bmp-ts-g8uIIctP',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\exif-parser': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.exif-parser-Nj87uNmS',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\file-type': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.file-type-FlbhnFpm',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\gifwrap': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.gifwrap-4s9ftIF0',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\ieee754': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.ieee754-Sdz4Rm9c',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\image-q': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.image-q-2mDXrc0e',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\jimp': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.jimp-jhmVi3CU',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\jpeg-js': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.jpeg-js-E4ExEnJZ',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\mime': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.mime-T6CzSOoB',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\omggif': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.omggif-Le7jcmmF',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\pako': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.pako-MAu4I63l',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\parse-bmfont-ascii': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.parse-bmfont-ascii-Uped1NR8',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\parse-bmfont-xml': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.parse-bmfont-xml-V7EqITWp',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\parse-bmfont-binary': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.parse-bmfont-binary-BrIg9Xmx',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\pixelmatch': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.pixelmatch-yy8Mz3mQ',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\pngjs': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.pngjs-g7ywwHUn',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\sax': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.sax-pk3WewPT',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\simple-xml-to-json': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.simple-xml-to-json-v9c9F1by',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\strtok3': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.strtok3-9WUQxVgP',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\tinycolor2': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.tinycolor2-PH7nEqMe',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\token-types': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.token-types-5aFNMg0k',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\ts-custom-error': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.ts-custom-error-K9gjSkc2',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\uint8array-extras': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.uint8array-extras-0XL8QiVC',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\utif2': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.utif2-93j2L8SP',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\xml-parse-from-string': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.xml-parse-from-string-ZAzvRTjE',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\xml2js': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.xml2js-cA3dGR0u',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\xmlbuilder': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.xmlbuilder-OGsjMvJU',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\zod': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\.zod-hXZV2SII',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@borewit\\text-codec': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@borewit\\.text-codec-DtWwH5rS',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\core': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\.core-SErs9HC8',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\diff': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\.diff-4OrcrAfE',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\file-ops': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\.file-ops-OmUUKmHE',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\js-gif': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\.js-gif-1qjR2sB8',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\js-bmp': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\.js-bmp-z4HsBBo4',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\js-jpeg': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\.js-jpeg-RCqzvAvy',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\js-png': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\.js-png-7Z6MWxhI',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\js-tiff': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\.js-tiff-B5SB0Kuw',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-blit': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\.plugin-blit-1WUKvVS4',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-blur': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\.plugin-blur-r7gz5tLa',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-circle': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\.plugin-circle-2DAgQc8e',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-color': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\.plugin-color-RkYMuVy9',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-contain': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\.plugin-contain-1S0HfW9y',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-cover': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\.plugin-cover-SNcXH4dz',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-crop': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\.plugin-crop-Pwaf5EUc',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-displace': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\.plugin-displace-rnzJ2gwn',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-dither': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\.plugin-dither-cY1IKv0k',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-fisheye': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\.plugin-fisheye-1RtAsQ5Q',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-flip': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\.plugin-flip-LVH5LNV1',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-hash': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\.plugin-hash-1SsCJTpH',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-mask': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\.plugin-mask-2D2TuQTm',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-print': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\.plugin-print-EZxxr3Pe',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-quantize': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\.plugin-quantize-FHCcivAm',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-resize': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\.plugin-resize-6zqDJlpl',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-threshold': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\.plugin-threshold-x9JESugv',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\plugin-rotate': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\.plugin-rotate-ZkZaAiW3',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\types': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\.types-JI6rFJL8',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\utils': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@jimp\\.utils-kr9sDRz8',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@tokenizer\\token': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@tokenizer\\.token-HDk0j6hP',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@tokenizer\\inflate': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@tokenizer\\.inflate-z7ZUkuzo',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@zxing\\library': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@zxing\\.library-oOeaXqsk',
+79 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@zxing\\text-encoding': 'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@zxing\\.text-encoding-WkT3AGsd'
+79 silly reify }
+80 silly audit bulk request {
+80 silly audit   '@alloc/quick-lru': [ '5.2.0' ],
+80 silly audit   '@borewit/text-codec': [ '0.2.2' ],
+80 silly audit   '@emnapi/core': [ '1.8.1' ],
+80 silly audit   '@emnapi/runtime': [ '1.8.1' ],
+80 silly audit   '@emnapi/wasi-threads': [ '1.1.0' ],
+80 silly audit   '@eslint-community/eslint-utils': [ '4.9.1' ],
+80 silly audit   'eslint-visitor-keys': [ '3.4.3', '5.0.1', '4.2.1' ],
+80 silly audit   '@eslint-community/regexpp': [ '4.12.2' ],
+80 silly audit   '@eslint/config-array': [ '0.21.1' ],
+80 silly audit   '@eslint/config-helpers': [ '0.4.2' ],
+80 silly audit   '@eslint/core': [ '0.17.0' ],
+80 silly audit   '@eslint/eslintrc': [ '3.3.4' ],
+80 silly audit   '@eslint/js': [ '9.39.3' ],
+80 silly audit   '@eslint/object-schema': [ '2.1.7' ],
+80 silly audit   '@eslint/plugin-kit': [ '0.4.1' ],
+80 silly audit   '@floating-ui/core': [ '1.7.4' ],
+80 silly audit   '@floating-ui/dom': [ '1.7.5' ],
+80 silly audit   '@floating-ui/react-dom': [ '2.1.7' ],
+80 silly audit   '@floating-ui/utils': [ '0.2.10' ],
+80 silly audit   '@humanfs/core': [ '0.19.1' ],
+80 silly audit   '@humanfs/node': [ '0.16.7' ],
+80 silly audit   '@humanwhocodes/module-importer': [ '1.0.1' ],
+80 silly audit   '@humanwhocodes/retry': [ '0.4.3' ],
+80 silly audit   '@img/colour': [ '1.0.0' ],
+80 silly audit   '@img/sharp-darwin-arm64': [ '0.34.5' ],
+80 silly audit   '@img/sharp-darwin-x64': [ '0.34.5' ],
+80 silly audit   '@img/sharp-libvips-darwin-arm64': [ '1.2.4' ],
+80 silly audit   '@img/sharp-libvips-darwin-x64': [ '1.2.4' ],
+80 silly audit   '@img/sharp-libvips-linux-arm': [ '1.2.4' ],
+80 silly audit   '@img/sharp-libvips-linux-arm64': [ '1.2.4' ],
+80 silly audit   '@img/sharp-libvips-linux-ppc64': [ '1.2.4' ],
+80 silly audit   '@img/sharp-libvips-linux-riscv64': [ '1.2.4' ],
+80 silly audit   '@img/sharp-libvips-linux-s390x': [ '1.2.4' ],
+80 silly audit   '@img/sharp-libvips-linux-x64': [ '1.2.4' ],
+80 silly audit   '@img/sharp-libvips-linuxmusl-arm64': [ '1.2.4' ],
+80 silly audit   '@img/sharp-libvips-linuxmusl-x64': [ '1.2.4' ],
+80 silly audit   '@img/sharp-linux-arm': [ '0.34.5' ],
+80 silly audit   '@img/sharp-linux-arm64': [ '0.34.5' ],
+80 silly audit   '@img/sharp-linux-ppc64': [ '0.34.5' ],
+80 silly audit   '@img/sharp-linux-riscv64': [ '0.34.5' ],
+80 silly audit   '@img/sharp-linux-s390x': [ '0.34.5' ],
+80 silly audit   '@img/sharp-linux-x64': [ '0.34.5' ],
+80 silly audit   '@img/sharp-linuxmusl-arm64': [ '0.34.5' ],
+80 silly audit   '@img/sharp-linuxmusl-x64': [ '0.34.5' ],
+80 silly audit   '@img/sharp-wasm32': [ '0.34.5' ],
+80 silly audit   '@img/sharp-win32-arm64': [ '0.34.5' ],
+80 silly audit   '@img/sharp-win32-ia32': [ '0.34.5' ],
+80 silly audit   '@img/sharp-win32-x64': [ '0.34.5' ],
+80 silly audit   '@jimp/core': [ '1.6.1' ],
+80 silly audit   '@jimp/diff': [ '1.6.1' ],
+80 silly audit   '@jimp/file-ops': [ '1.6.1' ],
+80 silly audit   '@jimp/js-bmp': [ '1.6.1' ],
+80 silly audit   '@jimp/js-gif': [ '1.6.1' ],
+80 silly audit   '@jimp/js-jpeg': [ '1.6.1' ],
+80 silly audit   '@jimp/js-png': [ '1.6.1' ],
+80 silly audit   '@jimp/js-tiff': [ '1.6.1' ],
+80 silly audit   '@jimp/plugin-blit': [ '1.6.1' ],
+80 silly audit   '@jimp/plugin-blur': [ '1.6.1' ],
+80 silly audit   '@jimp/plugin-circle': [ '1.6.1' ],
+80 silly audit   '@jimp/plugin-color': [ '1.6.1' ],
+80 silly audit   '@jimp/plugin-contain': [ '1.6.1' ],
+80 silly audit   '@jimp/plugin-cover': [ '1.6.1' ],
+80 silly audit   '@jimp/plugin-crop': [ '1.6.1' ],
+80 silly audit   '@jimp/plugin-displace': [ '1.6.1' ],
+80 silly audit   '@jimp/plugin-dither': [ '1.6.1' ],
+80 silly audit   '@jimp/plugin-fisheye': [ '1.6.1' ],
+80 silly audit   '@jimp/plugin-flip': [ '1.6.1' ],
+80 silly audit   '@jimp/plugin-hash': [ '1.6.1' ],
+80 silly audit   '@jimp/plugin-mask': [ '1.6.1' ],
+80 silly audit   '@jimp/plugin-print': [ '1.6.1' ],
+80 silly audit   '@jimp/plugin-quantize': [ '1.6.1' ],
+80 silly audit   '@jimp/plugin-resize': [ '1.6.1' ],
+80 silly audit   '@jimp/plugin-rotate': [ '1.6.1' ],
+80 silly audit   '@jimp/plugin-threshold': [ '1.6.1' ],
+80 silly audit   '@jimp/types': [ '1.6.1' ],
+80 silly audit   '@jimp/utils': [ '1.6.1' ],
+80 silly audit   '@jridgewell/gen-mapping': [ '0.3.13' ],
+80 silly audit   '@jridgewell/resolve-uri': [ '3.1.2' ],
+80 silly audit   '@jridgewell/sourcemap-codec': [ '1.5.5' ],
+80 silly audit   '@jridgewell/trace-mapping': [ '0.3.31' ],
+80 silly audit   '@napi-rs/wasm-runtime': [ '0.2.12' ],
+80 silly audit   '@next/env': [ '16.1.6' ],
+80 silly audit   '@next/eslint-plugin-next': [ '15.3.1' ],
+80 silly audit   '@next/swc-darwin-arm64': [ '16.1.6' ],
+80 silly audit   '@next/swc-darwin-x64': [ '16.1.6' ],
+80 silly audit   '@next/swc-linux-arm64-gnu': [ '16.1.6' ],
+80 silly audit   '@next/swc-linux-arm64-musl': [ '16.1.6' ],
+80 silly audit   '@next/swc-linux-x64-gnu': [ '16.1.6' ],
+80 silly audit   '@next/swc-linux-x64-musl': [ '16.1.6' ],
+80 silly audit   '@next/swc-win32-arm64-msvc': [ '16.1.6' ],
+80 silly audit   '@next/swc-win32-x64-msvc': [ '16.1.6' ],
+80 silly audit   '@nodelib/fs.scandir': [ '2.1.5' ],
+80 silly audit   '@nodelib/fs.stat': [ '2.0.5' ],
+80 silly audit   '@nodelib/fs.walk': [ '1.2.8' ],
+80 silly audit   '@nolyfill/is-core-module': [ '1.0.39' ],
+80 silly audit   '@radix-ui/primitive': [ '1.1.3' ],
+80 silly audit   '@radix-ui/react-arrow': [ '1.1.7' ],
+80 silly audit   '@radix-ui/react-checkbox': [ '1.3.3' ],
+80 silly audit   '@radix-ui/react-collection': [ '1.1.7' ],
+80 silly audit   '@radix-ui/react-slot': [ '1.2.3', '1.2.4' ],
+80 silly audit   '@radix-ui/react-compose-refs': [ '1.1.2' ],
+80 silly audit   '@radix-ui/react-context': [ '1.1.2' ],
+80 silly audit   '@radix-ui/react-direction': [ '1.1.1' ],
+80 silly audit   '@radix-ui/react-dismissable-layer': [ '1.1.11' ],
+80 silly audit   '@radix-ui/react-dropdown-menu': [ '2.1.16' ],
+80 silly audit   '@radix-ui/react-focus-guards': [ '1.1.3' ],
+80 silly audit   '@radix-ui/react-focus-scope': [ '1.1.7' ],
+80 silly audit   '@radix-ui/react-id': [ '1.1.1' ],
+80 silly audit   '@radix-ui/react-label': [ '2.1.8' ],
+80 silly audit   '@radix-ui/react-primitive': [ '2.1.4', '2.1.3' ],
+80 silly audit   '@radix-ui/react-menu': [ '2.1.16' ],
+80 silly audit   '@radix-ui/react-popper': [ '1.2.8' ],
+80 silly audit   '@radix-ui/react-portal': [ '1.1.9' ],
+80 silly audit   '@radix-ui/react-presence': [ '1.1.5' ],
+80 silly audit   '@radix-ui/react-roving-focus': [ '1.1.11' ],
+80 silly audit   '@radix-ui/react-use-callback-ref': [ '1.1.1' ],
+80 silly audit   '@radix-ui/react-use-controllable-state': [ '1.2.2' ],
+80 silly audit   '@radix-ui/react-use-effect-event': [ '0.0.2' ],
+80 silly audit   '@radix-ui/react-use-escape-keydown': [ '1.1.1' ],
+80 silly audit   '@radix-ui/react-use-layout-effect': [ '1.1.1' ],
+80 silly audit   '@radix-ui/react-use-previous': [ '1.1.1' ],
+80 silly audit   '@radix-ui/react-use-rect': [ '1.1.1' ],
+80 silly audit   '@radix-ui/react-use-size': [ '1.1.1' ],
+80 silly audit   '@radix-ui/rect': [ '1.1.1' ],
+80 silly audit   '@rtsao/scc': [ '1.1.0' ],
+80 silly audit   '@rushstack/eslint-patch': [ '1.16.1' ],
+80 silly audit   '@supabase/auth-js': [ '2.98.0' ],
+80 silly audit   '@supabase/functions-js': [ '2.98.0' ],
+80 silly audit   '@supabase/postgrest-js': [ '2.98.0' ],
+80 silly audit   '@supabase/realtime-js': [ '2.98.0' ],
+80 silly audit   '@supabase/ssr': [ '0.8.0' ],
+80 silly audit   '@supabase/storage-js': [ '2.98.0' ],
+80 silly audit   '@supabase/supabase-js': [ '2.98.0' ],
+80 silly audit   '@swc/helpers': [ '0.5.15' ],
+80 silly audit   '@tokenizer/inflate': [ '0.4.1' ],
+80 silly audit   '@tokenizer/token': [ '0.3.0' ],
+80 silly audit   '@tybys/wasm-util': [ '0.10.1' ],
+80 silly audit   '@types/estree': [ '1.0.8' ],
+80 silly audit   '@types/json-schema': [ '7.0.15' ],
+80 silly audit   '@types/json5': [ '0.0.29' ],
+80 silly audit   '@types/node': [ '20.19.35', '16.9.1' ],
+80 silly audit   '@types/phoenix': [ '1.6.7' ],
+80 silly audit   '@types/react': [ '19.2.14' ],
+80 silly audit   '@types/react-dom': [ '19.2.3' ],
+80 silly audit   '@types/ws': [ '8.18.1' ],
+80 silly audit   '@typescript-eslint/eslint-plugin': [ '8.56.1' ],
+80 silly audit   ignore: [ '7.0.5', '5.3.2' ],
+80 silly audit   '@typescript-eslint/parser': [ '8.56.1' ],
+80 silly audit   '@typescript-eslint/project-service': [ '8.56.1' ],
+80 silly audit   '@typescript-eslint/scope-manager': [ '8.56.1' ],
+80 silly audit   '@typescript-eslint/tsconfig-utils': [ '8.56.1' ],
+80 silly audit   '@typescript-eslint/type-utils': [ '8.56.1' ],
+80 silly audit   '@typescript-eslint/types': [ '8.56.1' ],
+80 silly audit   '@typescript-eslint/typescript-estree': [ '8.56.1' ],
+80 silly audit   'balanced-match': [ '4.0.4', '1.0.2' ],
+80 silly audit   'brace-expansion': [ '5.0.3', '1.1.12' ],
+80 silly audit   minimatch: [ '10.2.4', '3.1.5' ],
+80 silly audit   '@typescript-eslint/utils': [ '8.56.1' ],
+80 silly audit   '@typescript-eslint/visitor-keys': [ '8.56.1' ],
+80 silly audit   '@unrs/resolver-binding-android-arm-eabi': [ '1.11.1' ],
+80 silly audit   '@unrs/resolver-binding-android-arm64': [ '1.11.1' ],
+80 silly audit   '@unrs/resolver-binding-darwin-arm64': [ '1.11.1' ],
+80 silly audit   '@unrs/resolver-binding-darwin-x64': [ '1.11.1' ],
+80 silly audit   '@unrs/resolver-binding-freebsd-x64': [ '1.11.1' ],
+80 silly audit   '@unrs/resolver-binding-linux-arm-gnueabihf': [ '1.11.1' ],
+80 silly audit   '@unrs/resolver-binding-linux-arm-musleabihf': [ '1.11.1' ],
+80 silly audit   '@unrs/resolver-binding-linux-arm64-gnu': [ '1.11.1' ],
+80 silly audit   '@unrs/resolver-binding-linux-arm64-musl': [ '1.11.1' ],
+80 silly audit   '@unrs/resolver-binding-linux-ppc64-gnu': [ '1.11.1' ],
+80 silly audit   '@unrs/resolver-binding-linux-riscv64-gnu': [ '1.11.1' ],
+80 silly audit   '@unrs/resolver-binding-linux-riscv64-musl': [ '1.11.1' ],
+80 silly audit   '@unrs/resolver-binding-linux-s390x-gnu': [ '1.11.1' ],
+80 silly audit   '@unrs/resolver-binding-linux-x64-gnu': [ '1.11.1' ],
+80 silly audit   '@unrs/resolver-binding-linux-x64-musl': [ '1.11.1' ],
+80 silly audit   '@unrs/resolver-binding-wasm32-wasi': [ '1.11.1' ],
+80 silly audit   '@unrs/resolver-binding-win32-arm64-msvc': [ '1.11.1' ],
+80 silly audit   '@unrs/resolver-binding-win32-ia32-msvc': [ '1.11.1' ],
+80 silly audit   '@unrs/resolver-binding-win32-x64-msvc': [ '1.11.1' ],
+80 silly audit   '@zxing/library': [ '0.21.3' ],
+80 silly audit   '@zxing/text-encoding': [ '0.9.0' ],
+80 silly audit   acorn: [ '8.16.0' ],
+80 silly audit   'acorn-jsx': [ '5.3.2' ],
+80 silly audit   ajv: [ '6.14.0' ],
+80 silly audit   'ansi-styles': [ '4.3.0' ],
+80 silly audit   'any-base': [ '1.1.0' ],
+80 silly audit   'any-promise': [ '1.3.0' ],
+80 silly audit   anymatch: [ '3.1.3' ],
+80 silly audit   arg: [ '5.0.2' ],
+80 silly audit   argparse: [ '2.0.1' ],
+80 silly audit   'aria-hidden': [ '1.2.6' ],
+80 silly audit   'aria-query': [ '5.3.2' ],
+80 silly audit   'array-buffer-byte-length': [ '1.0.2' ],
+80 silly audit   'array-includes': [ '3.1.9' ],
+80 silly audit   'array.prototype.findlast': [ '1.2.5' ],
+80 silly audit   'array.prototype.findlastindex': [ '1.2.6' ],
+80 silly audit   'array.prototype.flat': [ '1.3.3' ],
+80 silly audit   'array.prototype.flatmap': [ '1.3.3' ],
+80 silly audit   'array.prototype.tosorted': [ '1.1.4' ],
+80 silly audit   'arraybuffer.prototype.slice': [ '1.0.4' ],
+80 silly audit   'ast-types-flow': [ '0.0.8' ],
+80 silly audit   'async-function': [ '1.0.0' ],
+80 silly audit   autoprefixer: [ '10.4.27' ],
+80 silly audit   'available-typed-arrays': [ '1.0.7' ],
+80 silly audit   'await-to-js': [ '3.0.0' ],
+80 silly audit   'axe-core': [ '4.11.1' ],
+80 silly audit   'axobject-query': [ '4.1.0' ],
+80 silly audit   'baseline-browser-mapping': [ '2.10.0' ],
+80 silly audit   'binary-extensions': [ '2.3.0' ],
+80 silly audit   'bmp-ts': [ '1.0.9' ],
+80 silly audit   braces: [ '3.0.3' ],
+80 silly audit   browserslist: [ '4.28.1' ],
+80 silly audit   'call-bind': [ '1.0.8' ],
+80 silly audit   'call-bind-apply-helpers': [ '1.0.2' ],
+80 silly audit   'call-bound': [ '1.0.4' ],
+80 silly audit   callsites: [ '3.1.0' ],
+80 silly audit   'camelcase-css': [ '2.0.1' ],
+80 silly audit   'caniuse-lite': [ '1.0.30001774' ],
+80 silly audit   chalk: [ '4.1.2' ],
+80 silly audit   chokidar: [ '3.6.0' ],
+80 silly audit   'glob-parent': [ '5.1.2', '6.0.2' ],
+80 silly audit   'class-variance-authority': [ '0.7.1' ],
+80 silly audit   'client-only': [ '0.0.1' ],
+80 silly audit   clsx: [ '2.1.1' ],
+80 silly audit   'color-convert': [ '2.0.1' ],
+80 silly audit   'color-name': [ '1.1.4' ],
+80 silly audit   commander: [ '4.1.1' ],
+80 silly audit   'concat-map': [ '0.0.1' ],
+80 silly audit   cookie: [ '1.1.1' ],
+80 silly audit   'cross-spawn': [ '7.0.6' ],
+80 silly audit   cssesc: [ '3.0.0' ],
+80 silly audit   csstype: [ '3.2.3' ],
+80 silly audit   'damerau-levenshtein': [ '1.0.8' ],
+80 silly audit   'data-view-buffer': [ '1.0.2' ],
+80 silly audit   'data-view-byte-length': [ '1.0.2' ],
+80 silly audit   'data-view-byte-offset': [ '1.0.1' ],
+80 silly audit   debug: [ '4.4.3', '3.2.7' ],
+80 silly audit   'deep-is': [ '0.1.4' ],
+80 silly audit   'define-data-property': [ '1.1.4' ],
+80 silly audit   'define-properties': [ '1.2.1' ],
+80 silly audit   'detect-libc': [ '2.1.2' ],
+80 silly audit   'detect-node-es': [ '1.1.0' ],
+80 silly audit   didyoumean: [ '1.2.2' ],
+80 silly audit   dlv: [ '1.1.3' ],
+80 silly audit   doctrine: [ '2.1.0' ],
+80 silly audit   'dunder-proto': [ '1.0.1' ],
+80 silly audit   'electron-to-chromium': [ '1.5.302' ],
+80 silly audit   'emoji-regex': [ '9.2.2' ],
+80 silly audit   'es-abstract': [ '1.24.1' ],
+80 silly audit   'es-define-property': [ '1.0.1' ],
+80 silly audit   'es-errors': [ '1.3.0' ],
+80 silly audit   'es-iterator-helpers': [ '1.2.2' ],
+80 silly audit   'es-object-atoms': [ '1.1.1' ],
+80 silly audit   'es-set-tostringtag': [ '2.1.0' ],
+80 silly audit   'es-shim-unscopables': [ '1.1.0' ],
+80 silly audit   'es-to-primitive': [ '1.3.0' ],
+80 silly audit   escalade: [ '3.2.0' ],
+80 silly audit   'escape-string-regexp': [ '4.0.0' ],
+80 silly audit   eslint: [ '9.39.3' ],
+80 silly audit   'eslint-config-next': [ '15.3.1' ],
+80 silly audit   'eslint-import-resolver-node': [ '0.3.9' ],
+80 silly audit   'eslint-import-resolver-typescript': [ '3.10.1' ],
+80 silly audit   'eslint-module-utils': [ '2.12.1' ],
+80 silly audit   'eslint-plugin-import': [ '2.32.0' ],
+80 silly audit   semver: [ '6.3.1', '7.7.4' ],
+80 silly audit   'eslint-plugin-jsx-a11y': [ '6.10.2' ],
+80 silly audit   'eslint-plugin-react': [ '7.37.5' ],
+80 silly audit   'eslint-plugin-react-hooks': [ '5.2.0' ],
+80 silly audit   resolve: [ '2.0.0-next.6', '1.22.11' ],
+80 silly audit   'eslint-scope': [ '8.4.0' ],
+80 silly audit   espree: [ '10.4.0' ],
+80 silly audit   esquery: [ '1.7.0' ],
+80 silly audit   esrecurse: [ '4.3.0' ],
+80 silly audit   estraverse: [ '5.3.0' ],
+80 silly audit   esutils: [ '2.0.3' ],
+80 silly audit   'exif-parser': [ '0.1.12' ],
+80 silly audit   'fast-deep-equal': [ '3.1.3' ],
+80 silly audit   'fast-glob': [ '3.3.1', '3.3.3' ],
+80 silly audit   'fast-json-stable-stringify': [ '2.1.0' ],
+80 silly audit   'fast-levenshtein': [ '2.0.6' ],
+80 silly audit   fastq: [ '1.20.1' ],
+80 silly audit   'file-entry-cache': [ '8.0.0' ],
+80 silly audit   'file-type': [ '21.3.4' ],
+80 silly audit   'fill-range': [ '7.1.1' ],
+80 silly audit   'find-up': [ '5.0.0' ],
+80 silly audit   'flat-cache': [ '4.0.1' ],
+80 silly audit   flatted: [ '3.3.3' ],
+80 silly audit   'for-each': [ '0.3.5' ],
+80 silly audit   'fraction.js': [ '5.3.4' ],
+80 silly audit   fsevents: [ '2.3.3' ],
+80 silly audit   'function-bind': [ '1.1.2' ],
+80 silly audit   'function.prototype.name': [ '1.1.8' ],
+80 silly audit   'functions-have-names': [ '1.2.3' ],
+80 silly audit   'generator-function': [ '2.0.1' ],
+80 silly audit   'get-intrinsic': [ '1.3.0' ],
+80 silly audit   'get-nonce': [ '1.0.1' ],
+80 silly audit   'get-proto': [ '1.0.1' ],
+80 silly audit   'get-symbol-description': [ '1.1.0' ],
+80 silly audit   'get-tsconfig': [ '4.13.6' ],
+80 silly audit   gifwrap: [ '0.10.1' ],
+80 silly audit   globals: [ '14.0.0' ],
+80 silly audit   globalthis: [ '1.0.4' ],
+80 silly audit   gopd: [ '1.2.0' ],
+80 silly audit   'has-bigints': [ '1.1.0' ],
+80 silly audit   'has-flag': [ '4.0.0' ],
+80 silly audit   'has-property-descriptors': [ '1.0.2' ],
+80 silly audit   'has-proto': [ '1.2.0' ],
+80 silly audit   'has-symbols': [ '1.1.0' ],
+80 silly audit   'has-tostringtag': [ '1.0.2' ],
+80 silly audit   hasown: [ '2.0.2' ],
+80 silly audit   'iceberg-js': [ '0.8.1' ],
+80 silly audit   ieee754: [ '1.2.1' ],
+80 silly audit   'image-q': [ '4.0.0' ],
+80 silly audit   'import-fresh': [ '3.3.1' ],
+80 silly audit   imurmurhash: [ '0.1.4' ],
+80 silly audit   'internal-slot': [ '1.1.0' ],
+80 silly audit   'is-array-buffer': [ '3.0.5' ],
+80 silly audit   'is-async-function': [ '2.1.1' ],
+80 silly audit   'is-bigint': [ '1.1.0' ],
+80 silly audit   'is-binary-path': [ '2.1.0' ],
+80 silly audit   'is-boolean-object': [ '1.2.2' ],
+80 silly audit   'is-bun-module': [ '2.0.0' ],
+80 silly audit   'is-callable': [ '1.2.7' ],
+80 silly audit   'is-core-module': [ '2.16.1' ],
+80 silly audit   'is-data-view': [ '1.0.2' ],
+80 silly audit   'is-date-object': [ '1.1.0' ],
+80 silly audit   'is-extglob': [ '2.1.1' ],
+80 silly audit   'is-finalizationregistry': [ '1.1.1' ],
+80 silly audit   'is-generator-function': [ '1.1.2' ],
+80 silly audit   'is-glob': [ '4.0.3' ],
+80 silly audit   'is-map': [ '2.0.3' ],
+80 silly audit   'is-negative-zero': [ '2.0.3' ],
+80 silly audit   'is-number': [ '7.0.0' ],
+80 silly audit   'is-number-object': [ '1.1.1' ],
+80 silly audit   'is-regex': [ '1.2.1' ],
+80 silly audit   'is-set': [ '2.0.3' ],
+80 silly audit   'is-shared-array-buffer': [ '1.0.4' ],
+80 silly audit   'is-string': [ '1.1.1' ],
+80 silly audit   'is-symbol': [ '1.1.1' ],
+80 silly audit   'is-typed-array': [ '1.1.15' ],
+80 silly audit   'is-weakmap': [ '2.0.2' ],
+80 silly audit   'is-weakref': [ '1.1.1' ],
+80 silly audit   'is-weakset': [ '2.0.4' ],
+80 silly audit   isarray: [ '2.0.5' ],
+80 silly audit   isexe: [ '2.0.0' ],
+80 silly audit   'iterator.prototype': [ '1.1.5' ],
+80 silly audit   jimp: [ '1.6.1' ],
+80 silly audit   jiti: [ '1.21.7' ],
+80 silly audit   'jpeg-js': [ '0.4.4' ],
+80 silly audit   'js-tokens': [ '4.0.0' ],
+80 silly audit   'js-yaml': [ '4.1.1' ],
+80 silly audit   'json-buffer': [ '3.0.1' ],
+80 silly audit   'json-schema-traverse': [ '0.4.1' ],
+80 silly audit   'json-stable-stringify-without-jsonify': [ '1.0.1' ],
+80 silly audit   json5: [ '1.0.2' ],
+80 silly audit   'jsx-ast-utils': [ '3.3.5' ],
+80 silly audit   keyv: [ '4.5.4' ],
+80 silly audit   'language-subtag-registry': [ '0.3.23' ],
+80 silly audit   'language-tags': [ '1.0.9' ],
+80 silly audit   levn: [ '0.4.1' ],
+80 silly audit   lilconfig: [ '3.1.3' ],
+80 silly audit   'lines-and-columns': [ '1.2.4' ],
+80 silly audit   'locate-path': [ '6.0.0' ],
+80 silly audit   'lodash.merge': [ '4.6.2' ],
+80 silly audit   'loose-envify': [ '1.4.0' ],
+80 silly audit   'lucide-react': [ '0.511.0' ],
+80 silly audit   'math-intrinsics': [ '1.1.0' ],
+80 silly audit   merge2: [ '1.4.1' ],
+80 silly audit   micromatch: [ '4.0.8' ],
+80 silly audit   mime: [ '3.0.0' ],
+80 silly audit   minimist: [ '1.2.8' ],
+80 silly audit   ms: [ '2.1.3' ],
+80 silly audit   mz: [ '2.7.0' ],
+80 silly audit   nanoid: [ '3.3.11' ],
+80 silly audit   'napi-postinstall': [ '0.3.4' ],
+80 silly audit   'natural-compare': [ '1.4.0' ],
+80 silly audit   next: [ '16.1.6' ],
+80 silly audit   'next-themes': [ '0.4.6' ],
+80 silly audit   postcss: [ '8.4.31', '8.5.6' ],
+80 silly audit   'node-exports-info': [ '1.6.0' ],
+80 silly audit   'node-releases': [ '2.0.27' ],
+80 silly audit   'normalize-path': [ '3.0.0' ],
+80 silly audit   'object-assign': [ '4.1.1' ],
+80 silly audit   'object-hash': [ '3.0.0' ],
+80 silly audit   'object-inspect': [ '1.13.4' ],
+80 silly audit   'object-keys': [ '1.1.1' ],
+80 silly audit   'object.assign': [ '4.1.7' ],
+80 silly audit   'object.entries': [ '1.1.9' ],
+80 silly audit   'object.fromentries': [ '2.0.8' ],
+80 silly audit   'object.groupby': [ '1.0.3' ],
+80 silly audit   'object.values': [ '1.2.1' ],
+80 silly audit   omggif: [ '1.0.10' ],
+80 silly audit   optionator: [ '0.9.4' ],
+80 silly audit   'own-keys': [ '1.0.1' ],
+80 silly audit   'p-limit': [ '3.1.0' ],
+80 silly audit   'p-locate': [ '5.0.0' ],
+80 silly audit   pako: [ '1.0.11' ],
+80 silly audit   'parent-module': [ '1.0.1' ],
+80 silly audit   'parse-bmfont-ascii': [ '1.0.6' ],
+80 silly audit   'parse-bmfont-binary': [ '1.0.6' ],
+80 silly audit   'parse-bmfont-xml': [ '1.1.6' ],
+80 silly audit   'path-exists': [ '4.0.0' ],
+80 silly audit   'path-key': [ '3.1.1' ],
+80 silly audit   'path-parse': [ '1.0.7' ],
+80 silly audit   picocolors: [ '1.1.1' ],
+80 silly audit   picomatch: [ '2.3.1', '4.0.3' ],
+80 silly audit   pify: [ '2.3.0' ],
+80 silly audit   pirates: [ '4.0.7' ],
+80 silly audit   pixelmatch: [ '5.3.0' ],
+80 silly audit   pngjs: [ '6.0.0', '7.0.0' ],
+80 silly audit   'possible-typed-array-names': [ '1.1.0' ],
+80 silly audit   'postcss-import': [ '15.1.0' ],
+80 silly audit   'postcss-js': [ '4.1.0' ],
+80 silly audit   'postcss-load-config': [ '6.0.1' ],
+80 silly audit   'postcss-nested': [ '6.2.0' ],
+80 silly audit   'postcss-selector-parser': [ '6.1.2' ],
+80 silly audit   'postcss-value-parser': [ '4.2.0' ],
+80 silly audit   'prelude-ls': [ '1.2.1' ],
+80 silly audit   'prop-types': [ '15.8.1' ],
+80 silly audit   punycode: [ '2.3.1' ],
+80 silly audit   'queue-microtask': [ '1.2.3' ],
+80 silly audit   react: [ '19.2.4' ],
+80 silly audit   'react-dom': [ '19.2.4' ],
+80 silly audit   'react-is': [ '16.13.1' ],
+80 silly audit   'react-remove-scroll': [ '2.7.2' ],
+80 silly audit   'react-remove-scroll-bar': [ '2.3.8' ],
+80 silly audit   'react-style-singleton': [ '2.2.3' ],
+80 silly audit   'read-cache': [ '1.0.0' ],
+80 silly audit   readdirp: [ '3.6.0' ],
+80 silly audit   'reflect.getprototypeof': [ '1.0.10' ],
+80 silly audit   'regexp.prototype.flags': [ '1.5.4' ],
+80 silly audit   'resolve-from': [ '4.0.0' ],
+80 silly audit   'resolve-pkg-maps': [ '1.0.0' ],
+80 silly audit   reusify: [ '1.1.0' ],
+80 silly audit   'run-parallel': [ '1.2.0' ],
+80 silly audit   'safe-array-concat': [ '1.1.3' ],
+80 silly audit   'safe-push-apply': [ '1.0.0' ],
+80 silly audit   'safe-regex-test': [ '1.1.0' ],
+80 silly audit   sax: [ '1.6.0' ],
+80 silly audit   scheduler: [ '0.27.0' ],
+80 silly audit   'set-function-length': [ '1.2.2' ],
+80 silly audit   'set-function-name': [ '2.0.2' ],
+80 silly audit   'set-proto': [ '1.0.0' ],
+80 silly audit   sharp: [ '0.34.5' ],
+80 silly audit   'shebang-command': [ '2.0.0' ],
+80 silly audit   'shebang-regex': [ '3.0.0' ],
+80 silly audit   'side-channel': [ '1.1.0' ],
+80 silly audit   'side-channel-list': [ '1.0.0' ],
+80 silly audit   'side-channel-map': [ '1.0.1' ],
+80 silly audit   'side-channel-weakmap': [ '1.0.2' ],
+80 silly audit   'simple-xml-to-json': [ '1.2.7' ],
+80 silly audit   'source-map-js': [ '1.2.1' ],
+80 silly audit   'stable-hash': [ '0.0.5' ],
+80 silly audit   'stop-iteration-iterator': [ '1.1.0' ],
+80 silly audit   'string.prototype.includes': [ '2.0.1' ],
+80 silly audit   'string.prototype.matchall': [ '4.0.12' ],
+80 silly audit   'string.prototype.repeat': [ '1.0.0' ],
+80 silly audit   'string.prototype.trim': [ '1.2.10' ],
+80 silly audit   'string.prototype.trimend': [ '1.0.9' ],
+80 silly audit   'string.prototype.trimstart': [ '1.0.8' ],
+80 silly audit   'strip-bom': [ '3.0.0' ],
+80 silly audit   'strip-json-comments': [ '3.1.1' ],
+80 silly audit   strtok3: [ '10.3.5' ],
+80 silly audit   'styled-jsx': [ '5.1.6' ],
+80 silly audit   sucrase: [ '3.35.1' ],
+80 silly audit   'supports-color': [ '7.2.0' ],
+80 silly audit   'supports-preserve-symlinks-flag': [ '1.0.0' ],
+80 silly audit   'tailwind-merge': [ '3.5.0' ],
+80 silly audit   tailwindcss: [ '3.4.19' ],
+80 silly audit   'tailwindcss-animate': [ '1.0.7' ],
+80 silly audit   thenify: [ '3.3.1' ],
+80 silly audit   'thenify-all': [ '1.6.0' ],
+80 silly audit   tinycolor2: [ '1.6.0' ],
+80 silly audit   tinyglobby: [ '0.2.15' ],
+80 silly audit   fdir: [ '6.5.0' ],
+80 silly audit   'to-regex-range': [ '5.0.1' ],
+80 silly audit   'token-types': [ '6.1.2' ],
+80 silly audit   'ts-api-utils': [ '2.4.0' ],
+80 silly audit   'ts-custom-error': [ '3.3.1' ],
+80 silly audit   'ts-interface-checker': [ '0.1.13' ],
+80 silly audit   'tsconfig-paths': [ '3.15.0' ],
+80 silly audit   tslib: [ '2.8.1' ],
+80 silly audit   'type-check': [ '0.4.0' ],
+80 silly audit   'typed-array-buffer': [ '1.0.3' ],
+80 silly audit   'typed-array-byte-length': [ '1.0.3' ],
+80 silly audit   'typed-array-byte-offset': [ '1.0.4' ],
+80 silly audit   'typed-array-length': [ '1.0.7' ],
+80 silly audit   typescript: [ '5.9.3' ],
+80 silly audit   'uint8array-extras': [ '1.5.0' ],
+80 silly audit   'unbox-primitive': [ '1.1.0' ],
+80 silly audit   'undici-types': [ '6.21.0' ],
+80 silly audit   'unrs-resolver': [ '1.11.1' ],
+80 silly audit   'update-browserslist-db': [ '1.2.3' ],
+80 silly audit   'uri-js': [ '4.4.1' ],
+80 silly audit   'use-callback-ref': [ '1.3.3' ],
+80 silly audit   'use-sidecar': [ '1.1.3' ],
+80 silly audit   utif2: [ '4.1.0' ],
+80 silly audit   'util-deprecate': [ '1.0.2' ],
+80 silly audit   which: [ '2.0.2' ],
+80 silly audit   'which-boxed-primitive': [ '1.1.1' ],
+80 silly audit   'which-builtin-type': [ '1.2.1' ],
+80 silly audit   'which-collection': [ '1.0.2' ],
+80 silly audit   'which-typed-array': [ '1.1.20' ],
+80 silly audit   'word-wrap': [ '1.2.5' ],
+80 silly audit   ws: [ '8.19.0' ],
+80 silly audit   'xml-parse-from-string': [ '1.0.1' ],
+80 silly audit   xml2js: [ '0.5.0' ],
+80 silly audit   xmlbuilder: [ '11.0.1' ],
+80 silly audit   'yocto-queue': [ '0.1.0' ],
+80 silly audit   zod: [ '3.25.76' ]
+80 silly audit }
+81 http cache @tokenizer/inflate@https://registry.npmjs.org/@tokenizer/inflate/-/inflate-0.4.1.tgz 1ms (cache hit)
+82 http cache @zxing/text-encoding@https://registry.npmjs.org/@zxing/text-encoding/-/text-encoding-0.9.0.tgz 0ms (cache hit)
+83 http cache @zxing/library@https://registry.npmjs.org/@zxing/library/-/library-0.21.3.tgz 0ms (cache hit)
+84 http cache @tokenizer/token@https://registry.npmjs.org/@tokenizer/token/-/token-0.3.0.tgz 0ms (cache hit)
+85 http cache @jimp/utils@https://registry.npmjs.org/@jimp/utils/-/utils-1.6.1.tgz 0ms (cache hit)
+86 http cache @jimp/types@https://registry.npmjs.org/@jimp/types/-/types-1.6.1.tgz 0ms (cache hit)
+87 http cache @jimp/plugin-rotate@https://registry.npmjs.org/@jimp/plugin-rotate/-/plugin-rotate-1.6.1.tgz 0ms (cache hit)
+88 http cache @jimp/plugin-threshold@https://registry.npmjs.org/@jimp/plugin-threshold/-/plugin-threshold-1.6.1.tgz 0ms (cache hit)
+89 http cache @jimp/plugin-resize@https://registry.npmjs.org/@jimp/plugin-resize/-/plugin-resize-1.6.1.tgz 0ms (cache hit)
+90 http cache @jimp/plugin-quantize@https://registry.npmjs.org/@jimp/plugin-quantize/-/plugin-quantize-1.6.1.tgz 0ms (cache hit)
+91 http cache @jimp/plugin-print@https://registry.npmjs.org/@jimp/plugin-print/-/plugin-print-1.6.1.tgz 0ms (cache hit)
+92 http cache @jimp/plugin-mask@https://registry.npmjs.org/@jimp/plugin-mask/-/plugin-mask-1.6.1.tgz 0ms (cache hit)
+93 http cache @jimp/plugin-flip@https://registry.npmjs.org/@jimp/plugin-flip/-/plugin-flip-1.6.1.tgz 0ms (cache hit)
+94 http cache @jimp/plugin-hash@https://registry.npmjs.org/@jimp/plugin-hash/-/plugin-hash-1.6.1.tgz 0ms (cache hit)
+95 http cache @jimp/plugin-fisheye@https://registry.npmjs.org/@jimp/plugin-fisheye/-/plugin-fisheye-1.6.1.tgz 0ms (cache hit)
+96 http cache @jimp/plugin-dither@https://registry.npmjs.org/@jimp/plugin-dither/-/plugin-dither-1.6.1.tgz 0ms (cache hit)
+97 http cache @jimp/plugin-displace@https://registry.npmjs.org/@jimp/plugin-displace/-/plugin-displace-1.6.1.tgz 0ms (cache hit)
+98 http cache @jimp/plugin-crop@https://registry.npmjs.org/@jimp/plugin-crop/-/plugin-crop-1.6.1.tgz 0ms (cache hit)
+99 http cache @jimp/plugin-cover@https://registry.npmjs.org/@jimp/plugin-cover/-/plugin-cover-1.6.1.tgz 0ms (cache hit)
+100 http cache @jimp/plugin-contain@https://registry.npmjs.org/@jimp/plugin-contain/-/plugin-contain-1.6.1.tgz 0ms (cache hit)
+101 http cache @jimp/plugin-circle@https://registry.npmjs.org/@jimp/plugin-circle/-/plugin-circle-1.6.1.tgz 0ms (cache hit)
+102 http cache @jimp/plugin-color@https://registry.npmjs.org/@jimp/plugin-color/-/plugin-color-1.6.1.tgz 0ms (cache hit)
+103 http cache @jimp/plugin-blur@https://registry.npmjs.org/@jimp/plugin-blur/-/plugin-blur-1.6.1.tgz 0ms (cache hit)
+104 http cache @jimp/plugin-blit@https://registry.npmjs.org/@jimp/plugin-blit/-/plugin-blit-1.6.1.tgz 0ms (cache hit)
+105 http cache @jimp/js-tiff@https://registry.npmjs.org/@jimp/js-tiff/-/js-tiff-1.6.1.tgz 0ms (cache hit)
+106 http cache @jimp/js-jpeg@https://registry.npmjs.org/@jimp/js-jpeg/-/js-jpeg-1.6.1.tgz 0ms (cache hit)
+107 http cache @jimp/js-png@https://registry.npmjs.org/@jimp/js-png/-/js-png-1.6.1.tgz 0ms (cache hit)
+108 http cache @jimp/js-bmp@https://registry.npmjs.org/@jimp/js-bmp/-/js-bmp-1.6.1.tgz 0ms (cache hit)
+109 http cache @jimp/js-gif@https://registry.npmjs.org/@jimp/js-gif/-/js-gif-1.6.1.tgz 0ms (cache hit)
+110 http cache @jimp/file-ops@https://registry.npmjs.org/@jimp/file-ops/-/file-ops-1.6.1.tgz 0ms (cache hit)
+111 http cache @jimp/diff@https://registry.npmjs.org/@jimp/diff/-/diff-1.6.1.tgz 0ms (cache hit)
+112 http cache @jimp/core@https://registry.npmjs.org/@jimp/core/-/core-1.6.1.tgz 0ms (cache hit)
+113 http cache @borewit/text-codec@https://registry.npmjs.org/@borewit/text-codec/-/text-codec-0.2.2.tgz 0ms (cache hit)
+114 http cache zod@https://registry.npmjs.org/zod/-/zod-3.25.76.tgz 0ms (cache hit)
+115 http cache xmlbuilder@https://registry.npmjs.org/xmlbuilder/-/xmlbuilder-11.0.1.tgz 0ms (cache hit)
+116 http cache xml2js@https://registry.npmjs.org/xml2js/-/xml2js-0.5.0.tgz 0ms (cache hit)
+117 http cache xml-parse-from-string@https://registry.npmjs.org/xml-parse-from-string/-/xml-parse-from-string-1.0.1.tgz 0ms (cache hit)
+118 http cache utif2@https://registry.npmjs.org/utif2/-/utif2-4.1.0.tgz 0ms (cache hit)
+119 http cache uint8array-extras@https://registry.npmjs.org/uint8array-extras/-/uint8array-extras-1.5.0.tgz 0ms (cache hit)
+120 http cache ts-custom-error@https://registry.npmjs.org/ts-custom-error/-/ts-custom-error-3.3.1.tgz 0ms (cache hit)
+121 http cache token-types@https://registry.npmjs.org/token-types/-/token-types-6.1.2.tgz 0ms (cache hit)
+122 http cache tinycolor2@https://registry.npmjs.org/tinycolor2/-/tinycolor2-1.6.0.tgz 0ms (cache hit)
+123 http cache strtok3@https://registry.npmjs.org/strtok3/-/strtok3-10.3.5.tgz 0ms (cache hit)
+124 http cache simple-xml-to-json@https://registry.npmjs.org/simple-xml-to-json/-/simple-xml-to-json-1.2.7.tgz 0ms (cache hit)
+125 http cache sax@https://registry.npmjs.org/sax/-/sax-1.6.0.tgz 0ms (cache hit)
+126 http cache pngjs@https://registry.npmjs.org/pngjs/-/pngjs-7.0.0.tgz 0ms (cache hit)
+127 http cache pixelmatch@https://registry.npmjs.org/pixelmatch/-/pixelmatch-5.3.0.tgz 0ms (cache hit)
+128 http cache parse-bmfont-binary@https://registry.npmjs.org/parse-bmfont-binary/-/parse-bmfont-binary-1.0.6.tgz 0ms (cache hit)
+129 http cache parse-bmfont-xml@https://registry.npmjs.org/parse-bmfont-xml/-/parse-bmfont-xml-1.1.6.tgz 0ms (cache hit)
+130 http cache pako@https://registry.npmjs.org/pako/-/pako-1.0.11.tgz 0ms (cache hit)
+131 http cache parse-bmfont-ascii@https://registry.npmjs.org/parse-bmfont-ascii/-/parse-bmfont-ascii-1.0.6.tgz 0ms (cache hit)
+132 http cache omggif@https://registry.npmjs.org/omggif/-/omggif-1.0.10.tgz 0ms (cache hit)
+133 http cache mime@https://registry.npmjs.org/mime/-/mime-3.0.0.tgz 0ms (cache hit)
+134 http cache jpeg-js@https://registry.npmjs.org/jpeg-js/-/jpeg-js-0.4.4.tgz 0ms (cache hit)
+135 http cache jimp@https://registry.npmjs.org/jimp/-/jimp-1.6.1.tgz 0ms (cache hit)
+136 http cache image-q@https://registry.npmjs.org/image-q/-/image-q-4.0.0.tgz 0ms (cache hit)
+137 http cache gifwrap@https://registry.npmjs.org/gifwrap/-/gifwrap-0.10.1.tgz 0ms (cache hit)
+138 http cache ieee754@https://registry.npmjs.org/ieee754/-/ieee754-1.2.1.tgz 0ms (cache hit)
+139 http cache file-type@https://registry.npmjs.org/file-type/-/file-type-21.3.4.tgz 0ms (cache hit)
+140 http cache exif-parser@https://registry.npmjs.org/exif-parser/-/exif-parser-0.1.12.tgz 0ms (cache hit)
+141 http cache any-base@https://registry.npmjs.org/any-base/-/any-base-1.1.0.tgz 0ms (cache hit)
+142 http cache bmp-ts@https://registry.npmjs.org/bmp-ts/-/bmp-ts-1.0.9.tgz 0ms (cache hit)
+143 http cache await-to-js@https://registry.npmjs.org/await-to-js/-/await-to-js-3.0.0.tgz 0ms (cache hit)
+144 http cache pngjs@https://registry.npmjs.org/pngjs/-/pngjs-6.0.0.tgz 0ms (cache hit)
+145 http cache @types/node@https://registry.npmjs.org/@types/node/-/node-16.9.1.tgz 0ms (cache hit)
+146 silly tarball no local data for @tokenizer/inflate@https://registry.npmjs.org/@tokenizer/inflate/-/inflate-0.4.1.tgz. Extracting by manifest.
+147 silly tarball no local data for @zxing/text-encoding@https://registry.npmjs.org/@zxing/text-encoding/-/text-encoding-0.9.0.tgz. Extracting by manifest.
+148 silly tarball no local data for @zxing/library@https://registry.npmjs.org/@zxing/library/-/library-0.21.3.tgz. Extracting by manifest.
+149 silly tarball no local data for @tokenizer/token@https://registry.npmjs.org/@tokenizer/token/-/token-0.3.0.tgz. Extracting by manifest.
+150 silly tarball no local data for @jimp/utils@https://registry.npmjs.org/@jimp/utils/-/utils-1.6.1.tgz. Extracting by manifest.
+151 silly tarball no local data for @jimp/types@https://registry.npmjs.org/@jimp/types/-/types-1.6.1.tgz. Extracting by manifest.
+152 silly tarball no local data for @jimp/plugin-rotate@https://registry.npmjs.org/@jimp/plugin-rotate/-/plugin-rotate-1.6.1.tgz. Extracting by manifest.
+153 silly tarball no local data for @jimp/plugin-threshold@https://registry.npmjs.org/@jimp/plugin-threshold/-/plugin-threshold-1.6.1.tgz. Extracting by manifest.
+154 silly tarball no local data for @jimp/plugin-resize@https://registry.npmjs.org/@jimp/plugin-resize/-/plugin-resize-1.6.1.tgz. Extracting by manifest.
+155 silly tarball no local data for @jimp/plugin-quantize@https://registry.npmjs.org/@jimp/plugin-quantize/-/plugin-quantize-1.6.1.tgz. Extracting by manifest.
+156 silly tarball no local data for @jimp/plugin-print@https://registry.npmjs.org/@jimp/plugin-print/-/plugin-print-1.6.1.tgz. Extracting by manifest.
+157 silly tarball no local data for @jimp/plugin-mask@https://registry.npmjs.org/@jimp/plugin-mask/-/plugin-mask-1.6.1.tgz. Extracting by manifest.
+158 silly tarball no local data for @jimp/plugin-flip@https://registry.npmjs.org/@jimp/plugin-flip/-/plugin-flip-1.6.1.tgz. Extracting by manifest.
+159 silly tarball no local data for @jimp/plugin-hash@https://registry.npmjs.org/@jimp/plugin-hash/-/plugin-hash-1.6.1.tgz. Extracting by manifest.
+160 silly tarball no local data for @jimp/plugin-fisheye@https://registry.npmjs.org/@jimp/plugin-fisheye/-/plugin-fisheye-1.6.1.tgz. Extracting by manifest.
+161 silly tarball no local data for @jimp/plugin-dither@https://registry.npmjs.org/@jimp/plugin-dither/-/plugin-dither-1.6.1.tgz. Extracting by manifest.
+162 silly tarball no local data for @jimp/plugin-displace@https://registry.npmjs.org/@jimp/plugin-displace/-/plugin-displace-1.6.1.tgz. Extracting by manifest.
+163 silly tarball no local data for @jimp/plugin-crop@https://registry.npmjs.org/@jimp/plugin-crop/-/plugin-crop-1.6.1.tgz. Extracting by manifest.
+164 silly tarball no local data for @jimp/plugin-cover@https://registry.npmjs.org/@jimp/plugin-cover/-/plugin-cover-1.6.1.tgz. Extracting by manifest.
+165 silly tarball no local data for @jimp/plugin-contain@https://registry.npmjs.org/@jimp/plugin-contain/-/plugin-contain-1.6.1.tgz. Extracting by manifest.
+166 silly tarball no local data for @jimp/plugin-circle@https://registry.npmjs.org/@jimp/plugin-circle/-/plugin-circle-1.6.1.tgz. Extracting by manifest.
+167 silly tarball no local data for @jimp/plugin-color@https://registry.npmjs.org/@jimp/plugin-color/-/plugin-color-1.6.1.tgz. Extracting by manifest.
+168 silly tarball no local data for @jimp/plugin-blur@https://registry.npmjs.org/@jimp/plugin-blur/-/plugin-blur-1.6.1.tgz. Extracting by manifest.
+169 silly tarball no local data for @jimp/plugin-blit@https://registry.npmjs.org/@jimp/plugin-blit/-/plugin-blit-1.6.1.tgz. Extracting by manifest.
+170 silly tarball no local data for @jimp/js-tiff@https://registry.npmjs.org/@jimp/js-tiff/-/js-tiff-1.6.1.tgz. Extracting by manifest.
+171 silly tarball no local data for @jimp/js-jpeg@https://registry.npmjs.org/@jimp/js-jpeg/-/js-jpeg-1.6.1.tgz. Extracting by manifest.
+172 silly tarball no local data for @jimp/js-png@https://registry.npmjs.org/@jimp/js-png/-/js-png-1.6.1.tgz. Extracting by manifest.
+173 silly tarball no local data for @jimp/js-bmp@https://registry.npmjs.org/@jimp/js-bmp/-/js-bmp-1.6.1.tgz. Extracting by manifest.
+174 silly tarball no local data for @jimp/js-gif@https://registry.npmjs.org/@jimp/js-gif/-/js-gif-1.6.1.tgz. Extracting by manifest.
+175 silly tarball no local data for @jimp/file-ops@https://registry.npmjs.org/@jimp/file-ops/-/file-ops-1.6.1.tgz. Extracting by manifest.
+176 silly tarball no local data for @jimp/diff@https://registry.npmjs.org/@jimp/diff/-/diff-1.6.1.tgz. Extracting by manifest.
+177 silly tarball no local data for @jimp/core@https://registry.npmjs.org/@jimp/core/-/core-1.6.1.tgz. Extracting by manifest.
+178 silly tarball no local data for @borewit/text-codec@https://registry.npmjs.org/@borewit/text-codec/-/text-codec-0.2.2.tgz. Extracting by manifest.
+179 silly tarball no local data for zod@https://registry.npmjs.org/zod/-/zod-3.25.76.tgz. Extracting by manifest.
+180 silly tarball no local data for xmlbuilder@https://registry.npmjs.org/xmlbuilder/-/xmlbuilder-11.0.1.tgz. Extracting by manifest.
+181 silly tarball no local data for xml2js@https://registry.npmjs.org/xml2js/-/xml2js-0.5.0.tgz. Extracting by manifest.
+182 silly tarball no local data for xml-parse-from-string@https://registry.npmjs.org/xml-parse-from-string/-/xml-parse-from-string-1.0.1.tgz. Extracting by manifest.
+183 silly tarball no local data for utif2@https://registry.npmjs.org/utif2/-/utif2-4.1.0.tgz. Extracting by manifest.
+184 silly tarball no local data for uint8array-extras@https://registry.npmjs.org/uint8array-extras/-/uint8array-extras-1.5.0.tgz. Extracting by manifest.
+185 silly tarball no local data for ts-custom-error@https://registry.npmjs.org/ts-custom-error/-/ts-custom-error-3.3.1.tgz. Extracting by manifest.
+186 silly tarball no local data for token-types@https://registry.npmjs.org/token-types/-/token-types-6.1.2.tgz. Extracting by manifest.
+187 silly tarball no local data for tinycolor2@https://registry.npmjs.org/tinycolor2/-/tinycolor2-1.6.0.tgz. Extracting by manifest.
+188 silly tarball no local data for strtok3@https://registry.npmjs.org/strtok3/-/strtok3-10.3.5.tgz. Extracting by manifest.
+189 silly tarball no local data for simple-xml-to-json@https://registry.npmjs.org/simple-xml-to-json/-/simple-xml-to-json-1.2.7.tgz. Extracting by manifest.
+190 silly tarball no local data for sax@https://registry.npmjs.org/sax/-/sax-1.6.0.tgz. Extracting by manifest.
+191 silly tarball no local data for pngjs@https://registry.npmjs.org/pngjs/-/pngjs-7.0.0.tgz. Extracting by manifest.
+192 silly tarball no local data for pixelmatch@https://registry.npmjs.org/pixelmatch/-/pixelmatch-5.3.0.tgz. Extracting by manifest.
+193 silly tarball no local data for parse-bmfont-binary@https://registry.npmjs.org/parse-bmfont-binary/-/parse-bmfont-binary-1.0.6.tgz. Extracting by manifest.
+194 silly tarball no local data for parse-bmfont-xml@https://registry.npmjs.org/parse-bmfont-xml/-/parse-bmfont-xml-1.1.6.tgz. Extracting by manifest.
+195 silly tarball no local data for pako@https://registry.npmjs.org/pako/-/pako-1.0.11.tgz. Extracting by manifest.
+196 silly tarball no local data for parse-bmfont-ascii@https://registry.npmjs.org/parse-bmfont-ascii/-/parse-bmfont-ascii-1.0.6.tgz. Extracting by manifest.
+197 silly tarball no local data for omggif@https://registry.npmjs.org/omggif/-/omggif-1.0.10.tgz. Extracting by manifest.
+198 silly tarball no local data for mime@https://registry.npmjs.org/mime/-/mime-3.0.0.tgz. Extracting by manifest.
+199 silly tarball no local data for jpeg-js@https://registry.npmjs.org/jpeg-js/-/jpeg-js-0.4.4.tgz. Extracting by manifest.
+200 silly tarball no local data for jimp@https://registry.npmjs.org/jimp/-/jimp-1.6.1.tgz. Extracting by manifest.
+201 silly tarball no local data for image-q@https://registry.npmjs.org/image-q/-/image-q-4.0.0.tgz. Extracting by manifest.
+202 silly tarball no local data for gifwrap@https://registry.npmjs.org/gifwrap/-/gifwrap-0.10.1.tgz. Extracting by manifest.
+203 silly tarball no local data for ieee754@https://registry.npmjs.org/ieee754/-/ieee754-1.2.1.tgz. Extracting by manifest.
+204 silly tarball no local data for file-type@https://registry.npmjs.org/file-type/-/file-type-21.3.4.tgz. Extracting by manifest.
+205 silly tarball no local data for exif-parser@https://registry.npmjs.org/exif-parser/-/exif-parser-0.1.12.tgz. Extracting by manifest.
+206 silly tarball no local data for any-base@https://registry.npmjs.org/any-base/-/any-base-1.1.0.tgz. Extracting by manifest.
+207 silly tarball no local data for bmp-ts@https://registry.npmjs.org/bmp-ts/-/bmp-ts-1.0.9.tgz. Extracting by manifest.
+208 silly tarball no local data for await-to-js@https://registry.npmjs.org/await-to-js/-/await-to-js-3.0.0.tgz. Extracting by manifest.
+209 silly tarball no local data for pngjs@https://registry.npmjs.org/pngjs/-/pngjs-6.0.0.tgz. Extracting by manifest.
+210 silly tarball no local data for @types/node@https://registry.npmjs.org/@types/node/-/node-16.9.1.tgz. Extracting by manifest.
+211 verbose audit error FetchError: request to https://registry.npmjs.org/-/npm/v1/security/advisories/bulk failed, reason: 
+211 verbose audit error     at ClientRequest.<anonymous> (C:\Program Files\nodejs\node_modules\npm\node_modules\minipass-fetch\lib\index.js:130:14)
+211 verbose audit error     at ClientRequest.emit (node:events:508:28)
+211 verbose audit error     at emitErrorEvent (node:_http_client:108:11)
+211 verbose audit error     at _destroy (node:_http_client:963:9)
+211 verbose audit error     at onSocketNT (node:_http_client:983:5)
+211 verbose audit error     at process.processTicksAndRejections (node:internal/process/task_queues:91:21) {
+211 verbose audit error   code: 'EACCES',
+211 verbose audit error   errno: 'EACCES',
+211 verbose audit error   type: 'system'
+211 verbose audit error }
+212 silly audit error undefined
+213 silly audit report null
+214 http fetch GET https://registry.npmjs.org/@tokenizer/inflate/-/inflate-0.4.1.tgz attempt 1 failed with EACCES
+215 http fetch GET https://registry.npmjs.org/@zxing/text-encoding/-/text-encoding-0.9.0.tgz attempt 1 failed with EACCES
+216 http fetch GET https://registry.npmjs.org/@zxing/library/-/library-0.21.3.tgz attempt 1 failed with EACCES
+217 http fetch GET https://registry.npmjs.org/@tokenizer/token/-/token-0.3.0.tgz attempt 1 failed with EACCES
+218 http fetch GET https://registry.npmjs.org/@jimp/utils/-/utils-1.6.1.tgz attempt 1 failed with EACCES
+219 http fetch GET https://registry.npmjs.org/@jimp/types/-/types-1.6.1.tgz attempt 1 failed with EACCES
+220 http fetch GET https://registry.npmjs.org/@jimp/plugin-rotate/-/plugin-rotate-1.6.1.tgz attempt 1 failed with EACCES
+221 http fetch GET https://registry.npmjs.org/@jimp/plugin-threshold/-/plugin-threshold-1.6.1.tgz attempt 1 failed with EACCES
+222 http fetch GET https://registry.npmjs.org/@jimp/plugin-resize/-/plugin-resize-1.6.1.tgz attempt 1 failed with EACCES
+223 http fetch GET https://registry.npmjs.org/@jimp/plugin-quantize/-/plugin-quantize-1.6.1.tgz attempt 1 failed with EACCES
+224 http fetch GET https://registry.npmjs.org/@jimp/plugin-print/-/plugin-print-1.6.1.tgz attempt 1 failed with EACCES
+225 http fetch GET https://registry.npmjs.org/@jimp/plugin-mask/-/plugin-mask-1.6.1.tgz attempt 1 failed with EACCES
+226 http fetch GET https://registry.npmjs.org/@jimp/plugin-flip/-/plugin-flip-1.6.1.tgz attempt 1 failed with EACCES
+227 http fetch GET https://registry.npmjs.org/@jimp/plugin-hash/-/plugin-hash-1.6.1.tgz attempt 1 failed with EACCES
+228 http fetch GET https://registry.npmjs.org/npm attempt 2 failed with EACCES
+229 http fetch GET https://registry.npmjs.org/@tokenizer/inflate/-/inflate-0.4.1.tgz attempt 2 failed with EACCES
+230 http fetch GET https://registry.npmjs.org/@zxing/text-encoding/-/text-encoding-0.9.0.tgz attempt 2 failed with EACCES
+231 http fetch GET https://registry.npmjs.org/@zxing/library/-/library-0.21.3.tgz attempt 2 failed with EACCES
+232 http fetch GET https://registry.npmjs.org/@tokenizer/token/-/token-0.3.0.tgz attempt 2 failed with EACCES
+233 http fetch GET https://registry.npmjs.org/@jimp/utils/-/utils-1.6.1.tgz attempt 2 failed with EACCES
+234 http fetch GET https://registry.npmjs.org/@jimp/types/-/types-1.6.1.tgz attempt 2 failed with EACCES
+235 http fetch GET https://registry.npmjs.org/@jimp/plugin-rotate/-/plugin-rotate-1.6.1.tgz attempt 2 failed with EACCES
+236 http fetch GET https://registry.npmjs.org/@jimp/plugin-threshold/-/plugin-threshold-1.6.1.tgz attempt 2 failed with EACCES
+237 http fetch GET https://registry.npmjs.org/@jimp/plugin-resize/-/plugin-resize-1.6.1.tgz attempt 2 failed with EACCES
+238 http fetch GET https://registry.npmjs.org/@jimp/plugin-quantize/-/plugin-quantize-1.6.1.tgz attempt 2 failed with EACCES
+239 http fetch GET https://registry.npmjs.org/@jimp/plugin-print/-/plugin-print-1.6.1.tgz attempt 2 failed with EACCES
+240 http fetch GET https://registry.npmjs.org/@jimp/plugin-mask/-/plugin-mask-1.6.1.tgz attempt 2 failed with EACCES
+241 http fetch GET https://registry.npmjs.org/@jimp/plugin-flip/-/plugin-flip-1.6.1.tgz attempt 2 failed with EACCES
+242 http fetch GET https://registry.npmjs.org/@jimp/plugin-hash/-/plugin-hash-1.6.1.tgz attempt 2 failed with EACCES
+243 http fetch GET https://registry.npmjs.org/npm attempt 3 failed with EACCES
+244 http fetch GET https://registry.npmjs.org/@tokenizer/inflate/-/inflate-0.4.1.tgz attempt 3 failed with EACCES
+245 http fetch GET https://registry.npmjs.org/@zxing/text-encoding/-/text-encoding-0.9.0.tgz attempt 3 failed with EACCES
+246 verbose reify failed optional dependency C:\dev\kasupply\kasupply-app\node_modules\@zxing\text-encoding
+247 silly reify mark deleted [
+247 silly reify   'C:\\dev\\kasupply\\kasupply-app\\node_modules\\@zxing\\text-encoding'
+247 silly reify ]
+248 http fetch GET https://registry.npmjs.org/@zxing/library/-/library-0.21.3.tgz attempt 3 failed with EACCES
+249 http fetch GET https://registry.npmjs.org/@tokenizer/token/-/token-0.3.0.tgz attempt 3 failed with EACCES
+250 http fetch GET https://registry.npmjs.org/@jimp/utils/-/utils-1.6.1.tgz attempt 3 failed with EACCES
+251 http fetch GET https://registry.npmjs.org/@jimp/types/-/types-1.6.1.tgz attempt 3 failed with EACCES
+252 http fetch GET https://registry.npmjs.org/@jimp/plugin-rotate/-/plugin-rotate-1.6.1.tgz attempt 3 failed with EACCES
+253 http fetch GET https://registry.npmjs.org/@jimp/plugin-threshold/-/plugin-threshold-1.6.1.tgz attempt 3 failed with EACCES
+254 http fetch GET https://registry.npmjs.org/@jimp/plugin-resize/-/plugin-resize-1.6.1.tgz attempt 3 failed with EACCES
+255 http fetch GET https://registry.npmjs.org/@jimp/plugin-quantize/-/plugin-quantize-1.6.1.tgz attempt 3 failed with EACCES
+256 http fetch GET https://registry.npmjs.org/@jimp/plugin-print/-/plugin-print-1.6.1.tgz attempt 3 failed with EACCES
+257 http fetch GET https://registry.npmjs.org/@jimp/plugin-mask/-/plugin-mask-1.6.1.tgz attempt 3 failed with EACCES
+258 http fetch GET https://registry.npmjs.org/@jimp/plugin-flip/-/plugin-flip-1.6.1.tgz attempt 3 failed with EACCES
+259 http fetch GET https://registry.npmjs.org/@jimp/plugin-hash/-/plugin-hash-1.6.1.tgz attempt 3 failed with EACCES
+260 verbose cwd C:\dev\kasupply\kasupply-app
+261 verbose os Windows_NT 10.0.26200
+262 verbose node v24.14.0
+263 verbose npm  v11.9.0
+264 error Exit handler never called!
+265 error This is an error with npm itself. Please report this error at:
+266 error   <https://github.com/npm/cli/issues>
+267 verbose exit 1
+268 verbose code 1
+269 error A complete log of this run can be found in: C:\dev\kasupply\kasupply-app\.npm-cache\_logs\2026-04-22T02_32_31_714Z-debug-0.log

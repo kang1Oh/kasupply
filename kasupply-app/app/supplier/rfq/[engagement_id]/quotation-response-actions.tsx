@@ -82,7 +82,7 @@ export function QuotationResponseActions({
         <button
           type="button"
           onClick={handleSubmitOpen}
-          className="inline-flex h-[44px] flex-1 items-center justify-center rounded-[10px] bg-[#233F68] px-[20px] text-[13px] font-semibold text-white sm:min-w-[260px]"
+          className="inline-flex h-[44px] flex-1 items-center justify-center rounded-[10px] bg-[#1E3A5F] px-[20px] text-[13px] font-medium text-white sm:min-w-[260px]"
         >
           Submit Quotation
         </button>
@@ -90,7 +90,7 @@ export function QuotationResponseActions({
         <button
           type="button"
           onClick={() => setIsDeclineModalOpen(true)}
-          className="inline-flex h-[44px] min-w-[122px] items-center justify-center rounded-[10px] border border-[#FF6C57] bg-white px-[18px] text-[13px] font-medium text-[#FF5A44]"
+          className="inline-flex h-[44px] min-w-[122px] items-center justify-center rounded-[10px] border border-[#FE1601] bg-white px-[18px] text-[13px] font-medium text-[#FE1601]"
         >
           Decline
         </button>

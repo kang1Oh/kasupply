@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { SITE_IMAGE_REQUIREMENTS } from "@/lib/verification/site-image-types";
 
 type ExistingImageRecord = {
   image_id: number;
@@ -11,55 +12,6 @@ type ExistingImageRecord = {
   image_url: string;
   status: string;
 };
-
-const IMAGE_REQUIREMENTS = [
-  {
-    imageType: "exterior",
-    label: "Office / Warehouse Exterior",
-    description: "JPG or PNG or WEBP · Max 5MB",
-    accept: ".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp",
-    allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
-    allowedExtensions: ["jpg", "jpeg", "png", "webp"],
-  },
-  {
-    imageType: "interior",
-    label: "Office / Warehouse Interior",
-    description: "JPG or PNG or WEBP · Max 5MB",
-    accept: ".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp",
-    allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
-    allowedExtensions: ["jpg", "jpeg", "png", "webp"],
-  },
-  {
-    imageType: "signage",
-    label: "Business Signage",
-    description: "Must show registered business name · Max 5MB",
-    accept: ".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp",
-    allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
-    allowedExtensions: ["jpg", "jpeg", "png", "webp"],
-  },
-  {
-    imageType: "operational_setup",
-    label: "Operational Setup",
-    description: "Equipment, storage, work areas · Max 5MB",
-    accept: ".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp",
-    allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
-    allowedExtensions: ["jpg", "jpeg", "png", "webp"],
-  },
-  {
-    imageType: "location_map",
-    label: "Location Map / Site Sketch",
-    description: "JPG, PNG, WEBP or PDF · Max 5MB",
-    accept:
-      ".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf",
-    allowedMimeTypes: [
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-      "application/pdf",
-    ],
-    allowedExtensions: ["jpg", "jpeg", "png", "webp", "pdf"],
-  },
-] as const;
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
@@ -97,7 +49,7 @@ export function SupplierSiteImageUploadForm({
 
   const allRequiredUploaded = useMemo(
     () =>
-      IMAGE_REQUIREMENTS.every((requirement) =>
+      SITE_IMAGE_REQUIREMENTS.every((requirement) =>
         Boolean(uploadedState[requirement.imageType]?.image_url)
       ),
     [uploadedState]
@@ -110,7 +62,7 @@ export function SupplierSiteImageUploadForm({
 
   async function handleUpload(
     event: React.FormEvent<HTMLFormElement>,
-    requirement: (typeof IMAGE_REQUIREMENTS)[number]
+    requirement: (typeof SITE_IMAGE_REQUIREMENTS)[number]
   ) {
     event.preventDefault();
 
@@ -126,8 +78,13 @@ export function SupplierSiteImageUploadForm({
 
     const fileExtension = file.name.split(".").pop()?.toLowerCase() ?? "";
     const isAllowedType =
-      (file.type && requirement.allowedMimeTypes.includes(file.type)) ||
-      requirement.allowedExtensions.includes(fileExtension);
+      (file.type &&
+        requirement.allowedMimeTypes.includes(
+          file.type as (typeof requirement.allowedMimeTypes)[number]
+        )) ||
+      requirement.allowedExtensions.includes(
+        fileExtension as (typeof requirement.allowedExtensions)[number]
+      );
 
     if (!isAllowedType) {
       setErrorByType((current) => ({
@@ -272,7 +229,7 @@ export function SupplierSiteImageUploadForm({
           </div>
 
           <div className="space-y-3">
-            {IMAGE_REQUIREMENTS.map((requirement) => {
+            {SITE_IMAGE_REQUIREMENTS.map((requirement) => {
               const selectedFile = selectedFiles[requirement.imageType];
               const uploaded = uploadedState[requirement.imageType];
 
@@ -293,7 +250,7 @@ export function SupplierSiteImageUploadForm({
                       </p>
                       {uploaded ? (
                         <p className="mt-1 text-xs font-medium text-[#15803d]">
-                          Uploaded · {uploaded.status}
+                          Uploaded - {uploaded.status}
                         </p>
                       ) : null}
                       {selectedFile ? (

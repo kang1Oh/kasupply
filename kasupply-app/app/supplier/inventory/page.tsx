@@ -474,14 +474,14 @@ export default async function SupplierInventoryPage({ searchParams }: { searchPa
   return (
     <>
       <main className="-m-6 min-h-screen bg-[#F7F9FC]">
-        <section className="overflow-hidden border-b border-[#E8EDF4] bg-white">
+        <section className="border-b border-[#E8EDF4] bg-white">
           <div className="flex items-center justify-between px-[18px] py-[15px]">
-            <div className="flex items-center gap-2 text-[12px] text-[#A4ACBA]">
+            <div className="flex items-center gap-2 text-[14px] text-[#A4ACBA]">
               <span className="font-normal">KaSupply</span>
               <span className="text-[#CBD2DE]">/</span>
-              <span className="font-semibold text-[#506073]">Inventory</span>
+              <span className="font-medium text-[#1E3A5F]">Inventory</span>
             </div>
-            <div className="flex items-center gap-[8px]">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 aria-label="Notifications"
@@ -504,22 +504,22 @@ export default async function SupplierInventoryPage({ searchParams }: { searchPa
         <section className="px-[24px] py-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <h1 className="text-[20px] font-semibold text-[#2B3B56]">Product Inventory</h1>
-                <p className="mt-1.5 text-[14px] text-[#98A3B4]">
+                <h1 className="text-[23px] font-semibold text-[#1E3A5F]">Product Inventory</h1>
+                <p className="mt-[2px] text-[16px] text-[#94A3B8]">
                   {totalProducts} items cataloged · last updated {formatUpdatedAt(lastUpdatedProduct?.updated_at ?? lastUpdatedProduct?.created_at ?? null)}
                 </p>
               </div>
-              <Link href={buildInventoryHref({ search: searchText, category: selectedCategoryName, status: selectedStatus, page: currentPage, modal: "add" })} className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-[#2F6CF6] px-4 text-[13px] font-medium text-white shadow-[0_8px_22px_rgba(47,108,246,0.22)] transition hover:bg-[#245CE0]">
+              <Link href={buildInventoryHref({ search: searchText, category: selectedCategoryName, status: selectedStatus, page: currentPage, modal: "add" })} className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-[#2F6CF6] px-4 text-[15px] font-medium text-white shadow-[0_8px_22px_rgba(47,108,246,0.22)] transition hover:bg-[#245CE0]">
                 <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" /></svg>
                 Add Product
               </Link>
             </div>
 
-            <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-[18px] border border-[#EDF1F6] border-l-[3px] border-l-[#2F6CF6] bg-white px-[18px] py-[18px] shadow-[0_8px_20px_rgba(15,23,42,0.03)]"><p className="text-[11px] font-normal uppercase tracking-[0.04em] text-[#A0A8B7]">Total Products</p><p className="mt-3 text-[24px] font-semibold leading-none text-[#27344C]">{totalProducts}</p></div>
-              <div className="rounded-[18px] border border-[#EDF1F6] border-l-[3px] border-l-[#23A05A] bg-white px-[18px] py-[18px] shadow-[0_8px_20px_rgba(15,23,42,0.03)]"><p className="text-[11px] font-normal uppercase tracking-[0.04em] text-[#A0A8B7]">In Stock</p><p className="mt-3 text-[24px] font-semibold leading-none text-[#27344C]">{inStockProducts}</p></div>
-              <div className="rounded-[18px] border border-[#EDF1F6] border-l-[3px] border-l-[#FF8B2B] bg-white px-[18px] py-[18px] shadow-[0_8px_20px_rgba(15,23,42,0.03)]"><p className="text-[11px] font-normal uppercase tracking-[0.04em] text-[#A0A8B7]">Low Stock</p><p className="mt-3 text-[24px] font-semibold leading-none text-[#27344C]">{lowStockProducts}</p></div>
-              <div className="rounded-[18px] border border-[#EDF1F6] border-l-[3px] border-l-[#FF4D4F] bg-white px-[18px] py-[18px] shadow-[0_8px_20px_rgba(15,23,42,0.03)]"><p className="text-[11px] font-normal uppercase tracking-[0.04em] text-[#A0A8B7]">Out of Stock</p><p className="mt-3 text-[24px] font-semibold leading-none text-[#27344C]">{outOfStockProducts}</p></div>
+            <div className="mt-[24px] grid gap-[20px] md:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-[22px] border border-[#EDF1F6] border-l-[4px] border-l-[#2F6CF6] bg-white px-[24px] py-[22px] shadow-[0_8px_20px_rgba(15,23,42,0.03)]"><p className="text-[13px] font-normal uppercase tracking-[0.04em] text-[#A0A8B7]">Total Products</p><p className="mt-[16px] text-[34px] font-semibold leading-none text-[#27344C]">{totalProducts}</p></div>
+              <div className="rounded-[22px] border border-[#EDF1F6] border-l-[4px] border-l-[#23A05A] bg-white px-[24px] py-[22px] shadow-[0_8px_20px_rgba(15,23,42,0.03)]"><p className="text-[13px] font-normal uppercase tracking-[0.04em] text-[#A0A8B7]">In Stock</p><p className="mt-[16px] text-[34px] font-semibold leading-none text-[#27344C]">{inStockProducts}</p></div>
+              <div className="rounded-[22px] border border-[#EDF1F6] border-l-[4px] border-l-[#FF8B2B] bg-white px-[24px] py-[22px] shadow-[0_8px_20px_rgba(15,23,42,0.03)]"><p className="text-[13px] font-normal uppercase tracking-[0.04em] text-[#A0A8B7]">Low Stock</p><p className="mt-[16px] text-[34px] font-semibold leading-none text-[#27344C]">{lowStockProducts}</p></div>
+              <div className="rounded-[22px] border border-[#EDF1F6] border-l-[4px] border-l-[#FF4D4F] bg-white px-[24px] py-[22px] shadow-[0_8px_20px_rgba(15,23,42,0.03)]"><p className="text-[13px] font-normal uppercase tracking-[0.04em] text-[#A0A8B7]">Out of Stock</p><p className="mt-[16px] text-[34px] font-semibold leading-none text-[#27344C]">{outOfStockProducts}</p></div>
             </div>
 
             <SupplierInventoryTableClient

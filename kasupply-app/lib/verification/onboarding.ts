@@ -1,18 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { queueVerificationRun } from "@/lib/verification/queue";
 import { safeProcessVerificationRun } from "@/lib/verification/processor";
+import { REQUIRED_SITE_IMAGE_TYPES } from "@/lib/verification/site-image-types";
 import {
   syncBuyerVerificationProfileFromDocuments,
   syncSupplierVerificationProfileFromArtifacts,
 } from "@/lib/verification/profile-status";
-
-const REQUIRED_SITE_IMAGE_TYPES = [
-  "exterior",
-  "interior",
-  "signage",
-  "operational_setup",
-  "location_map",
-];
 
 type DocumentVerificationKind = "buyer_document" | "supplier_document";
 

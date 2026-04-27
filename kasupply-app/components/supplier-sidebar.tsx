@@ -174,8 +174,14 @@ export function SupplierSidebar({
         />
       ) : null}
 
+      <div
+        aria-hidden="true"
+        className={`hidden shrink-0 lg:block ${collapsed ? "lg:w-[76px]" : "lg:w-[248px]"}`}
+      />
+
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex h-screen flex-col bg-[#1E3A5F] text-white shadow-[0_20px_60px_rgba(15,23,42,0.35)] transition-transform duration-300 ease-out lg:sticky lg:top-0 lg:z-auto lg:translate-x-0 lg:shadow-none ${
+        data-app-sidebar="true"
+        className={`fixed inset-y-0 left-0 z-50 flex h-screen flex-col bg-[#1E3A5F] text-white shadow-[0_20px_60px_rgba(15,23,42,0.35)] transition-[transform,opacity,filter,width] duration-300 ease-out lg:translate-x-0 lg:shadow-none ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         } ${collapsed ? "w-[76px]" : "w-[248px]"}`}
       >
@@ -243,7 +249,7 @@ export function SupplierSidebar({
                 <a
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
-                  className={`relative flex items-center text-[13px] font-medium transition ${
+                  className={`relative flex items-center text-[16px] font-medium transition ${
                     isActive
                       ? "bg-white/12 text-white"
                       : "text-white/88 hover:bg-white/8 hover:text-white"
@@ -284,13 +290,13 @@ export function SupplierSidebar({
           {!collapsed ? (
             <div className="min-w-0 flex-1 pr-1">
               <p
-                className="truncate text-[11px] font-semibold text-white"
+                className="truncate text-[14px] font-semibold text-white"
                 title={businessName}
               >
                 {businessName}
               </p>
               <p
-                className="truncate text-[10px] text-white/70"
+                className="truncate text-[13px] text-white/70"
                 title={formatBusinessType(businessType)}
               >
                 {formatBusinessType(businessType)}

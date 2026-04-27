@@ -3,7 +3,12 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronRight, Search, Send } from "lucide-react";
+import { ChevronRight, Paperclip, Search, Send, X } from "lucide-react";
+import {
+  ALLOWED_MESSAGE_IMAGE_TYPES,
+  MAX_MESSAGE_IMAGE_BYTES,
+} from "@/lib/messages/image-attachments";
+import { parseMessagePayload } from "@/lib/messages/message-payload";
 import { createClient } from "@/lib/supabase/client";
 import { markBuyerConversationRead, sendBuyerMessageInline } from "./actions";
 import type { BuyerMessagesData, MessageItem } from "./data";
@@ -99,15 +104,22 @@ function normalizeMessageRecord(
 
   const senderId = readFirstString(row, ["sender_id", "sent_by", "user_id"]);
   const sentAt = readFirstString(row, ["created_at", "sent_at"]);
-  const content =
+  const rawContent =
     readFirstString(row, ["message_text", "content", "message", "body", "text"]) ?? "";
+  const payload = parseMessagePayload(
+    rawContent,
+    readFirstString(row, ["attachment_url"]),
+  );
   const readAt = readFirstString(row, ["read_at"]);
   const isRead = readFirstBoolean(row, ["is_read"]);
 
   return {
     id,
     senderId,
-    content: cleanText(content),
+    content: cleanText(payload.text),
+    kind: payload.kind,
+    imageUrl: payload.imageUrl,
+    previewText: cleanText(payload.previewText),
     sentAt,
     sentAtLabel: formatChatTimestamp(sentAt),
     isOwnMessage: senderId === currentUserId,
@@ -126,6 +138,64 @@ function getAvatarTheme(seed: string) {
   const index =
     seed.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0) % themes.length;
   return themes[index]!;
+}
+
+function validateAttachment(file: File) {
+  if (!ALLOWED_MESSAGE_IMAGE_TYPES.includes(file.type as (typeof ALLOWED_MESSAGE_IMAGE_TYPES)[number])) {
+    return "Only JPG, PNG, WEBP, and GIF images can be attached.";
+  }
+
+  if (file.size > MAX_MESSAGE_IMAGE_BYTES) {
+    return "Image attachments must be 5MB or smaller.";
+  }
+
+  return null;
+}
+
+function formatAttachmentSize(sizeInBytes: number) {
+  const sizeInMb = sizeInBytes / (1024 * 1024);
+  if (sizeInMb >= 1) {
+    return `${sizeInMb.toFixed(1)} MB`;
+  }
+
+  return `${Math.max(1, Math.round(sizeInBytes / 1024))} KB`;
+}
+
+function AttachmentPreview({
+  attachmentFile,
+  attachmentPreviewUrl,
+  onRemove,
+}: {
+  attachmentFile: File | null;
+  attachmentPreviewUrl: string;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="mb-3 inline-flex items-start gap-3 rounded-[12px] border border-[#E8EDF4] bg-white px-3 py-3 shadow-[0_4px_14px_rgba(15,23,42,0.025)]">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={attachmentPreviewUrl}
+        alt={attachmentFile?.name || "Selected attachment"}
+        className="h-[64px] w-[64px] rounded-[10px] object-cover"
+      />
+      <div className="min-w-0">
+        <p className="truncate text-[12px] font-medium text-[#344054]">
+          {attachmentFile?.name}
+        </p>
+        <p className="mt-1 text-[11px] text-[#98A2B3]">
+          {formatAttachmentSize(attachmentFile?.size ?? 0)}
+        </p>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-[#4D7BF6]"
+        >
+          <X className="h-3.5 w-3.5" />
+          Remove
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function MessageBubble({
@@ -148,7 +218,7 @@ function MessageBubble({
         }`}
       >
         <div
-          className={`flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full text-[12px] font-semibold ${
+          className={`flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full text-[15px] font-semibold ${
             own ? "bg-[#4D7BF6] text-white" : otherTheme
           }`}
         >
@@ -156,10 +226,42 @@ function MessageBubble({
         </div>
 
         <div className={own ? "text-right" : "text-left"}>
-          <div className="inline-block rounded-[9px] border border-[#E7EDF5] bg-white px-4 py-3 text-[12px] font-medium leading-[1.35] text-[#223654] shadow-[0_4px_14px_rgba(15,23,42,0.025)]">
-            {message.content}
+          <div
+            className={`inline-block max-w-full border border-[#E7EDF5] bg-white text-[#223654] ${
+              message.imageUrl
+                ? "rounded-[14px] p-[8px]"
+                : "rounded-[10px] px-4 py-3 text-[12px] font-medium leading-[1.35] shadow-[0_4px_14px_rgba(15,23,42,0.025)]"
+            }`}
+          >
+            {message.imageUrl ? (
+              <a href={message.imageUrl} target="_blank" rel="noreferrer" className="block">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={message.imageUrl}
+                  alt={message.content || "Message attachment"}
+                  className="h-[286px] w-[330px] max-w-full rounded-[10px] object-cover"
+                />
+              </a>
+            ) : null}
+            {message.content ? (
+              <p
+                className={
+                  message.imageUrl
+                    ? "mt-3 px-[4px] pb-[4px] text-[13px] font-medium leading-[1.45]"
+                    : ""
+                }
+              >
+                {message.content}
+              </p>
+            ) : null}
           </div>
-          <p className="mt-2 text-[10px] text-[#B1BAC7]">{message.sentAtLabel}</p>
+          <p
+            className={`mt-2 text-[14px] font-normal text-[#B4BCC8] ${
+              own ? "pr-[4px]" : "pl-[4px]"
+            }`}
+          >
+            {message.sentAtLabel}
+          </p>
         </div>
       </div>
     </div>
@@ -178,8 +280,12 @@ export function BuyerMessagesClient({ initialData }: BuyerMessagesClientProps) {
   );
   const [messages, setMessages] = useState<MessageItem[]>(initialData.messages);
   const [draft, setDraft] = useState("");
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [attachmentPreviewUrl, setAttachmentPreviewUrl] = useState<string | null>(null);
+  const [composerError, setComposerError] = useState<string | null>(null);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const endRef = useRef<HTMLDivElement | null>(null);
+  const attachmentInputRef = useRef<HTMLInputElement | null>(null);
 
   const selectedConversation =
     conversations.find((conversation) => conversation.id === selectedId) ?? null;
@@ -209,6 +315,26 @@ export function BuyerMessagesClient({ initialData }: BuyerMessagesClientProps) {
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages]);
+
+  useEffect(() => {
+    if (!attachmentFile) {
+      setAttachmentPreviewUrl((current) => {
+        if (current) URL.revokeObjectURL(current);
+        return null;
+      });
+      return;
+    }
+
+    const nextUrl = URL.createObjectURL(attachmentFile);
+    setAttachmentPreviewUrl((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return nextUrl;
+    });
+
+    return () => {
+      URL.revokeObjectURL(nextUrl);
+    };
+  }, [attachmentFile]);
 
   useEffect(() => {
     if (!selectedConversationId) return;
@@ -284,7 +410,7 @@ export function BuyerMessagesClient({ initialData }: BuyerMessagesClientProps) {
               conversation.id === selectedConversationId
                 ? {
                     ...conversation,
-                    latestMessage: normalized.content,
+                    latestMessage: normalized.previewText,
                     latestMessageAt: normalized.sentAt,
                     latestMessageTimeLabel: formatSidebarTimestamp(normalized.sentAt),
                     unreadCount: normalized.isOwnMessage ? 0 : conversation.unreadCount + 1,
@@ -317,23 +443,68 @@ export function BuyerMessagesClient({ initialData }: BuyerMessagesClientProps) {
   async function handleSendMessage() {
     if (!activeConversation) return;
     const trimmed = draft.trim();
-    if (!trimmed) return;
+    if (!trimmed && attachmentFile == null) return;
 
+    const currentAttachment = attachmentFile;
     setDraft("");
+    setAttachmentFile(null);
+    setComposerError(null);
+    if (attachmentInputRef.current) {
+      attachmentInputRef.current.value = "";
+    }
 
     startTransition(async () => {
-      const result = await sendBuyerMessageInline({
-        conversationId: selectedConversation?.id ?? null,
-        supplierId: selectedConversation == null ? activeConversation.supplierId : null,
-        engagementId: selectedConversation == null ? activeConversation.engagementId : null,
-        message: trimmed,
-      });
+      try {
+        const formData = new FormData();
+        if (selectedConversation?.id != null) {
+          formData.set("conversation_id", String(selectedConversation.id));
+        }
+        if (selectedConversation == null && activeConversation.supplierId != null) {
+          formData.set("supplier_id", String(activeConversation.supplierId));
+        }
+        if (selectedConversation == null && activeConversation.engagementId != null) {
+          formData.set("engagement_id", String(activeConversation.engagementId));
+        }
+        formData.set("message", trimmed);
+        if (currentAttachment) {
+          formData.set("attachment", currentAttachment);
+        }
 
-      if (selectedConversation == null && result.conversationId) {
-        router.replace(`/buyer/messages?conversationId=${result.conversationId}`);
-        router.refresh();
+        const result = await sendBuyerMessageInline(formData);
+
+        if (selectedConversation == null && result.conversationId) {
+          router.replace(`/buyer/messages?conversationId=${result.conversationId}`);
+          router.refresh();
+        }
+      } catch (error) {
+        setDraft(trimmed);
+        setAttachmentFile(currentAttachment);
+        setComposerError(
+          error instanceof Error ? error.message : "Failed to send message.",
+        );
       }
     });
+  }
+
+  function handleAttachmentChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const nextFile = event.target.files?.[0] ?? null;
+
+    if (!nextFile) {
+      setAttachmentFile(null);
+      setComposerError(null);
+      return;
+    }
+
+    const validationError = validateAttachment(nextFile);
+    if (validationError) {
+      setAttachmentFile(null);
+      setComposerError(validationError);
+      event.target.value = "";
+      return;
+    }
+
+    setAttachmentFile(nextFile);
+    setComposerError(null);
   }
 
   return (
@@ -515,29 +686,62 @@ export function BuyerMessagesClient({ initialData }: BuyerMessagesClientProps) {
                 </div>
 
                 <div className="border-t border-[#E6ECF3] bg-[#FBFCFD] px-4 py-3 md:px-5">
-                  <div className="flex items-center gap-3">
-                    <textarea
-                      value={draft}
-                      onChange={(event) => setDraft(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" && !event.shiftKey) {
-                          event.preventDefault();
-                          void handleSendMessage();
+                  {attachmentPreviewUrl ? (
+                    <AttachmentPreview
+                      attachmentFile={attachmentFile}
+                      attachmentPreviewUrl={attachmentPreviewUrl}
+                      onRemove={() => {
+                        setAttachmentFile(null);
+                        setComposerError(null);
+                        if (attachmentInputRef.current) {
+                          attachmentInputRef.current.value = "";
                         }
                       }}
-                      rows={1}
-                      placeholder="Type your message..."
-                      className="h-[40px] min-h-[40px] flex-1 resize-none rounded-[8px] border border-[#E6EBF2] bg-white px-4 py-2.5 text-[12px] text-[#344054] outline-none placeholder:text-[#B4BDCB]"
                     />
+                  ) : null}
+
+                  <div className="flex items-center gap-[12px]">
+                    <div className="flex h-[56px] flex-1 items-center gap-[12px] rounded-[12px] bg-[#F3F4F6] px-[16px]">
+                      <input
+                        ref={attachmentInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
+                        className="hidden"
+                        onChange={handleAttachmentChange}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => attachmentInputRef.current?.click()}
+                        className="inline-flex h-[24px] w-[24px] items-center justify-center text-[#A3ACB8] transition hover:text-[#4D7BF6]"
+                      >
+                        <Paperclip className="h-[18px] w-[18px]" />
+                      </button>
+                      <textarea
+                        value={draft}
+                        onChange={(event) => setDraft(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" && !event.shiftKey) {
+                            event.preventDefault();
+                            void handleSendMessage();
+                          }
+                        }}
+                        rows={1}
+                        placeholder="Type your message..."
+                        className="h-[56px] min-h-[56px] flex-1 resize-none bg-transparent py-[17px] text-[14px] font-normal text-[#344054] outline-none placeholder:text-[#A8B0BC]"
+                      />
+                    </div>
                     <button
                       type="button"
                       onClick={() => void handleSendMessage()}
-                      disabled={isPending || draft.trim().length === 0}
-                      className="inline-flex h-[40px] w-[40px] items-center justify-center rounded-[8px] bg-[#4D7BF6] text-white transition hover:bg-[#3F69D1] disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={isPending || (draft.trim().length === 0 && attachmentFile == null)}
+                      className="inline-flex h-[56px] w-[64px] items-center justify-center rounded-[12px] bg-[#4D7BF6] text-white transition hover:bg-[#3F69D1] disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      <Send className="h-4 w-4" />
+                      <Send className="h-[22px] w-[22px]" />
                     </button>
                   </div>
+                  {composerError ? (
+                    <p className="mt-2 text-[11px] text-[#F04438]">{composerError}</p>
+                  ) : null}
                 </div>
               </>
             ) : (

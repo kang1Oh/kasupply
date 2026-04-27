@@ -78,8 +78,8 @@ export function SupplierQuotationForm({
 
       <div className="grid gap-[14px] md:grid-cols-2">
         <label className="block">
-          <span className="mb-[6px] block text-[14px] font-medium text-[#5E6A7D]">
-            Quoted price (per unit) <span className="text-[#F04E4E]">*</span>
+          <span className="mb-[6px] block text-[14px] font-medium text-[#374151]">
+            Quoted price (per unit) <span className="text-[#FE1601]">*</span>
           </span>
           <input
             name="price_per_unit"
@@ -90,12 +90,12 @@ export function SupplierQuotationForm({
             value={pricePerUnit}
             onChange={(event) => setPricePerUnit(event.target.value)}
             placeholder="e.g. ₱19"
-            className="h-[44px] w-full rounded-[10px] border border-[#D7E0EB] bg-white px-[14px] text-[14px] text-[#223654] outline-none transition focus:border-[#AFC0DA]"
+            className="h-[44px] w-full rounded-[10px] border border-[#A2A8B3] bg-white px-[14px] text-[14px] text-[#374151] outline-none transition placeholder:text-[#9AA5B6] focus:border-[#A2A8B3]"
           />
         </label>
 
         <label className="block">
-          <span className="mb-[6px] block text-[14px] font-medium text-[#5E6A7D]">
+          <span className="mb-[6px] block text-[14px] font-medium text-[#374151]">
             Total amount
           </span>
           <input
@@ -103,13 +103,13 @@ export function SupplierQuotationForm({
             readOnly
             value={formatCurrency(totalAmount)}
             placeholder="Auto-calculated"
-            className="h-[44px] w-full rounded-[10px] border border-[#D7E0EB] bg-[#FAFBFD] px-[14px] text-[14px] text-[#9AA5B6] outline-none"
+            className="h-[44px] w-full rounded-[10px] border border-[#A2A8B3] bg-[#FAFBFD] px-[14px] text-[14px] text-[#374151] outline-none"
           />
         </label>
 
         <label className="block">
-          <span className="mb-[6px] block text-[14px] font-medium text-[#5E6A7D]">
-            Lead time <span className="text-[#F04E4E]">*</span>
+          <span className="mb-[6px] block text-[14px] font-medium text-[#374151]">
+            Lead time <span className="text-[#FE1601]">*</span>
           </span>
           <input type="hidden" name="lead_time" value={submittedLeadTime} />
           <div className="relative">
@@ -117,7 +117,7 @@ export function SupplierQuotationForm({
               value={selectedLeadTime}
               onChange={(event) => setSelectedLeadTime(event.target.value)}
               required
-              className="h-[44px] w-full appearance-none rounded-[10px] border border-[#D7E0EB] bg-white px-[14px] pr-[42px] text-[14px] text-[#223654] outline-none transition focus:border-[#AFC0DA]"
+              className="h-[44px] w-full appearance-none rounded-[10px] border border-[#A2A8B3] bg-white px-[14px] pr-[42px] text-[14px] text-[#374151] outline-none transition focus:border-[#A2A8B3]"
             >
               <option value="" disabled>
                 Select lead time
@@ -151,14 +151,14 @@ export function SupplierQuotationForm({
               onChange={(event) => setCustomLeadTime(event.target.value)}
               required
               placeholder="Enter custom lead time"
-              className="mt-[8px] h-[44px] w-full rounded-[10px] border border-[#D7E0EB] bg-white px-[14px] text-[14px] text-[#223654] outline-none transition placeholder:text-[#9AA5B6] focus:border-[#AFC0DA]"
+              className="mt-[8px] h-[44px] w-full rounded-[10px] border border-[#A2A8B3] bg-white px-[14px] text-[14px] text-[#374151] outline-none transition placeholder:text-[#9AA5B6] focus:border-[#A2A8B3]"
             />
           ) : null}
         </label>
 
         <label className="block">
-          <span className="mb-[6px] block text-[14px] font-medium text-[#5E6A7D]">
-            Minimum Order Quantity <span className="text-[#F04E4E]">*</span>
+          <span className="mb-[6px] block text-[14px] font-medium text-[#374151]">
+            Minimum Order Quantity <span className="text-[#FE1601]">*</span>
           </span>
           <input
             name="moq"
@@ -167,21 +167,21 @@ export function SupplierQuotationForm({
             required
             defaultValue={defaultMoq ?? ""}
             placeholder="e.g. 100 kg"
-            className="h-[44px] w-full rounded-[10px] border border-[#D7E0EB] bg-white px-[14px] text-[14px] text-[#223654] outline-none transition focus:border-[#AFC0DA]"
+            className="h-[44px] w-full rounded-[10px] border border-[#A2A8B3] bg-white px-[14px] text-[14px] text-[#374151] outline-none transition placeholder:text-[#9AA5B6] focus:border-[#A2A8B3]"
           />
         </label>
       </div>
 
       <label className="block">
-        <span className="mb-[6px] block text-[14px] font-medium text-[#5E6A7D]">
-          Note to buyer <span className="text-[#C6CBD4]">(optional)</span>
+        <span className="mb-[6px] block text-[14px] font-medium text-[#374151]">
+          Note to buyer <span className="font-normal text-[#A2A8B3]">(optional)</span>
         </span>
         <textarea
           name="notes"
           rows={5}
           defaultValue={defaultNotes}
           placeholder="Any important details about your products, delivery, or terms..."
-          className="w-full rounded-[10px] border border-[#D7E0EB] bg-white px-[14px] py-[12px] text-[14px] text-[#223654] outline-none transition focus:border-[#AFC0DA]"
+          className="w-full rounded-[10px] border border-[#A2A8B3] bg-white px-[14px] py-[12px] text-[14px] text-[#374151] outline-none transition placeholder:text-[#9AA5B6] focus:border-[#A2A8B3]"
         />
       </label>
 

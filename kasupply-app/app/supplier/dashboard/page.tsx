@@ -256,7 +256,7 @@ export default async function SupplierDashboardPage() {
     <div className="-m-6 min-h-screen bg-[#F8FAFC]">
       <header className="border-b border-[#DCE5F1] bg-white">
         <div className="flex items-center justify-between px-[18px] py-[15px]">
-          <div className="flex items-center gap-[8px] text-[12px]">
+          <div className="flex items-center gap-[8px] text-[14px]">
             <span className="font-normal text-[#A5AEBB]">KaSupply</span>
             <ChevronRight className="h-[14px] w-[14px] text-[#B6BEC9]" />
             <span className="font-semibold text-[#2B4368]">Dashboard</span>

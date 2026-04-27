@@ -97,6 +97,9 @@ export async function updatePurchaseOrderStatus(formData: FormData) {
     .trim()
     .toLowerCase();
   const redirectTo = String(formData.get("redirect_to") || "").trim();
+  const deliveryFeeEntry = formData.get("delivery_fee");
+  const deliveryFeeRaw =
+    typeof deliveryFeeEntry === "string" ? deliveryFeeEntry.trim() : "";
 
   if (!poId || Number.isNaN(poId)) {
     throw new Error("Invalid purchase order.");
@@ -109,7 +112,7 @@ export async function updatePurchaseOrderStatus(formData: FormData) {
   const { data: order, error: orderError } = await supabase
     .from("purchase_orders")
     .select(
-      "po_id, supplier_id, quote_id, status, receipt_file_url, receipt_status",
+      "po_id, supplier_id, quote_id, quantity, status, receipt_file_url, receipt_status",
     )
     .eq("supplier_id", supplierId)
     .eq("po_id", poId)
@@ -150,13 +153,49 @@ export async function updatePurchaseOrderStatus(formData: FormData) {
     }
   }
 
+  const updatePayload: {
+    status: string;
+    completed_at: string | null;
+    updated_at: string;
+    delivery_fee?: number;
+    total_amount?: number;
+  } = {
+    status: nextStatus,
+    completed_at: nextStatus === "completed" ? new Date().toISOString() : null,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (nextStatus === "processing" && deliveryFeeEntry !== null) {
+    const deliveryFee = deliveryFeeRaw === "" ? 0 : Number(deliveryFeeRaw);
+
+    if (!Number.isFinite(deliveryFee) || deliveryFee < 0) {
+      throw new Error("Delivery fee must be a valid non-negative number.");
+    }
+
+    const { data: quotation, error: quotationError } = await supabase
+      .from("quotations")
+      .select("price_per_unit")
+      .eq("quote_id", order.quote_id)
+      .single();
+
+    if (quotationError || !quotation) {
+      throw new Error(quotationError?.message || "Failed to load quotation price.");
+    }
+
+    const unitPrice = Number(quotation.price_per_unit);
+    const quantity = Number(order.quantity);
+
+    if (!Number.isFinite(unitPrice) || !Number.isFinite(quantity)) {
+      throw new Error("Purchase order pricing details are incomplete.");
+    }
+
+    updatePayload.delivery_fee = deliveryFee;
+    updatePayload.total_amount = quantity * unitPrice + deliveryFee;
+  }
+
   const { error: updateError } = await supabase
     .from("purchase_orders")
-    .update({
-      status: nextStatus,
-      completed_at: nextStatus === "completed" ? new Date().toISOString() : null,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updatePayload)
     .eq("po_id", poId)
     .eq("supplier_id", supplierId);
 

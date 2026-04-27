@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { runBuyerDtiLiveVerification } from "@/lib/verification/buyer-dti";
-import { getDocumentVerificationBlueprint } from "@/lib/verification/document-rules";
+import {
+  getDocumentVerificationBlueprint,
+  isBuyerDtiDocumentTypeName,
+} from "@/lib/verification/document-rules";
 import { getVerificationReadiness } from "@/lib/verification/provider-config";
 import {
   completeVerificationRun,
@@ -96,7 +99,7 @@ function buildDocumentMockSummary(
 }
 
 function isBuyerDtiDocument(documentTypeName: string) {
-  return getDocumentVerificationBlueprint(documentTypeName)?.code === "dti";
+  return isBuyerDtiDocumentTypeName(documentTypeName);
 }
 
 function buildSiteMockSummary(addressLabel: string): SiteVerificationSummary {

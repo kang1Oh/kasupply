@@ -129,8 +129,14 @@ export function AdminSidebar({ name, email, role }: AdminSidebarProps) {
         />
       ) : null}
 
+      <div
+        aria-hidden="true"
+        className={`hidden shrink-0 lg:block ${collapsed ? "lg:w-[76px]" : "lg:w-[248px]"}`}
+      />
+
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex h-screen flex-col bg-[#1E3A5F] text-white shadow-[0_20px_60px_rgba(15,23,42,0.35)] transition-transform duration-300 ease-out lg:sticky lg:top-0 lg:z-auto lg:translate-x-0 lg:shadow-none ${
+        data-app-sidebar="true"
+        className={`fixed inset-y-0 left-0 z-50 flex h-screen flex-col bg-[#1E3A5F] text-white shadow-[0_20px_60px_rgba(15,23,42,0.35)] transition-[transform,opacity,filter,width] duration-300 ease-out lg:translate-x-0 lg:shadow-none ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         } ${collapsed ? "w-[76px]" : "w-[248px]"}`}
       >

@@ -3,6 +3,9 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import {
+  getBuyerDtiDocumentTypeMatchScore,
+} from "@/lib/verification/document-rules";
+import {
   safeQueueDocumentVerification,
   safeSyncBuyerVerificationProfile,
 } from "@/lib/verification/onboarding";
@@ -64,21 +67,29 @@ export async function uploadBuyerDocument(formData: FormData) {
     throw new Error("Business profile not found.");
   }
 
-  const dtiDocumentTypeNames = [
-    "DTI Business Registration Certificate",
-    "DTI Certificate",
-  ];
-
-  const { data: dtiDocumentType, error: dtiDocumentTypeError } = await supabase
+  const { data: documentTypes, error: dtiDocumentTypeError } = await supabase
     .from("document_types")
     .select("doc_type_id, document_type_name")
-    .in("document_type_name", dtiDocumentTypeNames)
-    .limit(1)
-    .maybeSingle();
+    .order("document_type_name", { ascending: true });
+
+  const dtiDocumentType =
+    ((documentTypes as
+      | Array<{ doc_type_id: number; document_type_name: string }>
+      | null)
+      ?? [])
+      .map((documentType) => ({
+        ...documentType,
+        matchScore: getBuyerDtiDocumentTypeMatchScore(
+          documentType.document_type_name,
+        ),
+      }))
+      .filter((documentType) => documentType.matchScore > 0)
+      .sort((left, right) => right.matchScore - left.matchScore)[0] ?? null;
 
   if (dtiDocumentTypeError || !dtiDocumentType) {
     throw new Error(
-      dtiDocumentTypeError?.message || "DTI document type is not configured."
+      dtiDocumentTypeError?.message ||
+        "DTI document type is not configured. Add a DTI document type in Admin Requirements first."
     );
   }
 

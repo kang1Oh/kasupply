@@ -19,7 +19,7 @@ type UserRoleRow = {
   name: string | null;
   email: string | null;
   status: string | null;
-  roles: { role_name: string } | null;
+  roles: { role_name: string } | Array<{ role_name: string }> | null;
 };
 
 type BusinessProfileRow = {
@@ -77,6 +77,14 @@ type AdminActionLogRow = {
   reason: string | null;
   created_at: string;
 };
+
+function getUserRoleName(user: Pick<UserRoleRow, "roles">) {
+  if (Array.isArray(user.roles)) {
+    return user.roles[0]?.role_name ?? "Unknown";
+  }
+
+  return user.roles?.role_name ?? "Unknown";
+}
 
 type ModerationReportRow = {
   report_id: number;
@@ -627,7 +635,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
       profileId: profile?.profile_id ?? null,
       displayName: user.name || "Unnamed account",
       email: user.email || "No email",
-      role: user.roles?.role_name || "Unknown",
+      role: getUserRoleName(user),
       accountStatus: user.status || "active",
       businessName: profile?.business_name ?? null,
       locationLabel: buildLocationLabel(profile),
@@ -1057,7 +1065,7 @@ export async function getAdminReportsPageData({
             userId: reportedUser.user_id,
             displayName: reportedUser.name || "Unnamed account",
             email: reportedUser.email || "No email",
-            role: reportedUser.roles?.role_name || "Unknown",
+            role: getUserRoleName(reportedUser),
             accountStatus: reportedUser.status || "active",
             businessName: reportedBusiness?.business_name ?? null,
           }

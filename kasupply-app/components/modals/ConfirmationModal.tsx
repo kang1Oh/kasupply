@@ -77,7 +77,7 @@ export function ConfirmationModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-[#101828]/45 p-4"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-[rgba(15,23,42,0.18)] p-4 backdrop-blur-[2px]"
       onClick={() => {
         if (!isSubmitting) {
           onClose();

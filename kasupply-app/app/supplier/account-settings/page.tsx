@@ -89,13 +89,16 @@ type SupplierCertificationRow = {
 };
 
 function HeaderActionIcon({
+  ariaLabel,
   children,
 }: {
+  ariaLabel: string;
   children: ReactNode;
 }) {
   return (
     <button
       type="button"
+      aria-label={ariaLabel}
       className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-[11px] border border-[#E2E8F0] bg-[#F9FBFD] text-[#A6B0BF] transition hover:border-[#D6DFEA] hover:text-[#4D5E75]"
     >
       {children}
@@ -430,32 +433,32 @@ export default async function SupplierAccountSettingsPage({
 
   return (
     <div className="-m-6 min-h-screen bg-[#F6F8FB]">
-      <header className="border-b border-[#E8EDF4] bg-white">
+      <section className="border-b border-[#E8EDF4] bg-white">
         <div className="flex items-center justify-between px-[18px] py-[15px]">
-          <div className="flex items-center gap-2 text-[12px] text-[#A4ACBA]">
+          <div className="flex items-center gap-2 text-[14px] text-[#A4ACBA]">
             <span className="font-normal">KaSupply</span>
             <span className="text-[#CBD2DE]">/</span>
-            <span className="font-semibold text-[#506073]">Account Settings</span>
+            <span className="font-medium text-[#1E3A5F]">Account Settings</span>
           </div>
 
           <div className="flex items-center gap-2">
-            <HeaderActionIcon>
+            <HeaderActionIcon ariaLabel="Notifications">
               <Bell className="h-[15px] w-[15px]" strokeWidth={1.8} />
             </HeaderActionIcon>
-            <HeaderActionIcon>
+            <HeaderActionIcon ariaLabel="Messages">
               <MessageSquare className="h-[15px] w-[15px]" strokeWidth={1.8} />
             </HeaderActionIcon>
           </div>
         </div>
-      </header>
+      </section>
 
-      <div className="px-[18px] py-[12px]">
-        <div className="mx-auto max-w-[1040px]">
-          <div className="pb-[12px]">
-            <h1 className="text-[18px] font-semibold tracking-[-0.02em] text-[#223654]">
+      <div className="px-[40px] py-[28px]">
+        <div className="mx-auto max-w-[1360px]">
+          <div className="mb-[24px]">
+            <h1 className="text-[23px] font-semibold text-[#1E3A5F]">
               Account Setting
             </h1>
-            <p className="mt-[3px] text-[15px] text-[#9CA8B9]">
+            <p className="mt-[2px] text-[16px] text-[#94A3B8]">
               Manage your profile, permits, and certifications.
             </p>
           </div>
@@ -472,7 +475,7 @@ export default async function SupplierAccountSettingsPage({
                   <Link
                     key={value}
                     href={`/supplier/account-settings?tab=${value}`}
-                    className={`relative pb-[12px] text-[14px] font-medium transition ${
+                    className={`relative pb-[12px] text-[16px] font-medium transition ${
                       isActive ? "text-[#3C6FF7]" : "text-[#C9CFDA]"
                     }`}
                   >

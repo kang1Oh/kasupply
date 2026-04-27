@@ -46,21 +46,6 @@ function ChevronDownIcon() {
   );
 }
 
-function MessageIcon() {
-  return (
-    <svg viewBox="0 0 20 20" className="h-[15px] w-[15px]" aria-hidden="true">
-      <path
-        d="M4.75 5.25h10.5A1.75 1.75 0 0 1 17 7v5.75a1.75 1.75 0 0 1-1.75 1.75H9.35L5.5 16.55V14.5H4.75A1.75 1.75 0 0 1 3 12.75V7a1.75 1.75 0 0 1 1.75-1.75Z"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.45"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 function formatDate(
   value: string | null,
   options: Intl.DateTimeFormatOptions = {
@@ -95,7 +80,7 @@ function formatBudget(value: number | null, unit: string) {
     maximumFractionDigits: 2,
   }).format(value);
 
-  return `P${amount} / ${unit}`;
+  return `\u20b1${amount} / ${unit}`;
 }
 
 function isPastDue(deadline: string) {
@@ -177,14 +162,29 @@ function MetricCell({
   value: React.ReactNode;
 }) {
   return (
-    <div className="min-w-0 px-[18px] py-[13px]">
-      <p className="text-[11px] font-medium uppercase tracking-[0.04em] text-[#a3acb8]">
+    <div className="min-w-0 px-[16px] py-[14px]">
+      <p className="text-[14px] font-normal uppercase tracking-[0.03em] text-[#A7AFBC]">
         {label}
       </p>
-      <p className="mt-[5px] text-[14px] font-semibold leading-[1.35] text-[#374151]">
+      <p className="mt-[3px] text-[16px] font-[500] leading-[1.35] text-[#394150]">
         {value}
       </p>
     </div>
+  );
+}
+
+function QuotationsIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-[23px] w-[23px]" aria-hidden="true">
+      <path
+        d="M5 5.75h10A1.25 1.25 0 0 1 16.25 7v5.5A1.25 1.25 0 0 1 15 13.75H9.85L6.75 16.1v-2.35H5A1.25 1.25 0 0 1 3.75 12.5V7A1.25 1.25 0 0 1 5 5.75Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
@@ -235,21 +235,21 @@ export function BuyerSourcingBoardPage({
     });
 
   return (
-    <main className="mx-auto max-w-[1120px] px-6 py-9">
-      <section className="flex flex-col gap-5">
+    <main className="w-full pb-[18px] pt-1">
+      <section className="flex flex-col gap-[20px]">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
-            <h1 className="text-[37px] font-semibold leading-[1.08] tracking-[-0.03em] text-[#27456f]">
+            <h1 className="text-[23px] font-semibold text-[#1E3A5F]">
               Sourcing Board
             </h1>
-            <p className="mt-[6px] text-[15px] font-normal text-[#a0aaba]">
+            <p className="mt-[2px] text-[16px] text-[#94A3B8]">
               Your sourcing requests and supplier quotations
             </p>
           </div>
 
           <Link
             href="/buyer/sourcing-board/new"
-            className="inline-flex h-[40px] items-center justify-center self-start rounded-[10px] bg-[#2f6fec] px-[18px] text-[15px] font-medium text-white transition hover:bg-[#275fd0]"
+            className="inline-flex h-[40px] items-center justify-center self-start rounded-[8px] bg-[#2F6BFF] px-[18px] text-[15px] font-medium text-white transition hover:bg-[#255ae0]"
           >
             + Post Request
           </Link>
@@ -265,19 +265,19 @@ export function BuyerSourcingBoardPage({
                   key={option.key}
                   type="button"
                   onClick={() => setSelectedFilter(option.key)}
-                  className={`inline-flex h-[33px] items-center gap-[7px] rounded-full border px-[16px] text-[14px] font-medium transition ${
+                  className={`inline-flex h-[32px] items-center gap-[7px] rounded-full border px-[16px] text-[15px] font-[500] leading-none transition ${
                     isActive
-                      ? "border-[#294773] bg-[#294773] text-white"
-                      : "border-[#ccd6e2] bg-white text-[#2f3f52] hover:border-[#b9c6d7]"
+                      ? "border-[#223F68] bg-[#223F68] text-white"
+                      : "border-[#C9D2DE] bg-white text-[#334155] hover:border-[#B8C4D4] hover:text-[#223654]"
                   }`}
                 >
                   <span>{option.label}</span>
                   {option.key === "all" ? (
                     <span
-                      className={`inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-[5px] text-[10px] font-semibold ${
+                      className={`inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-[4px] text-[10px] font-semibold ${
                         isActive
-                          ? "bg-white text-[#294773]"
-                          : "bg-[#eef2f7] text-[#536275]"
+                          ? "bg-white text-[#223F68]"
+                          : "bg-[#E7EDF6] text-[#6B7D95]"
                       }`}
                     >
                       {filterCounts.all}
@@ -289,12 +289,12 @@ export function BuyerSourcingBoardPage({
           </div>
 
           <div className="flex items-center gap-[10px] self-start">
-            <span className="text-[13px] text-[#a5aebc]">Sort by</span>
-            <label className="relative inline-flex h-[34px] items-center rounded-[10px] border border-[#e0e6ee] bg-white px-[12px] pr-[32px] text-[13px] text-[#556273] shadow-[0_1px_2px_rgba(15,23,42,0.02)]">
+            <span className="text-[15px] font-normal text-[#94A3B8]">Sort by</span>
+            <label className="relative inline-flex h-[38px] min-w-[136px] items-center rounded-[10px] border border-[#D9E2EE] bg-white px-[14px] pr-[34px] text-[#59677A] shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
               <select
                 value={sortBy}
                 onChange={(event) => setSortBy(event.target.value as SortOption)}
-                className="appearance-none bg-transparent pr-2 font-medium outline-none"
+                className="w-full appearance-none bg-transparent pr-2 text-[15px] font-medium text-[#4E5B6F] outline-none"
               >
                 {SORT_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -302,7 +302,7 @@ export function BuyerSourcingBoardPage({
                   </option>
                 ))}
               </select>
-              <span className="pointer-events-none absolute right-[12px] text-[#b0b8c5]">
+              <span className="pointer-events-none absolute right-[10px] text-[#b1b7c3]">
                 <ChevronDownIcon />
               </span>
             </label>
@@ -310,7 +310,7 @@ export function BuyerSourcingBoardPage({
         </div>
       </section>
 
-      <section className="mt-5 space-y-[12px]">
+      <section className="mt-[18px] space-y-[18px]">
         {requests.length === 0 ? (
           <div className="rounded-[18px] border border-[#e4e8ef] bg-white px-8 py-12 text-center shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
             <h2 className="text-[22px] font-semibold text-[#304668]">
@@ -343,55 +343,54 @@ export function BuyerSourcingBoardPage({
             return (
               <article
                 key={request.rfqId}
-                className="overflow-hidden rounded-[18px] border border-[#e4e8ef] bg-white shadow-[0_8px_24px_rgba(15,23,42,0.04)]"
+                className="overflow-hidden rounded-[22px] border border-[#E2E8F0] bg-white px-[24px] py-[18px] shadow-[0_8px_24px_rgba(15,23,42,0.04)]"
               >
-                <div className="px-[18px] py-[16px] sm:px-[18px]">
+                <div className="flex flex-col gap-[12px]">
                   <div className="flex flex-col gap-[12px] lg:flex-row lg:items-start lg:justify-between">
-                    <div className="flex min-w-0 items-start gap-[12px]">
-                      <div className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-full bg-[#ffc3d0] text-[18px] font-medium text-[#cb5c7b]">
+                    <div className="flex min-w-0 items-start gap-[14px]">
+                      <div className="flex h-[55px] w-[55px] shrink-0 items-center justify-center rounded-full bg-[#FFC3D0] text-[22px] font-[500] leading-none text-[#CB5C7B]">
                         {getInitials(buyerBusinessName)}
                       </div>
 
                       <div className="min-w-0">
-                        <p className="truncate text-[16px] font-semibold text-[#394150]">
+                        <p className="truncate text-[16px] font-[500] leading-none text-[#455060]">
                           {buyerBusinessName}
                         </p>
-
-                        <div className="mt-[3px] flex flex-wrap items-center gap-[7px] text-[12px] text-[#a0a8b4]">
-                          <span className="inline-flex rounded-[5px] border border-[#e6ebf1] bg-[#f8f9fb] px-[6px] py-[2px] text-[11px] font-medium text-[#7d8794]">
+                        <div className="mt-[6px] flex flex-wrap items-center gap-[6px] text-[14px] text-[#A3ACB8]">
+                          <span className="rounded-[5px] border border-[#D9DDD8] bg-[#EAEAE8] px-[6px] py-[2px] text-[14px] leading-none text-[#646764]">
                             {request.category?.categoryName ?? "General sourcing"}
                           </span>
                           <span>&bull;</span>
-                          <span>
+                          <span className="text-[14px]">
                             {formatDate(request.createdAt, {
                               month: "short",
                               day: "numeric",
                             })}
                           </span>
                         </div>
+                        <h2 className="mt-[10px] text-[17px] font-[500] leading-[1.35] text-[#364152]">
+                          {request.productName}
+                        </h2>
+                        <p className="mt-[3px] max-w-[920px] text-[15px] font-[300] leading-[1.45] text-[#7D8794]">
+                          {getDescription(request)}
+                        </p>
                       </div>
                     </div>
 
-                    <span
-                      className={`inline-flex h-[28px] items-center self-start rounded-full px-[10px] text-[13px] font-medium ${state.badgeClassName}`}
-                    >
+                    <div className="shrink-0 pt-[2px]">
                       <span
-                        className={`mr-[7px] inline-flex h-[7px] w-[7px] rounded-full ${state.dotClassName}`}
-                      />
-                      {state.label}
-                    </span>
+                        className={`inline-flex h-[30px] items-center gap-[8px] rounded-full px-[12px] text-[14px] font-medium leading-none ${state.badgeClassName}`}
+                      >
+                        <span
+                          className={`inline-flex h-[8px] w-[8px] rounded-full ${state.dotClassName}`}
+                        />
+                        {state.label}
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="mt-[2px] pl-0 lg:pl-[56px]">
-                    <h2 className="text-[17px] font-semibold leading-[1.4] text-[#364152]">
-                      {request.productName}
-                    </h2>
-
-                    <p className="[display:-webkit-box] overflow-hidden text-[15px] leading-[1.48] text-[#7d8794] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
-                      {getDescription(request)}
-                    </p>
-
-                    <div className="mt-[12px] overflow-hidden rounded-[12px] border border-[#e4e7eb] bg-[#f3f4f6]">
+                  <div className="pl-0 lg:pl-[69px]">
+                    <div className="overflow-hidden rounded-[12px] border border-[#E4E7EB] bg-[#F3F4F6]">
                       <div className="grid md:grid-cols-2 xl:grid-cols-4">
                         <MetricCell
                           label="Quantity"
@@ -399,10 +398,7 @@ export function BuyerSourcingBoardPage({
                         />
                         <MetricCell
                           label="Budget"
-                          value={formatBudget(
-                            request.targetPricePerUnit,
-                            request.unit,
-                          )}
+                          value={formatBudget(request.targetPricePerUnit, request.unit)}
                         />
                         <MetricCell
                           label="Needed By"
@@ -415,9 +411,9 @@ export function BuyerSourcingBoardPage({
                       </div>
                     </div>
 
-                    <div className="mt-[10px] flex flex-col gap-[10px] border-t border-[#edf1f5] pt-[12px] sm:flex-row sm:items-center sm:justify-between">
-                      <div className="inline-flex items-center gap-[7px] text-[13px] text-[#adb4bf]">
-                        <MessageIcon />
+                    <div className="mt-[14px] flex flex-col gap-[10px] border-t border-[#E9EDF3] pt-[12px] sm:flex-row sm:items-center sm:justify-between">
+                      <div className="inline-flex items-center gap-[8px] text-[14px] font-normal text-[#B0B7C3]">
+                        <QuotationsIcon />
                         <span>
                           {request.quotationCount} quotation
                           {request.quotationCount === 1 ? "" : "s"} received
@@ -426,9 +422,10 @@ export function BuyerSourcingBoardPage({
 
                       <Link
                         href={`/buyer/sourcing-board/${request.rfqId}`}
-                        className="inline-flex items-center justify-end text-[15px] font-medium text-[#2f6fec] transition hover:text-[#275fd0]"
+                        className="inline-flex items-center gap-[4px] text-[16px] font-medium text-[#3E70F5] transition hover:text-[#2f62e8]"
                       >
-                        View &rarr;
+                        <span>View</span>
+                        <span className="text-[16px] leading-none">&rarr;</span>
                       </Link>
                     </div>
                   </div>

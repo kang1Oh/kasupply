@@ -667,7 +667,7 @@ export function BuyerSearchPage({ suppliers }: BuyerSearchPageProps) {
             <>
               <section className="grid gap-3.5 md:grid-cols-2">
                 {mappedSuppliers.map((supplier) => (
-                  <BuyerSupplierCard key={supplier.id} supplier={supplier} />
+                  <BuyerSupplierCard key={supplier.supplierId} supplier={supplier} />
                 ))}
               </section>
 

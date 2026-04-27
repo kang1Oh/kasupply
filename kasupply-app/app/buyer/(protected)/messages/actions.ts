@@ -2,6 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient as createSupabaseAdminClient } from "@supabase/supabase-js";
+import {
+  removeMessageImageAttachment,
+  uploadMessageImageAttachment,
+} from "@/lib/messages/image-attachments";
 import { createClient } from "@/lib/supabase/server";
 import { ensureBuyerConversationForSupplier } from "@/lib/messages/ensure-buyer-conversation";
 
@@ -25,6 +29,10 @@ function createAdminClient() {
     },
   });
 }
+
+type BuyerMessagesDatabaseClient =
+  | Awaited<ReturnType<typeof createClient>>
+  | NonNullable<ReturnType<typeof createAdminClient>>;
 
 function isMissingTableOrColumnError(error: { code?: string; message?: string } | null) {
   if (!error) return false;
@@ -81,6 +89,7 @@ async function getCurrentBuyerContext() {
 
   return {
     supabase,
+    authUserId: authUser.id,
     appUserId: String(appUser.user_id),
     conversationInitiatorId: String(appUser.user_id),
     buyerProfile,
@@ -122,24 +131,42 @@ async function validateBuyerConversationOwnership(
 }
 
 async function insertMessage(
-  databaseClient: Awaited<ReturnType<typeof createClient>> | ReturnType<typeof createAdminClient>,
+  databaseClient: BuyerMessagesDatabaseClient,
   conversationId: number,
   senderId: string,
   content: string,
+  attachmentUrl: string | null = null,
 ) {
+  const createdAt = new Date().toISOString();
+  const messageText = content.trim();
   const payloads = [
     {
       conversation_id: conversationId,
       sender_id: senderId,
-      message_text: content,
-      message_type: "text",
-      created_at: new Date().toISOString(),
+      message_text: messageText,
+      attachment_url: attachmentUrl,
+      created_at: createdAt,
     },
     {
       conversation_id: conversationId,
       sender_id: senderId,
-      content,
-      created_at: new Date().toISOString(),
+      message_text: messageText,
+      attachment_url: attachmentUrl,
+      created_at: createdAt,
+    },
+    {
+      conversation_id: conversationId,
+      sender_id: senderId,
+      message: messageText,
+      attachment_url: attachmentUrl,
+      created_at: createdAt,
+    },
+    {
+      conversation_id: conversationId,
+      sender_id: senderId,
+      body: messageText,
+      attachment_url: attachmentUrl,
+      created_at: createdAt,
     },
   ];
 
@@ -159,7 +186,7 @@ async function insertMessage(
 }
 
 async function touchConversation(
-  databaseClient: Awaited<ReturnType<typeof createClient>> | ReturnType<typeof createAdminClient>,
+  databaseClient: BuyerMessagesDatabaseClient,
   buyerId: number,
   conversationId: number,
 ) {
@@ -215,24 +242,21 @@ export async function markBuyerConversationRead(conversationId: number) {
   return { ok: true };
 }
 
-export async function sendBuyerMessageInline(params: {
-  conversationId?: number | null;
-  supplierId?: number | null;
-  engagementId?: number | null;
-  message: string;
-}) {
-  const { supabase, appUserId, conversationInitiatorId, buyerProfile } =
+export async function sendBuyerMessageInline(formData: FormData) {
+  const { supabase, authUserId, appUserId, conversationInitiatorId, buyerProfile } =
     await getCurrentBuyerContext();
   const adminSupabase = createAdminClient();
   const databaseClient = adminSupabase ?? supabase;
 
-  const explicitConversationId =
-    params.conversationId != null ? Number(params.conversationId) : null;
-  const supplierId = params.supplierId != null ? Number(params.supplierId) : null;
-  const engagementId = params.engagementId != null ? Number(params.engagementId) : null;
-  const message = String(params.message || "").trim();
+  const explicitConversationId = Number(formData.get("conversation_id") || "");
+  const supplierId = Number(formData.get("supplier_id") || "");
+  const engagementId = Number(formData.get("engagement_id") || "");
+  const message = String(formData.get("message") || "").trim();
+  const attachmentEntry = formData.get("attachment");
+  const attachment =
+    attachmentEntry instanceof File && attachmentEntry.size > 0 ? attachmentEntry : null;
 
-  if (!message) {
+  if (!message && attachment == null) {
     throw new Error("Message cannot be empty.");
   }
 
@@ -257,10 +281,43 @@ export async function sendBuyerMessageInline(params: {
   }
 
   await validateBuyerConversationOwnership(supabase, buyerProfile.buyer_id, conversationId);
+
+  let uploadedAttachment:
+    | {
+        bucket: string;
+        filePath: string;
+        publicUrl: string;
+      }
+    | null = null;
+
   try {
-    await insertMessage(databaseClient, conversationId, appUserId, message);
+    if (attachment) {
+      uploadedAttachment = await uploadMessageImageAttachment(databaseClient, {
+        actorType: "buyer",
+        actorId: buyerProfile.buyer_id,
+        authUserId,
+        conversationId,
+        file: attachment,
+      });
+    }
+
+    await insertMessage(
+      databaseClient,
+      conversationId,
+      appUserId,
+      message,
+      uploadedAttachment?.publicUrl ?? null,
+    );
     await touchConversation(databaseClient, buyerProfile.buyer_id, conversationId);
   } catch (error) {
+    if (uploadedAttachment) {
+      await removeMessageImageAttachment(
+        databaseClient,
+        uploadedAttachment.bucket,
+        uploadedAttachment.filePath,
+      ).catch(() => undefined);
+    }
+
     if (
       !adminSupabase &&
       error instanceof Error &&

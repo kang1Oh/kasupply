@@ -5,10 +5,6 @@ import {
   SUPPLIER_CARD_PRIMARY_ACTION_CLASS,
   SUPPLIER_CARD_SECONDARY_ACTION_CLASS,
 } from "../shared/card-actions";
-import {
-  SUPPLIER_CARD_METADATA_LABEL_CLASS,
-  SUPPLIER_CARD_METADATA_VALUE_CLASS,
-} from "../shared/card-metadata";
 import { updatePurchaseOrderStatus } from "./actions";
 import { getSupplierPurchaseOrders } from "./data";
 
@@ -154,10 +150,10 @@ export default async function SupplierPurchaseOrdersPage() {
     <main className="-m-6 min-h-screen bg-[#F7F9FC]">
       <section className="border-b border-[#E8EDF4] bg-white">
         <div className="flex items-center justify-between px-[18px] py-[15px]">
-          <div className="flex items-center gap-2 text-[12px] text-[#A4ACBA]">
+          <div className="flex items-center gap-2 text-[14px] text-[#A4ACBA]">
             <span className="font-normal">KaSupply</span>
             <span className="text-[#CBD2DE]">/</span>
-            <span className="font-semibold text-[#506073]">Purchase Orders</span>
+            <span className="font-medium text-[#1E3A5F]">Purchase Orders</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -182,8 +178,8 @@ export default async function SupplierPurchaseOrdersPage() {
       <section className="px-[40px] py-[28px]">
         <div className="mx-auto max-w-[1360px]">
           <div className="mb-[24px]">
-            <h1 className="text-[23px] font-semibold text-[#223654]">Purchase Orders</h1>
-            <p className="mt-[6px] text-[16px] text-[#94A3B8]">
+            <h1 className="text-[23px] font-semibold text-[#1E3A5F]">Purchase Orders</h1>
+            <p className="mt-[2px] text-[16px] text-[#94A3B8]">
               {activeOrders} active orders to fulfill
             </p>
           </div>
@@ -233,10 +229,10 @@ export default async function SupplierPurchaseOrdersPage() {
                               {statusBadge.label}
                             </span>
                           </div>
-                          <p className="mt-[6px] text-[16px] font-medium text-[#6C788B]">
+                          <p className="text-[16px] font-normal text-[#6C788B]">
                             {order.buyer}
                           </p>
-                          <p className="mt-[4px] text-[14px] font-normal text-[#A5AFBD]">
+                          <p className="text-[14px] font-light text-[#A5AFBD]">
                             Ordered on {formatDate(order.orderDate)}
                           </p>
                         </div>
@@ -246,7 +242,7 @@ export default async function SupplierPurchaseOrdersPage() {
                         <p className="text-[14px] font-medium uppercase tracking-[0.02em] text-[#A0A9B9]">
                           Total Amount
                         </p>
-                        <p className="mt-[8px] text-[38px] font-semibold leading-none text-[#223654]">
+                        <p className="mt-[2px] text-[30px] font-semibold leading-none text-[#223654]">
                           {formatCurrency(order.totalAmount)}
                         </p>
                       </div>
@@ -254,34 +250,34 @@ export default async function SupplierPurchaseOrdersPage() {
 
                     <div className="mt-[20px] grid gap-y-[16px] border-t border-[#EDF1F6] pt-[18px] md:grid-cols-4">
                       <div>
-                        <p className={`${SUPPLIER_CARD_METADATA_LABEL_CLASS} text-[12px]`}>
+                        <p className="text-[14px] font-normal uppercase tracking-[0.02em] text-[#6A717F]">
                           Item
                         </p>
-                        <p className={`${SUPPLIER_CARD_METADATA_VALUE_CLASS} mt-[8px] text-[16px]`}>
+                        <p className="mt-[8px] text-[16px] font-medium text-[#374151]">
                           {order.productName}
                         </p>
                       </div>
                       <div>
-                        <p className={`${SUPPLIER_CARD_METADATA_LABEL_CLASS} text-[12px]`}>
+                        <p className="text-[14px] font-normal uppercase tracking-[0.02em] text-[#6A717F]">
                           Quantity
                         </p>
-                        <p className={`${SUPPLIER_CARD_METADATA_VALUE_CLASS} mt-[8px] text-[16px]`}>
+                        <p className="mt-[8px] text-[16px] font-medium text-[#374151]">
                           {order.quantityLabel}
                         </p>
                       </div>
                       <div>
-                        <p className={`${SUPPLIER_CARD_METADATA_LABEL_CLASS} text-[12px]`}>
+                        <p className="text-[14px] font-normal uppercase tracking-[0.02em] text-[#6A717F]">
                           Deliver By
                         </p>
-                        <p className={`${SUPPLIER_CARD_METADATA_VALUE_CLASS} mt-[8px] text-[16px]`}>
+                        <p className="mt-[8px] text-[16px] font-medium text-[#374151]">
                           {formatDate(order.preferredDeliveryDate ?? order.deadline)}
                         </p>
                       </div>
                       <div>
-                        <p className={`${SUPPLIER_CARD_METADATA_LABEL_CLASS} text-[12px]`}>
+                        <p className="text-[14px] font-normal uppercase tracking-[0.02em] text-[#6A717F]">
                           Payment Method
                         </p>
-                        <p className={`${SUPPLIER_CARD_METADATA_VALUE_CLASS} mt-[8px] text-[16px]`}>
+                        <p className="mt-[8px] text-[16px] font-medium text-[#374151]">
                           {order.paymentMethod ?? "Not set"}
                         </p>
                       </div>

@@ -1,5 +1,12 @@
 import type { DocumentVerificationBlueprint } from "@/lib/verification/types";
 
+const BUYER_DTI_DOCUMENT_TYPE_ALIASES = [
+  "dti business registration certificate",
+  "dti certificate",
+  "dti business registration",
+  "dti registration certificate",
+];
+
 const DOCUMENT_BLUEPRINTS: Record<string, DocumentVerificationBlueprint> = {
   "dti business registration certificate": {
     code: "dti",
@@ -208,12 +215,38 @@ const DOCUMENT_BLUEPRINTS: Record<string, DocumentVerificationBlueprint> = {
   },
 };
 
-function normalizeDocumentTypeName(value: string) {
+export function normalizeDocumentTypeName(value: string) {
   return value.trim().toLowerCase();
 }
 
 export function getDocumentVerificationBlueprint(documentTypeName: string) {
   return DOCUMENT_BLUEPRINTS[normalizeDocumentTypeName(documentTypeName)] ?? null;
+}
+
+export function getBuyerDtiDocumentTypeMatchScore(documentTypeName: string) {
+  const normalized = normalizeDocumentTypeName(documentTypeName);
+
+  if (!normalized) {
+    return 0;
+  }
+
+  if (BUYER_DTI_DOCUMENT_TYPE_ALIASES.includes(normalized)) {
+    return 3;
+  }
+
+  if (getDocumentVerificationBlueprint(documentTypeName)?.code === "dti") {
+    return 2;
+  }
+
+  if (normalized.includes("dti")) {
+    return 1;
+  }
+
+  return 0;
+}
+
+export function isBuyerDtiDocumentTypeName(documentTypeName: string) {
+  return getBuyerDtiDocumentTypeMatchScore(documentTypeName) > 0;
 }
 
 export function getAllDocumentVerificationBlueprints() {

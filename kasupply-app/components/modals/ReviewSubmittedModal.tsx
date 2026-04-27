@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -9,32 +10,6 @@ type ReviewSubmittedModalProps = {
   onViewSupplierProfile: () => void;
   onBackToOrders: () => void;
 };
-
-function ReviewSubmittedModalIcon() {
-  return (
-    <svg viewBox="0 0 48 48" className="h-[34px] w-[34px]" aria-hidden="true">
-      <path
-        d="m13 31 9.5-19 12.5 10.5L13 31Z"
-        fill="none"
-        stroke="#243F68"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="m23.5 14 3-4m6 10 5-1m-8.5 6 4 3m-18.5 3-3.5 2"
-        fill="none"
-        stroke="#243F68"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <circle cx="32.5" cy="13" r="1.4" fill="#243F68" />
-      <circle cx="36.5" cy="25.5" r="1.4" fill="#243F68" />
-      <circle cx="28.5" cy="30.5" r="1.4" fill="#243F68" />
-    </svg>
-  );
-}
 
 export function ReviewSubmittedModal({
   open,
@@ -91,31 +66,37 @@ export function ReviewSubmittedModal({
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex flex-col items-center text-center">
-          <div className="flex h-[68px] w-[68px] items-center justify-center rounded-full bg-[#EEF2F6]">
-            <ReviewSubmittedModalIcon />
+          <div className="flex h-[68px] w-[68px] items-center justify-center rounded-full bg-[#EEF2F6] pt-[4px]">
+            <Image
+              src="/icons/confetti.svg"
+              alt=""
+              width={34}
+              height={34}
+              aria-hidden="true"
+            />
           </div>
 
           <h2
             id="review-submitted-modal-title"
-            className="mt-[22px] text-[24px] font-semibold leading-none tracking-[-0.03em] text-[#243F68]"
+            className="mt-[18px] text-[24px] font-semibold leading-none tracking-[-0.03em] text-[#243F68]"
           >
             Review submitted!
           </h2>
 
           <p
             id="review-submitted-modal-description"
-            className="mt-[10px] max-w-[320px] text-[17px] font-light leading-[1.42] text-[#A7B0BF]"
+            className="mt-[10px] max-w-[360px] text-[17px] font-light leading-[1.42] text-[#A7B0BF]"
           >
-            Thank you for your feedback. Your feedback
+            Thank you for your feedback.
             <br />
-            helps other buyers
+            Your feedback helps other buyers
           </p>
 
-          <div className="mt-[28px] flex w-full max-w-[320px] items-center justify-center gap-2.5">
+          <div className="mt-[28px] flex w-full max-w-[360px] items-center justify-center gap-3">
             <button
               type="button"
               onClick={onViewSupplierProfile}
-              className="inline-flex h-[44px] min-w-[154px] items-center justify-center rounded-[12px] bg-[#233F68] px-5 text-[14px] font-medium text-white transition hover:bg-[#1D3557]"
+              className="inline-flex h-[44px] min-w-[186px] items-center justify-center rounded-[12px] bg-[#233F68] px-[24px] text-[14px] font-medium whitespace-nowrap text-white transition hover:bg-[#1D3557]"
             >
               View supplier profile
             </button>
@@ -123,7 +104,7 @@ export function ReviewSubmittedModal({
             <button
               type="button"
               onClick={onBackToOrders}
-              className="inline-flex h-[44px] min-w-[154px] items-center justify-center rounded-[12px] bg-[#9EABC0] px-5 text-[14px] font-medium text-white transition hover:bg-[#8d9ab0]"
+              className="inline-flex h-[44px] min-w-[154px] items-center justify-center rounded-[12px] bg-[#9EABC0] px-[24px] text-[14px] font-medium whitespace-nowrap text-white transition hover:bg-[#8d9ab0]"
             >
               Back to orders
             </button>

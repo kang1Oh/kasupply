@@ -1,6 +1,8 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { BuyerRfqDetailsData } from "@/lib/buyer/rfq-workflows";
 import { BuyerRfqCancelAction } from "@/components/buyer-rfq-cancel-action";
+import { BuyerRfqDeclineQuoteAction } from "@/components/buyer-rfq-decline-quote-action";
 import {
   acceptQuote,
   declineQuote,
@@ -31,12 +33,16 @@ type StatusAction =
 
 const RFQ_BREADCRUMB_CLASS = "flex items-center gap-[7px] text-[14px] font-normal text-[#bcc2cb]";
 const RFQ_TITLE_CLASS = "text-[23px] font-semibold tracking-[-0.04em] text-[#455060]";
-const RFQ_META_CLASS = "mt-[5px] text-[14px] font-normal leading-none text-[#c1c6cf]";
-const RFQ_STATUS_BADGE_CLASS = "inline-flex items-center gap-1.5 rounded-full px-[11px] py-[5px] text-[14px] font-medium leading-none";
-const RFQ_SECTION_HEADING_CLASS = "text-[15px] font-semibold uppercase leading-none text-[#27456f]";
+const RFQ_META_CLASS = "mt-[3px] text-[15px] font-normal leading-none text-[#c1c6cf]";
+const RFQ_STATUS_BADGE_CLASS = "inline-flex items-center gap-1.5 rounded-full px-[11px] py-[5px] text-[15px] font-medium leading-none";
+const RFQ_SECTION_HEADING_CLASS = "text-[12px] font-semibold uppercase leading-none text-[#27456f]";
+const RFQ_CARD_SECTION_HEADING_CLASS = "text-[17px] font-[600] uppercase leading-none text-[#27456f]";
 const RFQ_SECTION_HEADER_ROW_CLASS = "border-b border-[#f0f2f5] px-[16px] py-[12px]";
-const RFQ_SUPPLIER_NAME_CLASS = "truncate text-[15px] font-semibold leading-none text-[#5d6778]";
-const RFQ_SUPPLIER_SUBTITLE_CLASS = "mt-[6px] truncate text-[13px] font-normal leading-none text-[#a7aebb]";
+const RFQ_MAIN_CARD_HEADER_ROW_CLASS = "border-b border-[#f0f2f5] px-[16px] py-[17px]";
+const RFQ_SUPPLIER_NAME_CLASS = "truncate text-[16px] font-[500] leading-none text-[#5d6778]";
+const RFQ_SUPPLIER_SUBTITLE_CLASS = "mt-[6px] truncate text-[14px] font-normal leading-none text-[#a7aebb]";
+const RFQ_SUPPLIER_NOTE_CARD_CLASS =
+  "mt-[10px] min-h-[92px] rounded-[12px] border border-[#e7ebf1] bg-[rgba(162,168,179,0.08)] px-[20px] py-[18px]";
 
 function formatDate(value: string | null) {
   if (!value) {
@@ -228,7 +234,7 @@ function VerifiedBadge() {
 
 function StepCheckIcon() {
   return (
-    <svg viewBox="0 0 16 16" className="h-[10px] w-[10px]" aria-hidden="true">
+    <svg viewBox="0 0 16 16" className="h-[16px] w-[16px]" aria-hidden="true">
       <path
         d="M3.5 8.1 6.4 11l6.1-6.1"
         fill="none"
@@ -242,6 +248,20 @@ function StepCheckIcon() {
 }
 
 function AlertIcon({ state }: { state: DetailStateKey }) {
+  if (state === "pending") {
+    return (
+      <span className="flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-[8px] bg-[#FF7C22]">
+        <Image
+          src="/icons/clock.svg"
+          alt=""
+          width={25}
+          height={25}
+          aria-hidden="true"
+        />
+      </span>
+    );
+  }
+
   const className =
     state === "confirmed"
       ? "bg-[#2f9b63]"
@@ -265,7 +285,7 @@ function AlertIcon({ state }: { state: DetailStateKey }) {
 
 function ConfirmationAlertIcon() {
   return (
-    <span className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-[8px] bg-[#2b814f] text-white">
+    <span className="flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-[8px] bg-[#2b814f] text-white">
       <StepCheckIcon />
     </span>
   );
@@ -478,7 +498,7 @@ function ProgressTracker({ activeStep }: { activeStep: number }) {
                   isActive ? "bg-[#233f68] text-white" : "bg-[#e7e7e7] text-[#ffffff]"
                 }`}
               >
-                {stepNumber}
+                {isComplete ? <StepCheckIcon /> : stepNumber}
               </span>
               <span
                 className={`text-[15px] font-medium leading-none ${
@@ -514,10 +534,10 @@ function Field({
 }) {
   return (
     <div className={className}>
-      <p className="text-[13px] font-medium uppercase leading-none text-[#b8bec8]">
+      <p className="text-[14px] font-medium uppercase leading-none text-[#b8bec8]">
         {label}
       </p>
-      <p className="mt-[8px] text-[14px] font-normal leading-[1.35] text-[#374151]">
+      <p className="mt-[5px] text-[16px] font-[500] leading-[1.35] text-[#4c5767]">
         {value}
       </p>
     </div>
@@ -534,11 +554,11 @@ function QuoteMetric({
   labelClassName?: string;
 }) {
   return (
-    <div className="rounded-[10px] border border-[#e7ebf1] bg-white px-[12px] py-[12px] shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
-      <p className={`text-[14px] font-medium uppercase leading-none ${labelClassName}`}>
+    <div className="min-h-[104px] rounded-[10px] border border-[#e7ebf1] bg-[rgba(162,168,179,0.08)] px-[16px] py-[20px] shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+      <p className={`text-[14px] font-[500] uppercase leading-none ${labelClassName}`}>
         {label}
       </p>
-      <p className="mt-[10px] text-[15px] font-normal leading-none text-[#374151]">
+      <p className="mt-[5px] text-[16px] font-normal leading-[1.35] text-[#4c5767]">
         {value}
       </p>
     </div>
@@ -547,7 +567,7 @@ function QuoteMetric({
 
 function MessageSquareIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-[16px] w-[16px]" aria-hidden="true">
+    <svg viewBox="0 0 24 24" className="h-[27px] w-[27px]" aria-hidden="true">
       <path
         d="M7.25 7.25h9.5a1.5 1.5 0 0 1 1.5 1.5v6a1.5 1.5 0 0 1-1.5 1.5h-5.1l-3.5 2.78v-2.78h-.9a1.5 1.5 0 0 1-1.5-1.5v-6a1.5 1.5 0 0 1 1.5-1.5Z"
         fill="none"
@@ -693,14 +713,14 @@ export function BuyerRfqDetailPage({ data }: BuyerRfqDetailPageProps) {
         : "/buyer/messages";
 
   return (
-    <main className="mx-auto w-full max-w-[1042px] pb-5 pt-[2px]">
+    <main className="mx-auto w-full max-w-[1120px] pb-5 pt-[2px]">
       <section className="pb-[10px]">
         <nav className={RFQ_BREADCRUMB_CLASS}>
           <Link href="/buyer/rfqs" className="transition hover:text-[#7f8a99]">
             My RFQs
           </Link>
           <span>&gt;</span>
-          <span className="font-normal text-[#6A717F]">{referenceCode}</span>
+          <span className="text-[14px] font-normal text-[#6A717F]">{referenceCode}</span>
         </nav>
       </section>
 
@@ -731,8 +751,8 @@ export function BuyerRfqDetailPage({ data }: BuyerRfqDetailPageProps) {
       </section>
 
       <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
-        <div className={RFQ_SECTION_HEADER_ROW_CLASS}>
-          <h2 className={RFQ_SECTION_HEADING_CLASS}>Supplier Info</h2>
+        <div className={RFQ_MAIN_CARD_HEADER_ROW_CLASS}>
+          <h2 className={RFQ_CARD_SECTION_HEADING_CLASS}>Supplier Info</h2>
         </div>
 
         <div className="flex items-center justify-between gap-4 px-[18px] py-[16px]">
@@ -756,7 +776,7 @@ export function BuyerRfqDetailPage({ data }: BuyerRfqDetailPageProps) {
             href={
               primaryEngagement ? `/buyer/search/${primaryEngagement.supplierId}` : "/buyer/search"
             }
-            className="inline-flex h-[30px] shrink-0 items-center justify-center rounded-[8px] border border-[#e2e5ea] bg-white px-[14px] text-[11px] font-semibold text-[#5f6877] transition hover:bg-[#f8fafc]"
+            className="inline-flex h-[34px] shrink-0 items-center justify-center rounded-[8px] border border-[#e2e5ea] bg-white px-[18px] text-[13px] font-semibold text-[#5f6877] transition hover:bg-[#f8fafc]"
           >
             View Profile
           </Link>
@@ -764,8 +784,8 @@ export function BuyerRfqDetailPage({ data }: BuyerRfqDetailPageProps) {
       </section>
 
       <section className="mt-[10px] overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
-        <div className={RFQ_SECTION_HEADER_ROW_CLASS}>
-          <h2 className={RFQ_SECTION_HEADING_CLASS}>RFQ Details</h2>
+        <div className={RFQ_MAIN_CARD_HEADER_ROW_CLASS}>
+          <h2 className={RFQ_CARD_SECTION_HEADING_CLASS}>RFQ Details</h2>
         </div>
 
         <div className="px-[16px] py-[16px]">
@@ -798,27 +818,49 @@ export function BuyerRfqDetailPage({ data }: BuyerRfqDetailPageProps) {
 
       {detailState !== "responded" && detailState !== "confirmed" && !showClosedSummary ? (
         <section className="mt-[10px] overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
-          <div className={RFQ_SECTION_HEADER_ROW_CLASS}>
-            <h2 className={RFQ_SECTION_HEADING_CLASS}>{statusCopy.sectionTitle}</h2>
+          <div
+            className={
+              detailState === "pending"
+                ? RFQ_MAIN_CARD_HEADER_ROW_CLASS
+                : RFQ_SECTION_HEADER_ROW_CLASS
+            }
+          >
+            <h2
+              className={
+                detailState === "pending"
+                  ? RFQ_CARD_SECTION_HEADING_CLASS
+                  : RFQ_SECTION_HEADING_CLASS
+              }
+            >
+              {statusCopy.sectionTitle}
+            </h2>
           </div>
 
           <div className="px-[16px] py-[16px]">
             <div
-              className={`rounded-[10px] border px-[12px] py-[11px] ${getAlertBoxClasses(
-                detailState,
-              )}`}
+              className={`rounded-[10px] border ${
+                detailState === "pending" ? "px-[16px] py-[14px]" : "px-[12px] py-[11px]"
+              } ${getAlertBoxClasses(detailState)}`}
             >
               <div className="flex items-start gap-[10px]">
                 <AlertIcon state={detailState} />
-                <div className="min-w-0 pt-[1px]">
+                <div className={`min-w-0 ${detailState === "pending" ? "pt-[2px]" : "pt-[1px]"}`}>
                   <p
-                    className={`text-[14px] font-semibold leading-none ${getAlertHeadlineClasses(
-                      detailState,
-                    )}`}
+                    className={`${
+                      detailState === "pending"
+                        ? "text-[16px] font-[500]"
+                        : "text-[14px] font-semibold"
+                    } leading-none ${getAlertHeadlineClasses(detailState)}`}
                   >
                     {statusCopy.headline}
                   </p>
-                  <p className="mt-[8px] max-w-[640px] text-[12px] leading-[1.45] text-[#b0b6c1]">
+                  <p
+                    className={`max-w-[640px] leading-[1.45] ${
+                      detailState === "pending"
+                        ? "mt-[8px] text-[14px] text-[#98A2B3]"
+                        : "mt-[8px] text-[12px] text-[#b0b6c1]"
+                    }`}
+                  >
                     {statusCopy.message}
                   </p>
                 </div>
@@ -829,7 +871,11 @@ export function BuyerRfqDetailPage({ data }: BuyerRfqDetailPageProps) {
               <BuyerRfqCancelAction
                 rfqId={data.rfq.rfqId}
                 label={statusCopy.action.label}
-                className={`mt-[12px] inline-flex h-[34px] w-full items-center justify-center rounded-[7px] border bg-white text-[13px] font-semibold transition ${statusCopy.action.className}`}
+                className={`mt-[12px] inline-flex w-full items-center justify-center rounded-[7px] border bg-white transition ${
+                  detailState === "pending"
+                    ? "h-[44px] text-[15px] font-[500]"
+                    : "h-[34px] text-[13px] font-semibold"
+                } ${statusCopy.action.className}`}
               />
             ) : statusCopy.action.kind === "link" ? (
               <Link
@@ -901,8 +947,8 @@ export function BuyerRfqDetailPage({ data }: BuyerRfqDetailPageProps) {
               />
             </div>
 
-            <div className="mt-[10px] rounded-[12px] border border-[#e7ebf1] bg-[#fbfcfd] px-[14px] py-[14px]">
-              <p className="text-[11px] font-medium uppercase leading-none text-[#c2c8d1]">
+            <div className={RFQ_SUPPLIER_NOTE_CARD_CLASS}>
+              <p className="text-[14px] font-medium uppercase leading-none text-[#c2c8d1]">
                 Supplier&apos;s Note
               </p>
               <p className="mt-[10px] text-[14px] leading-[1.45] text-[#7a8594]">
@@ -922,9 +968,9 @@ export function BuyerRfqDetailPage({ data }: BuyerRfqDetailPageProps) {
 
       {detailState === "confirmed" && acceptedEngagement && acceptedQuote ? (
         <section className="mt-[10px] overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
-          <div className={`flex items-center justify-between ${RFQ_SECTION_HEADER_ROW_CLASS}`}>
-            <h2 className={RFQ_SECTION_HEADING_CLASS}>Agreed Terms</h2>
-            <p className="text-[11px] font-medium leading-none text-[#bfc5cf]">
+          <div className={`flex items-center justify-between ${RFQ_MAIN_CARD_HEADER_ROW_CLASS}`}>
+            <h2 className={RFQ_CARD_SECTION_HEADING_CLASS}>Agreed Terms</h2>
+            <p className="text-[14px] font-normal leading-none text-[#bfc5cf]">
               Agreed on {agreedDate}
             </p>
           </div>
@@ -937,7 +983,7 @@ export function BuyerRfqDetailPage({ data }: BuyerRfqDetailPageProps) {
                   <p className="text-[14px] font-semibold leading-none text-[#2c8754]">
                     Both parties have agreed on terms
                   </p>
-                  <p className="mt-[8px] max-w-[640px] text-[12px] leading-[1.45] text-[#a8b1be]">
+                  <p className="mt-[5px] max-w-[640px] text-[13px] leading-[1.45] text-[#a8b1be]">
                     Send a Purchase Order to confirm and begin coordination with the supplier.
                   </p>
                 </div>
@@ -964,18 +1010,18 @@ export function BuyerRfqDetailPage({ data }: BuyerRfqDetailPageProps) {
               />
             </div>
 
-            <div className="mt-[10px] rounded-[12px] border border-[#e7ebf1] bg-[#fbfcfd] px-[14px] py-[14px]">
+            <div className={RFQ_SUPPLIER_NOTE_CARD_CLASS}>
               <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
                 Supplier&apos;s Note
               </p>
-              <p className="mt-[10px] text-[14px] leading-[1.45] text-[#374151]">
+              <p className="mt-[5px] text-[15px] leading-[1.45] text-[#374151]">
                 {confirmedQuoteNote}
               </p>
             </div>
 
             <Link
               href={purchaseOrderHref}
-              className="mt-[12px] inline-flex h-[34px] w-full items-center justify-center rounded-[7px] bg-[#227546] text-[13px] font-semibold text-white transition hover:bg-[#1b633b]"
+              className="mt-[12px] inline-flex h-[44px] w-full items-center justify-center rounded-[7px] bg-[#227546] text-[14px] font-semibold text-white transition hover:bg-[#1b633b]"
             >
               Send Purchase Order
             </Link>
@@ -986,8 +1032,8 @@ export function BuyerRfqDetailPage({ data }: BuyerRfqDetailPageProps) {
       {detailState === "responded" && respondedEngagement ? (
         <>
           <section className="mt-[10px] overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
-            <div className={RFQ_SECTION_HEADER_ROW_CLASS}>
-              <h2 className={RFQ_SECTION_HEADING_CLASS}>Supplier&apos;s Quote</h2>
+            <div className={RFQ_MAIN_CARD_HEADER_ROW_CLASS}>
+              <h2 className={RFQ_CARD_SECTION_HEADING_CLASS}>Supplier&apos;s Quote</h2>
             </div>
 
             <div className="px-[16px] py-[16px]">
@@ -1011,11 +1057,11 @@ export function BuyerRfqDetailPage({ data }: BuyerRfqDetailPageProps) {
                 />
               </div>
 
-              <div className="mt-[10px] rounded-[12px] border border-[#e7ebf1] bg-[#fbfcfd] px-[14px] py-[14px]">
-                <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+              <div className={RFQ_SUPPLIER_NOTE_CARD_CLASS}>
+                <p className="text-[14px] font-semibold uppercase leading-none text-[#A2A8B3]">
                   Supplier&apos;s Note
                 </p>
-                <p className="mt-[10px] text-[14px] leading-[1.45] text-[#374151]">
+                <p className="mt-[5px] text-[16px] font-normal leading-[1.45] text-[#374151]">
                   {quoteNote}
                 </p>
               </div>
@@ -1036,7 +1082,7 @@ export function BuyerRfqDetailPage({ data }: BuyerRfqDetailPageProps) {
                     />
                     <button
                       type="submit"
-                      className="inline-flex h-[40px] w-full items-center justify-center rounded-[6px] bg-[#227546] text-[13px] font-medium text-white transition hover:bg-[#1b633b]"
+                      className="inline-flex h-[44px] w-full items-center justify-center rounded-[6px] bg-[#227546] text-[14px] font-medium text-white transition hover:bg-[#1b633b]"
                     >
                       Accept Quote
                     </button>
@@ -1044,36 +1090,24 @@ export function BuyerRfqDetailPage({ data }: BuyerRfqDetailPageProps) {
                 ) : (
                   <button
                     type="button"
-                    className="inline-flex h-[40px] w-full items-center justify-center rounded-[6px] bg-[#227546] text-[13px] font-medium text-white transition hover:bg-[#1b633b]"
+                    className="inline-flex h-[44px] w-full items-center justify-center rounded-[6px] bg-[#227546] text-[14px] font-medium text-white transition hover:bg-[#1b633b]"
                   >
                     Accept Quote
                   </button>
                 )}
 
                 {respondedQuote ? (
-                  <form action={declineQuote}>
-                    <input type="hidden" name="rfqId" value={data.rfq.rfqId} />
-                    <input
-                      type="hidden"
-                      name="engagementId"
-                      value={respondedEngagement.engagementId}
-                    />
-                    <input
-                      type="hidden"
-                      name="quoteId"
-                      value={respondedQuote.quoteId}
-                    />
-                    <button
-                      type="submit"
-                      className="inline-flex h-[40px] w-full items-center justify-center rounded-[6px] border border-[#ff6a5f] bg-white text-[13px] font-medium text-[#ff5549] transition hover:bg-[#fff8f7]"
-                    >
-                      Decline
-                    </button>
-                  </form>
+                  <BuyerRfqDeclineQuoteAction
+                    rfqId={data.rfq.rfqId}
+                    engagementId={respondedEngagement.engagementId}
+                    quoteId={respondedQuote.quoteId}
+                    supplierName={respondedEngagement.supplierName}
+                    declineAction={declineQuote}
+                  />
                 ) : (
                   <button
                     type="button"
-                    className="inline-flex h-[40px] w-full items-center justify-center rounded-[6px] border border-[#ff6a5f] bg-white text-[13px] font-medium text-[#ff5549] transition hover:bg-[#fff8f7]"
+                    className="inline-flex h-[44px] w-full items-center justify-center rounded-[6px] border border-[#ff6a5f] bg-white text-[14px] font-medium text-[#ff5549] transition hover:bg-[#fff8f7]"
                   >
                     Decline
                   </button>
@@ -1084,17 +1118,17 @@ export function BuyerRfqDetailPage({ data }: BuyerRfqDetailPageProps) {
 
           <Link
             href={negotiationHref}
-            className="mt-[12px] flex items-center justify-between rounded-[10px] border border-[#8aa4cc] bg-[#f5f9ff] px-[14px] py-[12px] shadow-[0_1px_1px_rgba(15,23,42,0.02)] transition hover:bg-[#edf5ff]"
+            className="mt-[14px] flex items-center justify-between rounded-[12px] border border-[#8aa4cc] bg-[#f5f9ff] px-[18px] py-[16px] shadow-[0_1px_1px_rgba(15,23,42,0.02)] transition hover:bg-[#edf5ff]"
           >
-            <div className="flex items-center gap-[12px]">
-              <span className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-[8px] bg-[#24436f] text-white">
+            <div className="flex items-center gap-[14px]">
+              <span className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-[10px] bg-[#24436f] text-white">
                 <MessageSquareIcon />
               </span>
               <div>
-                <p className="text-[14px] font-semibold leading-none text-[#35527d]">
+                <p className="text-[16px] font-semibold leading-none text-[#35527d]">
                   Negotiate with Supplier
                 </p>
-                <p className="mt-[6px] text-[13px] leading-none text-[#9aa7bb]">
+                <p className="mt-[7px] text-[14px] leading-[1.35] text-[#9aa7bb]">
                   You may open a conversation with the supplier to clarify details before confirming the quote.
                 </p>
               </div>

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { parseMessagePayload } from "@/lib/messages/message-payload";
 
 type RawRecord = Record<string, unknown>;
 
@@ -267,6 +268,9 @@ export type MessageItem = {
   id: number;
   senderId: string | null;
   content: string;
+  kind: "text" | "image";
+  imageUrl: string | null;
+  previewText: string;
   sentAt: string | null;
   sentAtLabel: string;
   isOwnMessage: boolean;
@@ -554,6 +558,18 @@ export async function getBuyerMessagesData(params?: {
         : null;
     const threadMessages = messagesByConversation.get(id) ?? [];
     const latestMessage = threadMessages[threadMessages.length - 1] ?? null;
+    const latestRawContent =
+      readFirstString(latestMessage ?? {}, [
+        "message_text",
+        "content",
+        "message",
+        "body",
+        "text",
+      ]) ?? "No messages yet.";
+    const latestPayload = parseMessagePayload(
+      latestRawContent,
+      readFirstString(latestMessage ?? {}, ["attachment_url"]),
+    );
     const latestMessageAt =
       readFirstString(latestMessage ?? {}, ["created_at", "sent_at"]) ??
       readFirstString(conversation, ["updated_at", "created_at"]);
@@ -583,14 +599,7 @@ export async function getBuyerMessagesData(params?: {
         name,
         initials: getInitials(name),
         subtitle: subtitle || "Supplier",
-        latestMessage:
-          readFirstString(latestMessage ?? {}, [
-            "message_text",
-            "content",
-            "message",
-            "body",
-            "text",
-          ]) ?? "No messages yet.",
+        latestMessage: latestPayload.previewText || "No messages yet.",
         latestMessageAt,
         latestMessageTimeLabel: formatSidebarTimestamp(latestMessageAt),
         unreadCount,
@@ -713,16 +722,23 @@ export async function getBuyerMessagesData(params?: {
       ? (messagesByConversation.get(selectedConversation.id) ?? []).map((message) => {
           const senderId = readFirstString(message, ["sender_id", "sent_by", "user_id"]);
           const sentAt = readFirstString(message, ["created_at", "sent_at"]) ?? null;
-          const content =
+          const rawContent =
             readFirstString(message, ["message_text", "content", "message", "body", "text"]) ??
             "";
+          const payload = parseMessagePayload(
+            rawContent,
+            readFirstString(message, ["attachment_url"]),
+          );
           const readAt = readFirstString(message, ["read_at"]);
           const isRead = readFirstBoolean(message, ["is_read"]);
 
           return {
             id: readFirstNumber(message, ["message_id", "id"]) ?? 0,
             senderId,
-            content,
+            content: payload.text,
+            kind: payload.kind,
+            imageUrl: payload.imageUrl,
+            previewText: payload.previewText,
             sentAt,
             sentAtLabel: formatChatTimestamp(sentAt),
             isOwnMessage: senderId === currentUserId,

@@ -200,10 +200,10 @@ function OrderMetric({
 }) {
   return (
     <div>
-      <p className="text-[11px] font-medium uppercase leading-none tracking-[0.02em] text-[#c0c5ce]">
+      <p className="text-[13px] font-normal uppercase tracking-[0.03em] text-[#BEC5D1]">
         {label}
       </p>
-      <p className="mt-[6px] text-[15px] font-semibold leading-none text-[#444f60]">
+      <p className="mt-[5px] text-[18px] font-[500] leading-none text-[#404B5E]">
         {value}
       </p>
     </div>
@@ -265,18 +265,18 @@ export function BuyerPurchaseOrdersPage({
   }, [orders, selectedFilter, sortBy]);
 
   return (
-    <section className="mx-auto w-full max-w-[1040px] pb-5 pt-1">
-      <section className="pb-5">
-        <h1 className="text-[36px] font-semibold tracking-[-0.04em] text-[#27456e]">
+    <section className="w-full pb-[18px] pt-1">
+      <section className="pb-[24px]">
+        <h1 className="text-[23px] font-semibold text-[#1E3A5F]">
           Purchase Orders
         </h1>
-        <p className="mt-1 text-[15px] font-normal leading-6 text-[#a6adba]">
+        <p className="mt-[2px] text-[16px] text-[#94A3B8]">
           Track and manage all your orders from suppliers.
         </p>
       </section>
 
-      <section className="flex items-center justify-between gap-4 pb-5">
-        <div className="flex flex-wrap items-center gap-[9px]">
+      <section className="flex flex-wrap items-center justify-between gap-[20px] pb-[24px]">
+        <div className="flex flex-wrap items-center gap-[8px]">
           {STATUS_FILTERS.map((filter) => {
             const isActive = selectedFilter === filter.key;
 
@@ -286,15 +286,21 @@ export function BuyerPurchaseOrdersPage({
                 type="button"
                 aria-pressed={isActive}
                 onClick={() => setSelectedFilter(filter.key)}
-                className={`inline-flex h-[34px] items-center rounded-full border px-[16px] text-[13px] font-medium leading-none transition ${
+                className={`inline-flex h-[32px] items-center rounded-full border px-[16px] text-[15px] font-[500] leading-none transition ${
                   isActive
-                    ? "border-[#213f69] bg-[#213f69] text-white"
-                    : "border-[#cfd6e2] bg-white text-[#929aa8] hover:border-[#c4cfdd] hover:text-[#38495f]"
+                    ? "border-[#223F68] bg-[#223F68] text-white"
+                    : "border-[#C9D2DE] bg-white text-[#334155] hover:border-[#B8C4D4] hover:text-[#223654]"
                 }`}
               >
                 <span>{filter.label}</span>
                 {filter.key === "all" ? (
-                  <span className="ml-[7px] inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-white/18 px-[4px] text-[10px] font-semibold text-white">
+                  <span
+                    className={`ml-[8px] inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-[4px] text-[10px] font-semibold leading-none ${
+                      isActive
+                        ? "bg-white text-[#223F68]"
+                        : "bg-[#E7EDF6] text-[#6B7D95]"
+                    }`}
+                  >
                     {filterCounts.all}
                   </span>
                 ) : null}
@@ -303,13 +309,13 @@ export function BuyerPurchaseOrdersPage({
           })}
         </div>
 
-        <label className="flex items-center gap-[10px] text-[13px] text-[#b1b7c3]">
+        <label className="flex items-center gap-[10px] text-[15px] font-normal text-[#94A3B8]">
           <span>Sort by</span>
-          <span className="relative flex h-[34px] min-w-[116px] items-center rounded-[8px] border border-[#e3e7ee] bg-white px-[12px] text-[#59677a] shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+          <span className="relative flex h-[38px] min-w-[136px] items-center rounded-[10px] border border-[#D9E2EE] bg-white px-[14px] text-[#59677A] shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
             <select
               value={sortBy}
               onChange={(event) => setSortBy(event.target.value as SortOption)}
-              className="w-full appearance-none bg-transparent pr-5 text-[12px] font-medium text-[#4e5b6f] outline-none"
+              className="w-full appearance-none bg-transparent pr-5 text-[15px] font-medium text-[#4E5B6F] outline-none"
             >
               {SORT_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -325,17 +331,16 @@ export function BuyerPurchaseOrdersPage({
       </section>
 
       {orders.length === 0 ? (
-        <section className="rounded-[14px] border border-dashed border-[#d9e0ea] bg-white px-6 py-10 text-center text-[14px] text-[#98a2b2]">
+        <section className="rounded-[22px] border border-dashed border-[#D8E2EE] bg-white px-[24px] py-[34px] text-center text-[15px] text-[#8FA0B5]">
           No purchase orders found yet.
         </section>
       ) : visibleOrders.length === 0 ? (
-        <section className="rounded-[14px] border border-dashed border-[#d9e0ea] bg-white px-6 py-10 text-center text-[14px] text-[#98a2b2]">
+        <section className="rounded-[22px] border border-dashed border-[#D8E2EE] bg-white px-[24px] py-[34px] text-center text-[15px] text-[#8FA0B5]">
           No purchase orders found for this filter.
         </section>
       ) : (
-        <section className="space-y-3.5">
-          {visibleOrders.map((order) => {
-            const accent = CARD_ACCENTS[order.poId % CARD_ACCENTS.length];
+        <section className="space-y-[18px]">
+          {visibleOrders.map((order, index) => {
             const statusBadge = getStatusBadge(order.status);
             const supplierName = order.supplierInfo?.businessName ?? "Unknown supplier";
 
@@ -344,39 +349,43 @@ export function BuyerPurchaseOrdersPage({
                 key={order.poId}
                 href={`/buyer/purchase-orders/${order.poId}`}
                 aria-label={`Open purchase order ${getPurchaseOrderCode(order)}`}
-                className="group block rounded-[14px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#213f69] focus-visible:ring-offset-2"
+                className="group block rounded-[20px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#213f69] focus-visible:ring-offset-2"
               >
-                <article className="overflow-hidden rounded-[14px] border border-[#e8ebf0] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)] transition group-hover:border-[#dfe5ee] group-hover:shadow-[0_6px_18px_rgba(15,23,42,0.05)]">
-                  <div className="flex items-start justify-between gap-4 px-[18px] py-[16px]">
-                    <div className="flex min-w-0 items-center gap-[12px]">
+                <article className="overflow-hidden rounded-[20px] border border-[#E3E8EF] bg-white px-[26px] py-[24px] shadow-[0_1px_2px_rgba(15,23,42,0.02)] transition group-hover:border-[#d7dee8] group-hover:shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
+                  <div className="flex items-start justify-between gap-[24px]">
+                    <div className="flex min-w-0 items-start gap-[16px]">
                       <div
-                        className={`flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-[10px] text-[19px] font-medium leading-none ${accent.panelClassName}`}
+                        className={`flex h-[68px] w-[68px] shrink-0 items-center justify-center rounded-[16px] text-[24px] font-medium leading-none ${
+                          CARD_ACCENTS[index % CARD_ACCENTS.length].panelClassName
+                        }`}
                       >
-                        {getInitials(supplierName)}
+                        <span className="text-[22px] font-medium">
+                          {getInitials(supplierName)}
+                        </span>
                       </div>
 
-                      <div className="min-w-0">
-                        <p className="truncate text-[14px] font-semibold leading-5 text-[#5f6a7b]">
+                      <div className="min-w-0 pt-[4px]">
+                        <p className="truncate text-[18px] font-[500] leading-none text-[#6C778A]">
                           {getPurchaseOrderCode(order)}
                         </p>
-                        <p className="truncate text-[13px] leading-5 text-[#a7afbc]">
+                        <p className="mt-[6px] truncate text-[16px] font-normal leading-none text-[#A8B0BD]">
                           {supplierName}
                         </p>
                       </div>
                     </div>
 
-                    <div className="shrink-0 text-right">
-                      <p className="text-[17px] font-semibold leading-none tracking-[-0.03em] text-[#39485b]">
+                    <div className="shrink-0 pt-[2px] text-right">
+                      <p className="text-[23px] font-[500] leading-none text-[#374151]">
                         {formatCurrency(order.totalAmount)}
                       </p>
-                      <p className="mt-[7px] text-[12px] font-normal leading-none text-[#b2b8c4]">
+                      <p className="mt-[6px] text-[14px] font-normal leading-none text-[#A9B1BF]">
                         Order Total
                       </p>
                     </div>
                   </div>
 
-                  <div className="border-t border-[#edf0f4] px-[18px] py-[12px]">
-                    <div className="grid grid-cols-[1.15fr_0.8fr_0.9fr_0.9fr_auto] items-end gap-[18px]">
+                  <div className="-mx-[26px] mt-[18px] border-t border-[#E9EDF3] px-[26px] pt-[18px]">
+                    <div className="grid gap-y-[16px] md:grid-cols-[1.2fr_0.8fr_0.95fr_0.95fr_auto] md:items-end">
                       <OrderMetric label="Item" value={order.productName} />
                       <OrderMetric label="Quantity" value={order.quantityLabel} />
                       <OrderMetric label="Order Date" value={formatDate(order.createdAt)} />
@@ -387,10 +396,10 @@ export function BuyerPurchaseOrdersPage({
 
                       <div className="flex justify-end">
                         <span
-                          className={`inline-flex items-center gap-1.5 rounded-full border px-[10px] py-[5px] text-[12px] font-medium leading-none ${statusBadge.className}`}
+                          className={`inline-flex h-[34px] items-center gap-[8px] rounded-full px-[14px] text-[14px] font-[500] leading-none ${statusBadge.className}`}
                         >
                           <span
-                            className={`h-[7px] w-[7px] rounded-full ${statusBadge.dotClassName}`}
+                            className={`h-[10px] w-[10px] rounded-full ${statusBadge.dotClassName}`}
                           />
                           {statusBadge.label}
                         </span>

@@ -66,7 +66,7 @@ export function PurchaseOrderDetailActions({
             <button
               type="button"
               onClick={() => setIsProcessingModalOpen(true)}
-              className="flex h-[48px] w-full items-center justify-center rounded-[10px] bg-[#1F436E] text-[14px] font-semibold text-white transition hover:bg-[#19385B]"
+              className="flex h-[48px] w-full items-center justify-center rounded-[10px] bg-[#1F436E] text-[14px] font-medium text-white transition hover:bg-[#19385B]"
             >
               Mark as Processing
             </button>
@@ -83,9 +83,9 @@ export function PurchaseOrderDetailActions({
           <button
             type="button"
             onClick={() => setIsCancelModalOpen(true)}
-            className={`flex w-full items-center justify-center rounded-[10px] border border-[#FF5B47] bg-white text-[14px] font-semibold text-[#FF5B47] transition hover:bg-[#FFF5F4] ${
-              status === "confirmed" ? "h-[48px]" : "h-[44px]"
-            }`}
+              className={`flex w-full items-center justify-center rounded-[10px] border border-[#FF5B47] bg-white text-[14px] font-medium text-[#FF5B47] transition hover:bg-[#FFF5F4] ${
+                status === "confirmed" ? "h-[48px]" : "h-[44px]"
+              }`}
           >
             Cancel Order
           </button>
@@ -93,7 +93,12 @@ export function PurchaseOrderDetailActions({
       )}
 
       {status === "confirmed" ? (
-        <form ref={processingFormRef} action={updateStatusAction} className="hidden">
+        <form
+          id="purchase-order-processing-form"
+          ref={processingFormRef}
+          action={updateStatusAction}
+          className="hidden"
+        >
           <input type="hidden" name="po_id" value={poId} />
           <input type="hidden" name="status" value="processing" />
         </form>

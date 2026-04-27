@@ -1,18 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Bell, ChevronRight, MessageSquare } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { getUserOnboardingStatus } from "@/lib/auth/get-user-onboarding-status";
-import {
-  SUPPLIER_CARD_ACTION_ROW_CLASS,
-  SUPPLIER_CARD_PRIMARY_ACTION_CLASS,
-  SUPPLIER_CARD_SECONDARY_ACTION_CLASS,
-} from "../shared/card-actions";
-import {
-  SUPPLIER_CARD_METADATA_LABEL_CLASS,
-  SUPPLIER_CARD_METADATA_VALUE_CLASS,
-} from "../shared/card-metadata";
 import { declineEngagement } from "./actions";
 
 type SupplierProfileRow = {
@@ -97,12 +87,7 @@ type PurchaseOrderRow = {
   quote_id: number;
 };
 
-type DisplayStatus =
-  | "new"
-  | "responded"
-  | "accepted"
-  | "closed"
-  | "declined";
+type DisplayStatus = "new" | "responded" | "accepted" | "closed" | "declined";
 
 type RfqCard = {
   engagementId: number;
@@ -129,15 +114,72 @@ type RfqCard = {
   sortTime: number;
 };
 
-function ClockIcon() {
+function BellIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-[12px] w-[12px]" fill="none" aria-hidden="true">
+    <svg viewBox="0 0 24 24" className="h-[15px] w-[15px]" fill="none" aria-hidden="true">
       <path
-        d="M12 6.75v5l3 1.75m5.25-1.5a8.25 8.25 0 1 1-16.5 0 8.25 8.25 0 0 1 16.5 0Z"
+        d="M12 4.75a4.25 4.25 0 0 0-4.25 4.25v2.12c0 .48-.16.94-.46 1.31l-1.2 1.53a1 1 0 0 0 .79 1.61h10.24a1 1 0 0 0 .79-1.61l-1.2-1.53a2.1 2.1 0 0 1-.46-1.31V9A4.25 4.25 0 0 0 12 4.75Z"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth="1.7"
+      />
+      <path
+        d="M10.25 18a1.75 1.75 0 0 0 3.5 0"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.7"
+      />
+      <circle cx="18.2" cy="5.8" r="2.1" fill="#FF6A55" />
+    </svg>
+  );
+}
+
+function MessageIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-[15px] w-[15px]" fill="none" aria-hidden="true">
+      <path
+        d="M7 18.25h8.75A2.25 2.25 0 0 0 18 16V8.25A2.25 2.25 0 0 0 15.75 6H8.25A2.25 2.25 0 0 0 6 8.25V16a2.25 2.25 0 0 0 2.25 2.25Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.7"
+      />
+      <path
+        d="m9.25 18.25-2.75 2V16"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.7"
+      />
+    </svg>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
+      <path
+        d="M4.75 3.75V8.5H9.5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M6.25 6.75A8.75 8.75 0 1 1 3.5 13"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M12 8.5V13h3.75"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
       />
     </svg>
   );
@@ -182,20 +224,19 @@ function formatRelativeDate(value: string | null | undefined) {
   if (diffHours < 1) return "Received just now";
   if (diffHours < 24) return `Received ${diffHours}h ago`;
   const diffDays = Math.floor(diffHours / 24);
-  if (diffDays === 1) return "Received yesterday";
-  return `Received ${parsed.toLocaleDateString("en-US", {
+  if (diffDays === 1) return "Yesterday";
+  return parsed.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
-    year: "numeric",
-  })}`;
+  });
 }
 
-function formatRfqReferenceCode(rfqId: number, createdAt: string | null | undefined) {
-  const createdDate = createdAt ? new Date(createdAt) : null;
+function formatRfqNumber(rfqId: number, createdAt: string | null | undefined) {
+  const parsed = createdAt ? new Date(createdAt) : null;
   const year =
-    createdDate && !Number.isNaN(createdDate.getTime())
-      ? createdDate.getFullYear()
-      : new Date().getFullYear();
+    parsed && !Number.isNaN(parsed.getTime())
+      ? String(parsed.getFullYear())
+      : String(new Date().getFullYear());
 
   return `RFQ-${year}-${String(rfqId).padStart(3, "0")}`;
 }
@@ -266,9 +307,10 @@ function getStatusPresentation(status: DisplayStatus) {
     case "closed":
       return {
         label: "CLOSED",
-        className: "bg-[#EEF2F6] text-[#4F5D73]",
+        className: "bg-[#EEF2F6] text-[#8A94A6]",
         actionLabel: "View Details",
-        actionClassName: "bg-[#223F68] text-white hover:bg-[#1C3455]",
+        actionClassName:
+          "border border-[#D9E2EE] bg-white text-[#516074] hover:bg-[#F8FAFC]",
         actionDisabled: false,
         showDecline: false,
       };
@@ -473,10 +515,7 @@ export default async function SupplierRfqPage({
       status: displayStatus,
       statusLabel: presentation.label,
       statusClassName: presentation.className,
-      rfqNumber: formatRfqReferenceCode(
-        engagement.rfq_id,
-        rfq?.created_at ?? engagement.created_at,
-      ),
+      rfqNumber: formatRfqNumber(engagement.rfq_id, rfq?.created_at ?? engagement.created_at),
       timeLabel: formatRelativeDate(rfq?.created_at ?? engagement.created_at),
       quantityLabel: quantity,
       targetPriceLabel: targetPrice,
@@ -498,42 +537,42 @@ export default async function SupplierRfqPage({
 
   const totalRfqs = cards.length;
   const newCount = cards.filter((card) => card.status === "new").length;
+  const pendingCount = cards.filter((card) => card.status === "responded").length;
   const acceptedCount = cards.filter((card) => card.status === "accepted").length;
-  const closedCount = cards.filter((card) => card.status === "closed").length;
 
   return (
     <main className="-m-6 min-h-screen bg-[#F7F9FC]">
-      <header className="border-b border-[#DCE5F1] bg-white">
+      <section className="border-b border-[#E8EDF4] bg-white">
         <div className="flex items-center justify-between px-[18px] py-[15px]">
-          <div className="flex items-center gap-[8px] text-[12px]">
-            <span className="font-normal text-[#A5AEBB]">KaSupply</span>
-            <ChevronRight className="h-[14px] w-[14px] text-[#B6BEC9]" />
-            <span className="font-semibold text-[#2B4368]">RFQs</span>
+          <div className="flex items-center gap-2 text-[14px] text-[#A4ACBA]">
+            <span className="font-normal">KaSupply</span>
+            <span>›</span>
+            <span className="font-medium text-[#1E3A5F]">RFQs</span>
           </div>
-          <div className="flex items-center gap-[8px]">
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              aria-label="Notifications"
               className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-[11px] border border-[#E2E8F0] bg-[#F9FBFD] text-[#A6B0BF] transition hover:border-[#D6DFEA] hover:text-[#4D5E75]"
+              aria-label="Notifications"
             >
-              <Bell className="h-[15px] w-[15px]" strokeWidth={1.8} />
+              <BellIcon />
             </button>
             <button
               type="button"
-              aria-label="Messages"
               className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-[11px] border border-[#E2E8F0] bg-[#F9FBFD] text-[#A6B0BF] transition hover:border-[#D6DFEA] hover:text-[#4D5E75]"
+              aria-label="Messages"
             >
-              <MessageSquare className="h-[15px] w-[15px]" strokeWidth={1.8} />
+              <MessageIcon />
             </button>
           </div>
         </div>
-      </header>
+      </section>
 
-      <div className="px-[36px] py-[28px]">
+      <div className="px-[40px] py-[28px]">
         <div className="mx-auto max-w-[1360px]">
           <div className="mb-[24px]">
-            <h1 className="text-[23px] font-semibold text-[#223654]">RFQ Requests</h1>
-            <p className="mt-[6px] text-[16px] text-[#94A3B8]">
+            <h1 className="text-[23px] font-semibold text-[#1E3A5F]">RFQ Requests</h1>
+            <p className="mt-[2px] text-[16px] text-[#94A3B8]">
               {filteredCards.length} incoming requests from buyers
             </p>
           </div>
@@ -542,8 +581,8 @@ export default async function SupplierRfqPage({
             {[
               ["TOTAL RFQs", totalRfqs, "#A855F7"],
               ["NEW", newCount, "#2563EB"],
+              ["PENDING", pendingCount, "#FF7A1A"],
               ["ACCEPTED", acceptedCount, "#1F7A47"],
-              ["CLOSED", closedCount, "#4F5D73"],
             ].map(([label, value, accent]) => (
               <div
                 key={String(label)}
@@ -560,7 +599,7 @@ export default async function SupplierRfqPage({
             ))}
           </section>
 
-          <div className="mt-[28px] flex flex-wrap items-center gap-[30px]">
+          <div className="mt-[28px] flex flex-wrap items-center gap-[24px]">
             {[
               ["all", "All"],
               ["new", "New"],
@@ -576,7 +615,7 @@ export default async function SupplierRfqPage({
                   href={value === "all" ? "/supplier/rfq" : `/supplier/rfq?status=${value}`}
                   className={
                     isActive
-                      ? "inline-flex h-[40px] items-center rounded-full bg-[#223F68] px-[22px] text-[15px] font-medium text-white"
+                      ? "inline-flex h-[30px] items-center rounded-full bg-[#223F68] px-[18px] text-[15px] font-normal text-white"
                       : "text-[16px] font-normal text-[#94A3B8] transition hover:text-[#223654]"
                   }
                 >
@@ -586,16 +625,16 @@ export default async function SupplierRfqPage({
             })}
           </div>
 
-          <section className="mt-[24px] space-y-[18px]">
+          <section className="mt-[16px] space-y-[18px]">
             {filteredCards.length === 0 ? (
-              <div className="rounded-[22px] border border-[#E3EAF2] bg-white px-[24px] py-[34px] text-[15px] text-[#94A3B8] shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
+              <div className="rounded-[22px] border border-dashed border-[#D8E2EE] bg-white px-[24px] py-[34px] text-center text-[15px] text-[#8FA0B5]">
                 No RFQ requests found for this status.
               </div>
             ) : (
               filteredCards.map((card) => (
                 <article
                   key={card.engagementId}
-                  className="rounded-[24px] border border-[#E3EAF2] bg-white px-[22px] py-[22px] shadow-[0_8px_20px_rgba(15,23,42,0.04)]"
+                  className="rounded-[24px] border border-[#E6ECF3] bg-white px-[22px] py-[22px] shadow-[0_3px_10px_rgba(15,23,42,0.025)]"
                 >
                   <div className="flex items-start justify-between gap-[20px]">
                     <div className="flex min-w-0 items-start gap-[14px]">
@@ -605,32 +644,31 @@ export default async function SupplierRfqPage({
                         {card.initials}
                       </div>
                       <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-[12px]">
-                          <h2 className="text-[18px] font-semibold leading-none text-[#223654]">{card.product}</h2>
-                          <span className={`inline-flex h-[24px] items-center rounded-[8px] px-[10px] text-[11px] font-semibold ${card.statusClassName}`}>
+                        <div className="flex flex-wrap items-center gap-[8px]">
+                          <h2 className="text-[18px] font-medium text-[#6A717F]">{card.product}</h2>
+                          <span
+                            className={`inline-flex h-[24px] items-center rounded-[8px] px-[10px] text-[12px] font-[500] uppercase tracking-[0.02em] ${card.statusClassName}`}
+                          >
                             {card.statusLabel}
                           </span>
                         </div>
-                        <p className="mt-[6px] text-[16px] font-medium text-[#6C788B]">{card.buyer}</p>
-                        <p className="mt-[4px] text-[14px] font-normal text-[#A5AFBD]">{card.buyerSubtitle}</p>
+                        <p className="mt-[2px] text-[16px] font-normal text-[#A2A8B3]">{card.buyer}</p>
                       </div>
                     </div>
 
-                    <div className="shrink-0 flex justify-end">
-                      <div className="flex flex-col items-center">
-                        <span className="inline-flex rounded-full bg-[#F2F4F7] px-[18px] py-[10px] text-[14px] font-medium text-[#667085]">
-                          {card.rfqNumber}
-                        </span>
-                        <p className="mt-[12px] inline-flex items-center gap-[6px] text-[14px] text-[#98A2B3]">
-                          <ClockIcon />
-                          {card.timeLabel}
-                        </p>
-                      </div>
+                    <div className="flex shrink-0 flex-col items-end text-right">
+                      <span className="inline-flex h-[34px] items-center rounded-full bg-[#E5E5E5] px-[16px] text-[14px] font-medium text-[#374151]">
+                        {card.rfqNumber}
+                      </span>
+                      <p className="mt-[6px] inline-flex items-center gap-[6px] text-[16px] font-normal leading-none text-[#A2A8B3]">
+                        <ClockIcon />
+                        {card.timeLabel}
+                      </p>
                     </div>
                   </div>
 
-                  <div className="mt-[20px] border-t border-[#EDF2F7] pt-[18px]">
-                    <div className="grid gap-x-[24px] gap-y-[16px] md:grid-cols-4">
+                  <div className="mt-[20px] border-t border-[#EDF1F6] pt-[18px]">
+                    <div className="grid gap-y-[16px] md:grid-cols-4">
                       {[
                         ["QUANTITY", card.quantityLabel],
                         ["TARGET PRICE", card.targetPriceLabel],
@@ -638,40 +676,38 @@ export default async function SupplierRfqPage({
                         ["LOCATION", card.locationLabel],
                       ].map(([label, value]) => (
                         <div key={label}>
-                          <p className={`${SUPPLIER_CARD_METADATA_LABEL_CLASS} text-[12px]`}>
+                          <p className="text-[14px] font-normal uppercase tracking-[0.02em] text-[#6A717F]">
                             {label}
                           </p>
-                          <p className={`${SUPPLIER_CARD_METADATA_VALUE_CLASS} mt-[8px] text-[16px]`}>
-                            {value}
-                          </p>
+                          <p className="text-[18px] font-medium text-[#374151]">{value}</p>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  <div className={`${SUPPLIER_CARD_ACTION_ROW_CLASS} mt-[20px] border-t border-[#EDF2F7] pt-[20px]`}>
+                  <div className="mt-[20px] flex flex-wrap gap-[10px] border-t border-[#EDF1F6] pt-[18px]">
                     {card.actionHref ? (
                       <Link
                         href={card.actionHref}
-                        className={`${SUPPLIER_CARD_PRIMARY_ACTION_CLASS} h-[50px] rounded-[10px] text-[15px] ${card.actionClassName}`}
+                        className={`inline-flex h-[50px] flex-1 items-center justify-center rounded-[10px] px-[18px] text-[15px] font-medium transition ${card.actionClassName}`}
                       >
                         {card.actionLabel}
                       </Link>
                     ) : (
                       <span
-                        className={`${SUPPLIER_CARD_PRIMARY_ACTION_CLASS} h-[50px] rounded-[10px] text-[15px] ${card.actionClassName}`}
+                        className={`inline-flex h-[50px] flex-1 items-center justify-center rounded-[10px] px-[18px] text-[15px] font-medium ${card.actionClassName}`}
                       >
                         {card.actionLabel}
                       </span>
                     )}
 
                     {card.showDecline ? (
-                      <form action={declineEngagement} className="flex-1">
+                      <form action={declineEngagement} className="min-w-[140px]">
                         <input type="hidden" name="engagement_id" value={card.engagementId} />
                         <input type="hidden" name="return_to" value="/supplier/rfq" />
                         <button
                           type="submit"
-                          className={`${SUPPLIER_CARD_SECONDARY_ACTION_CLASS} h-[50px] w-full rounded-[10px] text-[15px]`}
+                          className="inline-flex h-[50px] w-full items-center justify-center rounded-[10px] border border-[#D9E2EE] bg-white px-[18px] text-[15px] font-medium text-[#516074] transition hover:bg-[#F8FAFC]"
                         >
                           Decline
                         </button>
@@ -683,9 +719,9 @@ export default async function SupplierRfqPage({
             )}
           </section>
 
-          <div className="mt-[18px] flex flex-col gap-[12px] text-[13px] text-[#94A3B8] md:flex-row md:items-center md:justify-between">
+          <div className="mt-[18px] flex flex-col gap-[12px] text-[14px] text-[#9EA8B7] md:flex-row md:items-center md:justify-between">
             <p>Showing 1-{Math.min(filteredCards.length, 45)} of {filteredCards.length} results</p>
-            <div className="flex items-center gap-[14px] text-[13px]">
+            <div className="flex items-center gap-[14px] text-[13px] text-[#65748B]">
               <span className="text-[#B0B9C8]">← Previous</span>
               <span className="inline-flex h-[28px] w-[28px] items-center justify-center rounded-[8px] bg-[#223F68] text-white">1</span>
               <span className="text-[#223654]">2</span>

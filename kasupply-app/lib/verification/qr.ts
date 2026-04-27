@@ -8,7 +8,24 @@ import {
 } from "@zxing/library";
 import { Jimp } from "jimp";
 
-type ImageVariantBuilder = (image: Jimp) => Jimp;
+type JimpLike = {
+  bitmap: {
+    data: Buffer | Uint8Array;
+    width: number;
+    height: number;
+  };
+  clone(): JimpLike;
+  crop(options: { x: number; y: number; w: number; h: number }): JimpLike;
+  greyscale(): JimpLike;
+  normalize(): JimpLike;
+  contrast(amount: number): JimpLike;
+  threshold(options: { max: number }): JimpLike;
+  invert(): JimpLike;
+  scale(amount: number): JimpLike;
+  rotate(angle: number): JimpLike;
+};
+
+type ImageVariantBuilder = (image: JimpLike) => JimpLike;
 
 function tryDecodeQrFromBitmap(
   rgbaData: Uint8ClampedArray,
@@ -31,7 +48,7 @@ function tryDecodeQrFromBitmap(
   return result.getText();
 }
 
-function buildRegionVariants(image: Jimp) {
+function buildRegionVariants(image: JimpLike) {
   const width = image.bitmap.width;
   const height = image.bitmap.height;
 
@@ -75,7 +92,7 @@ function buildRegionVariants(image: Jimp) {
   );
 }
 
-function buildProcessingVariants(image: Jimp) {
+function buildProcessingVariants(image: JimpLike) {
   const variants: ImageVariantBuilder[] = [
     (source) => source.clone(),
     (source) => source.clone().greyscale().normalize().contrast(0.4),
@@ -105,10 +122,10 @@ function buildProcessingVariants(image: Jimp) {
   return variants.map((builder) => builder(image));
 }
 
-function buildScaledAndRotatedVariants(image: Jimp) {
+function buildScaledAndRotatedVariants(image: JimpLike) {
   const scales = [1, 2, 3];
   const rotations = [0, 90, 180, 270];
-  const variants: Jimp[] = [];
+  const variants: JimpLike[] = [];
 
   for (const scale of scales) {
     const scaled = scale === 1 ? image.clone() : image.clone().scale(scale);
@@ -129,7 +146,7 @@ export async function tryDecodeQrPayloadFromImageBytes(
     return null;
   }
 
-  const image = await Jimp.read(bytes);
+  const image = (await Jimp.read(bytes)) as unknown as JimpLike;
   const regionVariants = buildRegionVariants(image);
 
   for (const region of regionVariants) {

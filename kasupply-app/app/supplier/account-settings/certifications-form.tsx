@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useRef, useState } from "react";
 
 type CertificationRow = {
@@ -37,7 +38,7 @@ function AddCertificationModal({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="inline-flex h-[34px] items-center justify-center gap-[6px] rounded-[9px] bg-[#3C78F6] px-[14px] text-[13px] font-semibold text-white transition hover:bg-[#3169DF]"
+        className="inline-flex h-[50px] items-center justify-center gap-[8px] rounded-[10px] bg-[#2F6CF6] px-[18px] text-[15px] font-medium text-white transition hover:bg-[#245CE0]"
       >
         <span className="text-[14px] leading-none">+</span>
         <span>Add Certification</span>
@@ -187,13 +188,13 @@ export function CertificationsForm({
 
   return (
     <div>
-      <section className="overflow-hidden rounded-[18px] border border-[#E8EDF5] bg-white shadow-[0_8px_24px_rgba(15,23,42,0.03)]">
-        <div className="flex items-start justify-between gap-4 border-b border-[#EEF2F7] px-[20px] pb-[10px] pt-[18px]">
+      <section className="overflow-hidden rounded-[24px] border border-[#E6ECF3] bg-white shadow-[0_3px_10px_rgba(15,23,42,0.025)]">
+        <div className="flex items-start justify-between gap-4 border-b border-[#EEF2F7] px-[22px] py-[18px]">
           <div>
-            <h2 className="text-[14px] font-semibold uppercase tracking-[0.02em] text-[#23416A]">
+            <h2 className="text-[16px] font-semibold uppercase tracking-[0.02em] text-[#23416A]">
               CERTIFICATIONS
             </h2>
-            <p className="mt-[4px] text-[14px] text-[#9CA8B9]">
+            <p className="text-[15px] font-normal text-[#9CA8B9]">
               Add or update your quality and compliance certifications.
             </p>
           </div>
@@ -208,14 +209,14 @@ export function CertificationsForm({
           id={formId}
           ref={formRef}
           action={saveAction}
-          className="px-[14px] py-[14px]"
+          className="px-[22px] py-[22px]"
         >
           {certifications.length === 0 ? (
-            <div className="rounded-[14px] border border-dashed border-[#DCE4EF] bg-[#FBFCFE] px-[16px] py-[18px] text-[12px] text-[#98A3B4]">
+            <div className="rounded-[22px] border border-dashed border-[#DCE4EF] bg-[#FBFCFE] px-[24px] py-[34px] text-[15px] text-[#98A3B4]">
               No certifications uploaded for this supplier account yet.
             </div>
           ) : (
-            <div className="space-y-[10px]">
+            <div className="space-y-[18px]">
               {certifications.map((certification) => {
                 const hasNewFile = Boolean(
                   selectedFiles[certification.certificationId],
@@ -224,7 +225,7 @@ export function CertificationsForm({
                 return (
                   <div
                     key={certification.certificationId}
-                    className={`flex items-center justify-between gap-[14px] rounded-[14px] px-[14px] py-[12px] transition ${
+                    className={`flex items-center justify-between gap-[20px] rounded-[22px] px-[22px] py-[18px] transition ${
                       hasNewFile
                         ? "bg-[#F5F8FF] ring-1 ring-inset ring-[#D5E1FF]"
                         : "bg-[#FAFBFD]"
@@ -251,43 +252,30 @@ export function CertificationsForm({
                       }
                     />
 
-                    <div className="flex min-w-0 items-center gap-[12px]">
-                      <div className="flex h-[34px] w-[34px] items-center justify-center rounded-[10px] bg-[#E5F5E8] text-[#7DBA8D]">
-                        <svg
-                          viewBox="0 0 24 24"
-                          className="h-[16px] w-[16px]"
-                          fill="none"
+                    <div className="flex min-w-0 items-center gap-[14px]">
+                      <div className="flex h-[54px] w-[54px] items-center justify-center rounded-[14px] bg-[#D6EEE0]">
+                        <Image
+                          src="/icons/document.svg"
+                          alt=""
+                          width={24}
+                          height={24}
+                          className="h-[24px] w-[24px]"
                           aria-hidden="true"
-                        >
-                          <path
-                            d="M8 4.75h5.5l3.75 3.75v10.75A1.75 1.75 0 0 1 15.5 21H8.5A1.75 1.75 0 0 1 6.75 19.25V6.5A1.75 1.75 0 0 1 8.5 4.75Z"
-                            stroke="currentColor"
-                            strokeWidth="1.8"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                          <path
-                            d="M13.5 4.75V8.5h3.75M9.5 12h5M9.5 15.25h5"
-                            stroke="currentColor"
-                            strokeWidth="1.8"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
+                        />
                       </div>
 
                       <div className="min-w-0">
                         <div className="flex items-center gap-[8px]">
-                          <p className="truncate text-[14px] font-semibold text-[#3A4A64]">
+                          <p className="truncate text-[18px] font-medium text-[#1E3A5F]">
                             {certification.title}
                           </p>
                           {certification.isVerified ? (
-                            <span className="inline-flex h-[18px] items-center rounded-[6px] border border-[#A9C7FF] bg-white px-[6px] text-[9px] font-semibold text-[#4E86FF]">
+                            <span className="inline-flex h-[18px] items-center rounded-[11px] border border-[#2563EB] bg-white px-[8px] text-[11px] font-semibold text-[#2563EB]">
                               {certification.statusLabel}
                             </span>
                           ) : null}
                         </div>
-                        <p className="mt-[2px] text-[13px] text-[#A0AABA]">
+                        <p className="text-[16px] font-normal text-[#A0AABA]">
                           {hasNewFile
                             ? `Selected: ${selectedFiles[certification.certificationId]}`
                             : certification.expiryLabel}
@@ -301,12 +289,12 @@ export function CertificationsForm({
                           href={certification.viewUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex h-[31px] min-w-[68px] items-center justify-center rounded-[8px] border border-[#D8E1EC] bg-white px-[12px] text-[14px] font-medium text-[#58697F] transition hover:bg-[#F6F8FB]"
+                          className="inline-flex h-[40px] min-w-[92px] items-center justify-center rounded-[10px] border border-[#D8E1EC] bg-white px-[14px] text-[15px] font-medium text-[#58697F] transition hover:bg-[#F6F8FB]"
                         >
                           View File
                         </a>
                       ) : (
-                        <span className="inline-flex h-[31px] min-w-[68px] items-center justify-center rounded-[8px] border border-[#E4EAF2] bg-white px-[12px] text-[14px] font-medium text-[#BCC6D4]">
+                        <span className="inline-flex h-[40px] min-w-[92px] items-center justify-center rounded-[10px] border border-[#E4EAF2] bg-white px-[14px] text-[15px] font-medium text-[#BCC6D4]">
                           View File
                         </span>
                       )}
@@ -315,7 +303,7 @@ export function CertificationsForm({
                         onClick={() =>
                           inputRefs.current[certification.certificationId]?.click()
                         }
-                        className="inline-flex h-[31px] min-w-[82px] items-center justify-center rounded-[8px] bg-[#243F69] px-[12px] text-[14px] font-medium text-white transition hover:bg-[#1C3558]"
+                        className="inline-flex h-[40px] min-w-[120px] items-center justify-center rounded-[10px] bg-[#243F69] px-[16px] text-[15px] font-medium text-white transition hover:bg-[#1C3558]"
                       >
                         Update File
                       </button>
@@ -328,14 +316,14 @@ export function CertificationsForm({
         </form>
       </section>
 
-      <div className="flex items-center justify-between px-[2px] pt-[210px]">
-        <p className="text-[13px] text-[#98A3B4]">Changes are not saved automatically.</p>
+      <div className="mt-[20px] flex items-center justify-between px-[2px]">
+        <p className="text-[14px] text-[#98A3B4]">Changes are not saved automatically.</p>
 
         <div className="flex items-center gap-[10px]">
           <button
             type="button"
             onClick={handleDiscardChanges}
-            className="inline-flex h-[33px] items-center justify-center rounded-[8px] border border-[#DDE5EF] bg-white px-[14px] text-[13px] font-medium text-[#6E7E93] transition hover:bg-[#FAFBFD]"
+            className="inline-flex h-[50px] items-center justify-center rounded-[10px] border border-[#D7DFEB] bg-white px-[18px] text-[15px] font-medium text-[#5C6A7E] transition hover:bg-[#F8FAFC]"
           >
             Discard Changes
           </button>
@@ -343,7 +331,7 @@ export function CertificationsForm({
             type="submit"
             form={formId}
             disabled={!hasPendingChanges}
-            className="inline-flex h-[33px] items-center justify-center rounded-[8px] bg-[#3C78F6] px-[16px] text-[13px] font-semibold text-white transition hover:bg-[#3169DF] disabled:cursor-not-allowed disabled:bg-[#AFC4FA]"
+            className="inline-flex h-[50px] items-center justify-center rounded-[10px] bg-[#2F6CF6] px-[18px] text-[15px] font-medium text-white transition hover:bg-[#245CE0] disabled:cursor-not-allowed disabled:opacity-70"
           >
             Save Changes
           </button>

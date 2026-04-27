@@ -1,14 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
+import { isBuyerDtiDocumentTypeName } from "@/lib/verification/document-rules";
 import {
   resolveBuyerVerificationStatus,
   resolveSupplierVerificationStatus,
 } from "@/lib/verification/status";
 import type { DocumentVerificationStatus } from "@/lib/verification/types";
-
-const BUYER_DTI_DOCUMENT_NAMES = [
-  "DTI Business Registration Certificate",
-  "DTI Certificate",
-];
 
 const REQUIRED_SUPPLIER_DOCUMENT_NAMES = [
   "DTI Business Registration Certificate",
@@ -112,9 +108,7 @@ export async function syncBuyerVerificationProfileFromDocuments(profileId: numbe
   const safeBuyerDocuments = (buyerDocuments as BuyerDocumentRow[] | null) ?? [];
 
   const dtiDocument = safeBuyerDocuments.find((row) =>
-    BUYER_DTI_DOCUMENT_NAMES.some(
-      (name) => normalizeName(name) === normalizeName(readDocumentTypeName(row))
-    )
+    isBuyerDtiDocumentTypeName(readDocumentTypeName(row))
   );
 
   const verificationStatus = resolveBuyerVerificationStatus({

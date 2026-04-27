@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentAppUser } from "@/lib/auth/get-current-app-user";
 import { getSupplierDocumentRequirements } from "@/lib/supplier-requirements";
+import { isBuyerDtiDocumentTypeName } from "@/lib/verification/document-rules";
+import { REQUIRED_SITE_IMAGE_TYPES } from "@/lib/verification/site-image-types";
 
 type BuyerProfileRow = {
   buyer_id: number;
@@ -55,14 +57,6 @@ type SiteShowcaseImageRow = {
   image_url: string;
   status: string;
 };
-
-const REQUIRED_SITE_IMAGE_TYPES = [
-  "exterior",
-  "interior",
-  "signage",
-  "operational_setup",
-  "location_map",
-];
 
 function normalizeDocumentName(value: string) {
   return value.trim().toLowerCase();
@@ -243,8 +237,7 @@ export async function getUserOnboardingStatus() {
 
     const safeBuyerDocuments = (buyerDocuments as BusinessDocumentRow[] | null) ?? [];
     hasSubmittedBuyerDocuments = safeBuyerDocuments.some((doc) =>
-      normalizeDocumentName(doc.document_types?.document_type_name ?? "") ===
-      normalizeDocumentName("DTI Business Registration Certificate")
+      isBuyerDtiDocumentTypeName(doc.document_types?.document_type_name ?? "")
     );
   }
 

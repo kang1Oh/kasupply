@@ -59,11 +59,22 @@ export type SupplierProfileDetails = {
   reviewSummary: {
     reviewCount: number;
     averageOverallRating: number | null;
+    ratingDistribution: Array<{
+      rating: 1 | 2 | 3 | 4 | 5;
+      count: number;
+      percentage: number;
+    }>;
+    averageProductQualityRating: number | null;
+    averageDeliveryRating: number | null;
+    averageCommunicationRating: number | null;
+    averageValueForMoneyRating: number | null;
   };
   reviews: {
     reviewId: number;
+    purchaseOrderId: number | null;
     buyerId: number;
     buyerName: string | null;
+    verifiedPurchase: boolean;
     overallRating: number;
     productQualityRating: number | null;
     deliveryRating: number | null;
@@ -76,6 +87,7 @@ export type SupplierProfileDetails = {
 
 type SupplierReviewRow = {
   review_id: number;
+  purchase_order_id: number | null;
   buyer_id: number;
   overall_rating: number;
   product_quality_rating: number | null;
@@ -85,6 +97,37 @@ type SupplierReviewRow = {
   review_text: string | null;
   created_at: string | null;
 };
+
+function roundToSingleDecimal(value: number | null) {
+  if (value == null || Number.isNaN(value)) {
+    return null;
+  }
+
+  return Number(value.toFixed(1));
+}
+
+function getAverageFromReviews(
+  reviews: Array<{
+    [key: string]: number | string | null | boolean;
+  }>,
+  key:
+    | "overallRating"
+    | "productQualityRating"
+    | "deliveryRating"
+    | "communicationRating"
+    | "valueForMoneyRating",
+) {
+  const numericValues = reviews
+    .map((review) => review[key])
+    .filter((value): value is number => typeof value === "number" && !Number.isNaN(value));
+
+  if (numericValues.length === 0) {
+    return null;
+  }
+
+  const total = numericValues.reduce((sum, value) => sum + value, 0);
+  return roundToSingleDecimal(total / numericValues.length);
+}
 
 type BuyerProfileRow = {
   buyer_id: number;
@@ -551,7 +594,7 @@ export async function getSupplierProfileDetails(
   const { data: reviewRows, error: reviewError } = await supabase
     .from("supplier_reviews")
     .select(
-      "review_id, buyer_id, overall_rating, product_quality_rating, delivery_rating, communication_rating, value_for_money_rating, review_text, created_at"
+      "review_id, purchase_order_id, buyer_id, overall_rating, product_quality_rating, delivery_rating, communication_rating, value_for_money_rating, review_text, created_at"
     )
     .eq("supplier_id", supplierId)
     .order("created_at", { ascending: false });
@@ -615,8 +658,10 @@ export async function getSupplierProfileDetails(
 
   const reviews = safeReviewRows.map((row) => ({
     reviewId: row.review_id,
+    purchaseOrderId: row.purchase_order_id ?? null,
     buyerId: row.buyer_id,
     buyerName: buyerNameById.get(row.buyer_id) ?? null,
+    verifiedPurchase: Boolean(row.purchase_order_id),
     overallRating: Number(row.overall_rating),
     productQualityRating:
       typeof row.product_quality_rating === "number" ? Number(row.product_quality_rating) : null,
@@ -632,14 +677,21 @@ export async function getSupplierProfileDetails(
   }));
 
   const reviewCount = reviews.length;
-  const averageOverallRating =
-    reviewCount > 0
-      ? Number(
-          (
-            reviews.reduce((sum, review) => sum + review.overallRating, 0) / reviewCount
-          ).toFixed(1)
-        )
-      : null;
+  const averageOverallRating = getAverageFromReviews(reviews, "overallRating");
+  const averageProductQualityRating = getAverageFromReviews(reviews, "productQualityRating");
+  const averageDeliveryRating = getAverageFromReviews(reviews, "deliveryRating");
+  const averageCommunicationRating = getAverageFromReviews(reviews, "communicationRating");
+  const averageValueForMoneyRating = getAverageFromReviews(reviews, "valueForMoneyRating");
+  const ratingDistribution = ([5, 4, 3, 2, 1] as const).map((rating) => {
+    const count = reviews.filter((review) => Math.round(review.overallRating) === rating).length;
+    const percentage = reviewCount > 0 ? Math.round((count / reviewCount) * 100) : 0;
+
+    return {
+      rating,
+      count,
+      percentage,
+    };
+  });
 
   return {
     supplierId: supplierRow.supplier_id,
@@ -662,6 +714,11 @@ export async function getSupplierProfileDetails(
     reviewSummary: {
       reviewCount,
       averageOverallRating,
+      ratingDistribution,
+      averageProductQualityRating,
+      averageDeliveryRating,
+      averageCommunicationRating,
+      averageValueForMoneyRating,
     },
     reviews,
   };

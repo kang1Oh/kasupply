@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import {
+  REQUIRED_SITE_IMAGE_TYPES,
+  type RequiredSiteImageType,
+} from "@/lib/verification/site-image-types";
+import {
   safeQueueSiteVerification,
   safeSyncSupplierVerificationProfile,
 } from "@/lib/verification/onboarding";
@@ -11,6 +15,10 @@ type ExistingImageRow = {
   image_type: string;
   status: string;
 };
+
+function isRequiredSiteImageType(value: string): value is RequiredSiteImageType {
+  return REQUIRED_SITE_IMAGE_TYPES.includes(value as RequiredSiteImageType);
+}
 
 export async function POST(request: Request) {
   try {
@@ -30,15 +38,7 @@ export async function POST(request: Request) {
     const filePath = String(body?.filePath || "").trim();
     const previousFilePath = String(body?.previousFilePath || "").trim() || null;
 
-    const allowedTypes = new Set([
-      "exterior",
-      "interior",
-      "signage",
-      "operational_setup",
-      "location_map",
-    ]);
-
-    if (!allowedTypes.has(imageType)) {
+    if (!isRequiredSiteImageType(imageType)) {
       return NextResponse.json({ error: "Invalid image type." }, { status: 400 });
     }
 

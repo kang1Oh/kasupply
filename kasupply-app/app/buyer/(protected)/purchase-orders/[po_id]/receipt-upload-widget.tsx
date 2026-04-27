@@ -33,7 +33,7 @@ export function ReceiptUploadWidget({
   const submitLabel = mode === "resubmit" ? "Upload New Receipt" : "Upload Receipt";
 
   function validateFile(selectedFile: File): string | null {
-    if (!ACCEPTED_RECEIPT_TYPES.includes(selectedFile.type)) {
+    if (!ACCEPTED_RECEIPT_TYPES.some((acceptedType) => acceptedType === selectedFile.type)) {
       return `Upload a valid receipt file (${ACCEPTED_TYPES_TEXT}).`;
     }
 

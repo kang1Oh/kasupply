@@ -60,6 +60,7 @@ type EngagementRow = {
 type RfqRow = {
   rfq_id: number;
   product_id: number | null;
+  product_name?: string | null;
   unit: string | null;
   specifications: string | null;
   preferred_delivery_date: string | null;

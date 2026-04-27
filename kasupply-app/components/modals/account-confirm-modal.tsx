@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 type AccountConfirmModalProps = {
   isOpen: boolean;
@@ -27,14 +28,24 @@ export function AccountConfirmModal({
   isSubmitting = false,
   confirmTone = "default",
 }: AccountConfirmModalProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
   useEffect(() => {
     if (!isOpen) return;
 
-    const previousOverflow = document.body.style.overflow;
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+
     document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !isSubmitting) {
         onCancel();
       }
     };
@@ -42,41 +53,50 @@ export function AccountConfirmModal({
     window.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen, onCancel]);
+  }, [isOpen, isSubmitting, onCancel]);
 
-  if (!isOpen) {
+  if (!isOpen || !mounted) {
     return null;
   }
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[70] flex items-center justify-center bg-[#101828]/45 p-4"
-      onClick={onCancel}
+      onClick={() => {
+        if (!isSubmitting) {
+          onCancel();
+        }
+      }}
     >
       <div
-        className="w-full max-w-[430px] rounded-[22px] bg-white px-8 py-8 shadow-[0_28px_90px_rgba(15,23,42,0.22)]"
+        className="w-full max-w-[432px] rounded-[24px] bg-white px-[34px] py-[34px] shadow-[0_22px_70px_rgba(15,23,42,0.14)]"
         onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
       >
         <div className="flex flex-col items-center text-center">
-          <div className="flex h-[68px] w-[68px] items-center justify-center rounded-full bg-[#f1f5fb] text-[#243f68] shadow-[inset_0_0_0_1px_rgba(36,63,104,0.06)]">
+          <div className="flex h-[68px] w-[68px] items-center justify-center rounded-full bg-[#EEF2F6] text-[#243F68]">
             {icon}
           </div>
 
-          <h2 className="mt-5 text-[18px] font-semibold tracking-[-0.02em] text-[#243f68]">
+          <h2 className="mt-[22px] text-[24px] font-semibold leading-none tracking-[-0.03em] text-[#243F68]">
             {title}
           </h2>
 
-          <div className="mt-3 text-[14px] leading-6 text-[#9ca3af]">{description}</div>
+          <div className="mt-[10px] max-w-[320px] text-[17px] font-light leading-[1.42] text-[#A7B0BF]">
+            {description}
+          </div>
 
-          <div className="mt-6 grid w-full grid-cols-2 gap-2.5">
+          <div className="mt-[28px] flex w-full max-w-[320px] items-center justify-center gap-2.5">
             <button
               type="button"
               onClick={onCancel}
               disabled={isSubmitting}
-              className="inline-flex h-[42px] items-center justify-center rounded-[9px] bg-[#243f68] px-4 text-[14px] font-medium text-white transition hover:bg-[#20365a] disabled:cursor-not-allowed disabled:opacity-70"
+              className="inline-flex h-[44px] min-w-[154px] items-center justify-center rounded-[12px] bg-[#233F68] px-5 text-[14px] font-medium text-white transition hover:bg-[#1D3557] disabled:cursor-not-allowed disabled:opacity-70"
             >
               {cancelLabel}
             </button>
@@ -85,10 +105,10 @@ export function AccountConfirmModal({
               type="button"
               onClick={onConfirm}
               disabled={isSubmitting}
-              className={`inline-flex h-[42px] items-center justify-center rounded-[9px] px-4 text-[14px] font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-70 ${
+              className={`inline-flex h-[44px] min-w-[154px] items-center justify-center rounded-[12px] px-5 text-[14px] font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-70 ${
                 confirmTone === "danger"
-                  ? "bg-[#a5b3c8] hover:bg-[#98a7bd]"
-                  : "bg-[#a5b3c8] hover:bg-[#98a7bd]"
+                  ? "bg-[#A9B7C9] hover:bg-[#95A6BC]"
+                  : "bg-[#A9B7C9] hover:bg-[#95A6BC]"
               }`}
             >
               {confirmLabel}
@@ -96,6 +116,7 @@ export function AccountConfirmModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

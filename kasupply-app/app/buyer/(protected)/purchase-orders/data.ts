@@ -60,6 +60,7 @@ type RfqRow = {
   product_id: number | null;
   unit: string | null;
   specifications: string | null;
+  created_at?: string | null;
   preferred_delivery_date: string | null;
   delivery_location: string | null;
   deadline: string | null;
@@ -73,7 +74,7 @@ type ConversationRow = {
   engagement_id: number | null;
 };
 
-type PartyInfo = {
+export type PartyInfo = {
   businessName: string;
   businessType: string | null;
   verifiedBadge: boolean;
@@ -124,18 +125,22 @@ export type PurchaseOrderCreationDraft = {
   rfqId: number;
   quoteId: number;
   supplierId: number;
-  productId: number;
+  productId: number | null;
+  rfqCreatedAt: string | null;
   supplierName: string;
+  supplierInfo: PartyInfo | null;
   productName: string;
   specifications: string | null;
   quantity: number;
-  unit: string;
+  unit: string | null;
   pricePerUnit: number;
   totalAmount: number;
   leadTime: string | null;
   quotationNotes: string | null;
   deliveryLocation: string | null;
   preferredDeliveryDate: string | null;
+  defaultPaymentMethod: string;
+  defaultPaymentTerms: string;
   existingPurchaseOrderId: number | null;
 };
 
@@ -312,7 +317,7 @@ async function getSupplierInfoMap(
     const { data: businessProfiles, error: businessProfilesError } = await supabase
       .from("business_profiles")
       .select(
-        "profile_id, user_id, business_name, business_location, city, province, region, contact_number",
+        "profile_id, user_id, business_name, business_type, business_location, city, province, region, contact_number",
       )
       .in("profile_id", profileIds);
 
@@ -553,12 +558,16 @@ async function buildBuyerPurchaseOrderViews(
       const quantityValue =
         readFirstNumber(row, ["quantity"]) ?? quotation?.quantity ?? null;
       const unit = rfq?.unit ?? null;
+      const storedUnitPrice = readFirstNumber(row, ["unit_price"]);
       const pricePerUnit =
-        quotation?.price_per_unit == null ? null : Number(quotation.price_per_unit);
+        storedUnitPrice ??
+        (quotation?.price_per_unit == null ? null : Number(quotation.price_per_unit));
+      const storedSubtotal = readFirstNumber(row, ["subtotal"]);
       const subtotal =
-        quantityValue !== null && pricePerUnit !== null
+        storedSubtotal ??
+        (quantityValue !== null && pricePerUnit !== null
           ? quantityValue * pricePerUnit
-          : null;
+          : null);
       const receiptFilePath = readFirstString(row, [
         "receipt_file_url",
         "proof_of_payment_url",
@@ -605,8 +614,12 @@ async function buildBuyerPurchaseOrderViews(
         leadTime: quotation?.lead_time ?? null,
         quotationNotes: quotation?.notes ?? null,
         specifications: rfq?.specifications ?? null,
-        deliveryLocation: rfq?.delivery_location ?? null,
-        preferredDeliveryDate: rfq?.preferred_delivery_date ?? null,
+        deliveryLocation:
+          readFirstString(row, ["delivery_address"]) ?? rfq?.delivery_location ?? null,
+        preferredDeliveryDate:
+          readFirstString(row, ["expected_delivery_date"]) ??
+          rfq?.preferred_delivery_date ??
+          null,
         deadline: rfq?.deadline ?? null,
         supplierInfo: supplierId !== null ? supplierInfoMap.get(supplierId) ?? null : null,
         conversationId:
@@ -733,6 +746,7 @@ export async function getPurchaseOrderCreationDraft(rfqId: number, quoteId: numb
       rfq_id,
       buyer_id,
       product_id,
+      created_at,
       unit,
       specifications,
       preferred_delivery_date,
@@ -805,13 +819,19 @@ export async function getPurchaseOrderCreationDraft(rfqId: number, quoteId: numb
   const supplierInfo = supplierInfoMap.get(quote.supplier_id);
   const quantity = Number(quote.quantity);
   const pricePerUnit = Number(quote.price_per_unit);
+  const fallbackBuyerDeliveryLocation =
+    formatLocation(buyerContext.businessProfile as BusinessProfileRow) !== "Location not available"
+      ? formatLocation(buyerContext.businessProfile as BusinessProfileRow)
+      : null;
 
   return {
     rfqId,
     quoteId,
     supplierId: quote.supplier_id,
     productId: rfq.product_id,
+    rfqCreatedAt: rfq.created_at ?? null,
     supplierName: supplierInfo?.businessName ?? `Supplier #${quote.supplier_id}`,
+    supplierInfo: supplierInfo ?? null,
     productName: getRfqProductName(rfq) ?? `Product #${rfq.product_id}`,
     specifications: rfq.specifications,
     quantity,
@@ -820,8 +840,10 @@ export async function getPurchaseOrderCreationDraft(rfqId: number, quoteId: numb
     totalAmount: quantity * pricePerUnit,
     leadTime: quote.lead_time,
     quotationNotes: quote.notes,
-    deliveryLocation: rfq.delivery_location,
+    deliveryLocation: rfq.delivery_location ?? fallbackBuyerDeliveryLocation,
     preferredDeliveryDate: rfq.preferred_delivery_date,
+    defaultPaymentMethod: "cash_on_delivery",
+    defaultPaymentTerms: "Upon delivery",
     existingPurchaseOrderId: existingOrder?.po_id ?? null,
   } satisfies PurchaseOrderCreationDraft;
 }

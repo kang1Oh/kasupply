@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -9,37 +10,6 @@ type BuyerAccountActionsProps = {
   logoutLabel?: string;
   deleteLabel?: string;
 };
-
-function LogoutModalIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-[30px] w-[30px]" aria-hidden="true">
-      <path
-        d="M10 6H7.5A2.5 2.5 0 0 0 5 8.5v7A2.5 2.5 0 0 0 7.5 18H10"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M13 8.5 17 12l-4 3.5M9.5 12H17"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M10 6h4a2.5 2.5 0 0 1 2.5 2.5V9"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 function LogoutRowIcon() {
   return (
@@ -184,11 +154,24 @@ export function BuyerAccountActions({
 
       <AccountConfirmModal
         isOpen={isLoggingOutOpen}
-        icon={<LogoutModalIcon />}
+        icon={
+          <Image
+            src="/icons/logout_icon.svg"
+            alt=""
+            width={36}
+            height={36}
+            aria-hidden="true"
+          />
+        }
         title="Log out?"
-        description="Are you sure you want to log out of your account?"
-        cancelLabel="Cancel"
-        confirmLabel={isPending ? "Logging out..." : "Log Out"}
+        description={
+          <>
+            <p>Are you sure you want to log out</p>
+            <p>of your account?</p>
+          </>
+        }
+        cancelLabel="Stay"
+        confirmLabel={isPending ? "Logging out..." : "Discard"}
         onCancel={() => setIsLoggingOutOpen(false)}
         onConfirm={handleLogout}
         isSubmitting={isPending}

@@ -241,18 +241,18 @@ export function BuyerRfqsPage({ rfqs }: BuyerRfqsPageProps) {
   }, [rfqs, selectedFilter, sortBy, statusById]);
 
   return (
-    <main className="mx-auto w-full max-w-[1040px] pb-5 pt-1">
-      <section className="pb-5">
-        <h1 className="text-[25px] font-semibold tracking-[-0.04em] text-[#1E3A5F]">
+    <main className="w-full pb-[18px] pt-1">
+      <section className="pb-[24px]">
+        <h1 className="text-[23px] font-semibold text-[#1E3A5F]">
           My RFQs
         </h1>
-        <p className="mt-1 text-[15px] font-normal leading-[1rem] text-[#a6adba]">
+        <p className="mt-[2px] text-[16px] text-[#94A3B8]">
           Track and manage all your requests for quotation
         </p>
       </section>
 
-      <section className="flex items-center justify-between gap-4 pb-5">
-        <div className="flex flex-wrap items-center gap-[9px]">
+      <section className="flex flex-wrap items-center justify-between gap-[20px] pb-[24px]">
+        <div className="flex flex-wrap items-center gap-[8px]">
           {STATUS_FILTERS.map((tab) => {
             const isActive = selectedFilter === tab.key;
             const count =
@@ -263,15 +263,21 @@ export function BuyerRfqsPage({ rfqs }: BuyerRfqsPageProps) {
                 key={tab.label}
                 type="button"
                 onClick={() => setSelectedFilter(tab.key)}
-                className={`inline-flex h-[30px] items-center rounded-full border px-[16px] text-[14px] font-medium leading-none transition ${
+                className={`inline-flex h-[32px] items-center rounded-full border px-[16px] text-[15px] font-[500] leading-none transition ${
                   isActive
-                    ? "border-[#213f69] bg-[#213f69] text-white"
-                    : "border-[#cfd6e2] bg-white text-[#38495f] hover:border-[#c4cfdd]"
+                    ? "border-[#223F68] bg-[#223F68] text-white"
+                    : "border-[#C9D2DE] bg-white text-[#334155] hover:border-[#B8C4D4] hover:text-[#223654]"
                 }`}
               >
                 <span>{tab.label}</span>
                 {tab.key === "all" ? (
-                  <span className="ml-[10px] inline-flex h-[16px] w-[16px] items-center justify-center rounded-full bg-white text-[9px] font-semibold leading-none text-[#213f69]">
+                  <span
+                    className={`ml-[8px] inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-[4px] text-[10px] font-semibold leading-none ${
+                      isActive
+                        ? "bg-white text-[#223F68]"
+                        : "bg-[#E7EDF6] text-[#6B7D95]"
+                    }`}
+                  >
                     {count}
                   </span>
                 ) : null}
@@ -280,13 +286,13 @@ export function BuyerRfqsPage({ rfqs }: BuyerRfqsPageProps) {
           })}
         </div>
 
-        <label className="flex items-center gap-[10px] text-[14px] font-medium text-[#b1b7c3]">
-          <span className="font-medium">Sort by</span>
-          <span className="relative flex h-[34px] min-w-[116px] items-center rounded-[8px] border border-[#e3e7ee] bg-white px-[12px] text-[#59677a] shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+        <label className="flex items-center gap-[10px] text-[15px] font-normal text-[#94A3B8]">
+          <span>Sort by</span>
+          <span className="relative flex h-[38px] min-w-[136px] items-center rounded-[10px] border border-[#D9E2EE] bg-white px-[14px] text-[#59677A] shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
             <select
               value={sortBy}
               onChange={(event) => setSortBy(event.target.value as SortOption)}
-              className="w-full appearance-none bg-transparent pr-5 text-[14px] font-medium text-[#4e5b6f] outline-none"
+              className="w-full appearance-none bg-transparent pr-5 text-[15px] font-medium text-[#4E5B6F] outline-none"
             >
               <option value="newest">Newest First</option>
               <option value="oldest">Oldest First</option>
@@ -298,7 +304,7 @@ export function BuyerRfqsPage({ rfqs }: BuyerRfqsPageProps) {
         </label>
       </section>
 
-      <section className="space-y-3.5">
+      <section className="space-y-[18px]">
         {visibleRfqs.map((rfq, index) => {
           const status = statusById.get(rfq.rfqId) ?? getDisplayStatus(rfq);
           const supplierName = getPrimarySupplierName(rfq);
@@ -307,80 +313,80 @@ export function BuyerRfqsPage({ rfqs }: BuyerRfqsPageProps) {
             <Link
               key={rfq.rfqId}
               href={`/buyer/rfqs/${rfq.rfqId}`}
-              className="group block rounded-[14px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#213f69] focus-visible:ring-offset-2"
+              className="group block rounded-[20px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#213f69] focus-visible:ring-offset-2"
             >
-              <article className="overflow-hidden rounded-[14px] border border-[#e8ebf0] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)] transition group-hover:border-[#dfe5ee] group-hover:shadow-[0_6px_18px_rgba(15,23,42,0.05)]">
-                <div className="flex items-start justify-between gap-4 px-[18px] py-[16px]">
-                  <div className="flex min-w-0 items-start gap-[12px]">
+              <article className="overflow-hidden rounded-[20px] border border-[#E3E8EF] bg-white px-[26px] py-[24px] shadow-[0_1px_2px_rgba(15,23,42,0.02)] transition group-hover:border-[#d7dee8] group-hover:shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
+                <div className="flex items-start justify-between gap-[24px]">
+                  <div className="flex min-w-0 items-start gap-[16px]">
                     <div
-                      className={`flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-[6px] text-[22px] font-medium leading-none ${getAvatarClassName(
+                      className={`flex h-[68px] w-[68px] shrink-0 items-center justify-center rounded-[16px] text-[24px] font-medium leading-none ${getAvatarClassName(
                         index,
                       )}`}
                     >
-                      <span className="text-[21px] font-medium">
+                      <span className="text-[22px] font-medium">
                         {getInitials(supplierName)}
                       </span>
                     </div>
 
-                    <div className="min-w-0">
-                      <p className="truncate text-[17px] font-semibold leading-5 text-[#5f6a7b]">
+                    <div className="min-w-0 pt-[4px]">
+                      <p className="truncate text-[18px] font-[500] leading-none text-[#6C778A]">
                         {rfq.productName}
                       </p>
-                      <p className="mt-[4px] truncate text-[14px] leading-5 text-[#a7afbc]">
+                      <p className="mt-[6px] truncate text-[16px] font-normal leading-none text-[#A8B0BD]">
                         {supplierName}
                       </p>
                     </div>
                   </div>
 
-                  <div className="shrink-0 text-right">
+                  <div className="shrink-0 pt-[2px] text-right">
                     <span
-                      className={`inline-flex items-center gap-1.5 rounded-full px-[10px] py-[5px] text-[13px] font-medium leading-none ${status.badgeClassName}`}
+                      className={`inline-flex h-[34px] items-center gap-[8px] rounded-full px-[14px] text-[14px] font-[500] leading-none ${status.badgeClassName}`}
                     >
                       <span
-                        className={`h-[7px] w-[7px] rounded-full ${status.dotClassName}`}
+                        className={`h-[10px] w-[10px] rounded-full ${status.dotClassName}`}
                       />
                       {status.label}
                     </span>
-                    <p className="mt-[4px] text-[13px] font-normal leading-5 text-[#b2b8c4]">
+                    <p className="mt-[10px] text-[14px] font-normal leading-none text-[#A9B1BF]">
                       {getReferenceCode(rfq)} {"\u00b7"} {formatShortDate(rfq.createdAt)}
                     </p>
                   </div>
                 </div>
 
-                <div className="border-t border-[#edf0f4] px-[18px] py-[12px]">
-                  <div className="grid grid-cols-4 gap-[18px]">
+                <div className="mt-[18px] border-t border-[#E9EDF3] pt-[18px]">
+                  <div className="grid gap-y-[16px] md:grid-cols-4">
                     <div>
-                      <p className="text-[13px] font-normal uppercase leading-[1.2] tracking-[0.02em] text-[#c0c5ce]">
+                      <p className="text-[13px] font-normal uppercase tracking-[0.03em] text-[#BEC5D1]">
                         Quantity
                       </p>
-                      <p className="mt-[6px] text-[16px] font-medium leading-[1.2] text-[#444f60]">
+                      <p className="mt-[5px] text-[18px] font-[500] leading-none text-[#404B5E]">
                         {formatQuantity(rfq.quantity, rfq.unit)}
                       </p>
                     </div>
 
                     <div>
-                      <p className="text-[13px] font-normal uppercase leading-[1.2] tracking-[0.02em] text-[#c0c5ce]">
+                      <p className="text-[13px] font-normal uppercase tracking-[0.03em] text-[#BEC5D1]">
                         Target Price
                       </p>
-                      <p className="mt-[6px] text-[16px] font-medium leading-[1.2] text-[#444f60]">
+                      <p className="mt-[5px] text-[18px] font-[500] leading-none text-[#404B5E]">
                         {formatTargetPrice(rfq.targetPricePerUnit, rfq.unit)}
                       </p>
                     </div>
 
                     <div>
-                      <p className="text-[13px] font-normal uppercase leading-[1.2] tracking-[0.02em] text-[#c0c5ce]">
+                      <p className="text-[13px] font-normal uppercase tracking-[0.03em] text-[#BEC5D1]">
                         Deliver By
                       </p>
-                      <p className="mt-[6px] text-[16px] font-medium leading-[1.2] text-[#444f60]">
+                      <p className="mt-[5px] text-[18px] font-[500] leading-none text-[#404B5E]">
                         {formatDisplayDate(rfq.preferredDeliveryDate ?? rfq.deadline)}
                       </p>
                     </div>
 
                     <div>
-                      <p className="text-[13px] font-normal uppercase leading-[1.2] tracking-[0.02em] text-[#c0c5ce]">
+                      <p className="text-[13px] font-normal uppercase tracking-[0.03em] text-[#BEC5D1]">
                         Location
                       </p>
-                      <p className="mt-[6px] text-[16px] font-medium leading-[1.2] text-[#444f60]">
+                      <p className="mt-[5px] text-[18px] font-[500] leading-none text-[#404B5E]">
                         {rfq.deliveryLocation || "Not specified"}
                       </p>
                     </div>
@@ -392,7 +398,7 @@ export function BuyerRfqsPage({ rfqs }: BuyerRfqsPageProps) {
         })}
 
         {visibleRfqs.length === 0 ? (
-          <div className="rounded-[14px] border border-dashed border-[#d9e0ea] bg-white px-6 py-10 text-center text-[14px] text-[#98a2b2]">
+          <div className="rounded-[22px] border border-dashed border-[#D8E2EE] bg-white px-[24px] py-[34px] text-center text-[15px] text-[#8FA0B5]">
             No RFQs found for this filter.
           </div>
         ) : null}

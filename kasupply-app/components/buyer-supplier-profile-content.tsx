@@ -11,6 +11,7 @@ type SupplierProfileContentProps = {
 
 type TabKey = "overview" | "products" | "reviews";
 type SortKey = "match" | "name" | "price_low" | "price_high";
+type ReviewSortKey = "recent" | "oldest" | "highest" | "lowest";
 
 function formatReviewDate(value: string | null) {
   if (!value) {
@@ -29,14 +30,146 @@ function formatReviewDate(value: string | null) {
   }).format(parsed);
 }
 
+function formatReviewMonthYear(value: string | null) {
+  if (!value) {
+    return "Recently";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return "Recently";
+  }
+
+  return new Intl.DateTimeFormat("en-PH", {
+    month: "long",
+    year: "numeric",
+  }).format(parsed);
+}
+
+function formatRatingValue(value: number | null) {
+  if (value == null || Number.isNaN(value)) {
+    return "-";
+  }
+
+  return value.toFixed(1);
+}
+
+function averageReviewValue(
+  reviews: SupplierProfileDetails["reviews"],
+  key:
+    | "overallRating"
+    | "productQualityRating"
+    | "deliveryRating"
+    | "communicationRating"
+    | "valueForMoneyRating",
+) {
+  const numericValues = reviews
+    .map((review) => review[key])
+    .filter((value): value is number => typeof value === "number" && !Number.isNaN(value));
+
+  if (numericValues.length === 0) {
+    return null;
+  }
+
+  return Number(
+    (numericValues.reduce((sum, value) => sum + value, 0) / numericValues.length).toFixed(1),
+  );
+}
+
+function getNormalizedReviewSummary(supplier: SupplierProfileDetails) {
+  const reviewSummary = supplier.reviewSummary ?? {
+    reviewCount: supplier.reviews.length,
+    averageOverallRating: null,
+  };
+  const reviewCount = reviewSummary.reviewCount ?? supplier.reviews.length;
+  const averageOverallRating =
+    reviewSummary.averageOverallRating ?? averageReviewValue(supplier.reviews, "overallRating");
+  const ratingDistribution = Array.isArray(
+    (
+      reviewSummary as SupplierProfileDetails["reviewSummary"] & {
+        ratingDistribution?: Array<{
+          rating: 1 | 2 | 3 | 4 | 5;
+          count: number;
+          percentage: number;
+        }>;
+      }
+    ).ratingDistribution,
+  )
+    ? (
+        reviewSummary as SupplierProfileDetails["reviewSummary"] & {
+          ratingDistribution: Array<{
+            rating: 1 | 2 | 3 | 4 | 5;
+            count: number;
+            percentage: number;
+          }>;
+        }
+      ).ratingDistribution
+    : ([5, 4, 3, 2, 1] as const).map((rating) => {
+        const count = supplier.reviews.filter(
+          (review) => Math.round(review.overallRating) === rating,
+        ).length;
+
+        return {
+          rating,
+          count,
+          percentage: reviewCount > 0 ? Math.round((count / reviewCount) * 100) : 0,
+        };
+      });
+
+  return {
+    reviewCount,
+    averageOverallRating,
+    ratingDistribution,
+    averageProductQualityRating:
+      (
+        reviewSummary as SupplierProfileDetails["reviewSummary"] & {
+          averageProductQualityRating?: number | null;
+        }
+      ).averageProductQualityRating ??
+      averageReviewValue(supplier.reviews, "productQualityRating"),
+    averageDeliveryRating:
+      (
+        reviewSummary as SupplierProfileDetails["reviewSummary"] & {
+          averageDeliveryRating?: number | null;
+        }
+      ).averageDeliveryRating ?? averageReviewValue(supplier.reviews, "deliveryRating"),
+    averageCommunicationRating:
+      (
+        reviewSummary as SupplierProfileDetails["reviewSummary"] & {
+          averageCommunicationRating?: number | null;
+        }
+      ).averageCommunicationRating ??
+      averageReviewValue(supplier.reviews, "communicationRating"),
+    averageValueForMoneyRating:
+      (
+        reviewSummary as SupplierProfileDetails["reviewSummary"] & {
+          averageValueForMoneyRating?: number | null;
+        }
+      ).averageValueForMoneyRating ??
+      averageReviewValue(supplier.reviews, "valueForMoneyRating"),
+  };
+}
+
+function getInitials(value: string | null | undefined) {
+  const initials = String(value ?? "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
+
+  return initials || "RV";
+}
+
 function RatingStars({
   rating,
   size = "sm",
 }: {
   rating: number;
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "xs";
 }) {
-  const dimension = size === "md" ? "h-5 w-5" : "h-4 w-4";
+  const dimension =
+    size === "md" ? "h-5 w-5" : size === "xs" ? "h-[13px] w-[13px]" : "h-4 w-4";
 
   return (
     <div className="flex items-center gap-1" aria-label={`${rating} out of 5 stars`}>
@@ -53,6 +186,164 @@ function RatingStars({
         );
       })}
     </div>
+  );
+}
+
+function ReviewChip({
+  label,
+  value,
+}: {
+  label: string;
+  value: number | null;
+}) {
+  if (value == null) {
+    return null;
+  }
+
+  return (
+    <span className="inline-flex items-center gap-[4px] rounded-full border border-[#E8ECF2] bg-[#F8FAFD] px-[8px] py-[4px] text-[11px] leading-none text-[#6B7788]">
+      <svg viewBox="0 0 24 24" className="h-[10px] w-[10px] shrink-0" aria-hidden="true">
+        <path
+          d="m12 3 2.77 5.61 6.19.9-4.48 4.36 1.06 6.16L12 17.1l-5.54 2.93 1.06-6.16L3.04 9.5l6.19-.9L12 3Z"
+          fill="#FFC700"
+        />
+      </svg>
+      <span>{label}</span>
+      <span>{value.toFixed(1)}</span>
+    </span>
+  );
+}
+
+function ReviewsChevronDownIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" aria-hidden="true">
+      <path
+        d="m7 10 5 5 5-5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ReviewSummaryCard({
+  supplier,
+}: {
+  supplier: SupplierProfileDetails;
+}) {
+  const reviewSummary = getNormalizedReviewSummary(supplier);
+
+  return (
+    <section className="rounded-[20px] border border-[#E6EBF2] bg-white px-[22px] py-[20px] shadow-[0_8px_20px_rgba(15,23,42,0.03)]">
+      <div className="grid gap-[20px] lg:grid-cols-[0.95fr_1.2fr_1fr] lg:items-center">
+        <div className="flex flex-col items-center justify-center border-b border-[#EEF2F7] pb-[18px] text-center lg:border-b-0 lg:border-r lg:pb-0 lg:pr-[22px]">
+          <p className="text-[46px] font-semibold leading-none tracking-[-0.04em] text-[#243F68]">
+            {formatRatingValue(reviewSummary.averageOverallRating)}
+          </p>
+          <div className="mt-[8px]">
+            <RatingStars rating={reviewSummary.averageOverallRating ?? 0} size="md" />
+          </div>
+          <p className="mt-[10px] text-[12px] text-[#A4AFBF]">
+            Based on {reviewSummary.reviewCount} Review
+            {reviewSummary.reviewCount === 1 ? "" : "s"}
+          </p>
+        </div>
+
+        <div className="border-b border-[#EEF2F7] pb-[18px] lg:border-b-0 lg:border-r lg:px-[10px] lg:pb-0 lg:pr-[24px]">
+          <div className="space-y-[9px]">
+            {reviewSummary.ratingDistribution.map((entry) => (
+              <div
+                key={entry.rating}
+                className="grid grid-cols-[10px_minmax(0,1fr)_38px] items-center gap-[8px]"
+              >
+                <span className="text-[13px] font-medium leading-none text-[#7D8796]">
+                  {entry.rating}
+                </span>
+                <div className="h-[6px] overflow-hidden rounded-full bg-[#EEF2F8]">
+                  <div
+                    className="h-full rounded-full bg-[#FFC700]"
+                    style={{ width: `${entry.percentage}%` }}
+                  />
+                </div>
+                <span className="text-right text-[11px] text-[#A9B2C0]">
+                  {entry.percentage}%
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-[12px] lg:pl-[6px]">
+          {[
+            ["Product quality", reviewSummary.averageProductQualityRating],
+            ["Delivery", reviewSummary.averageDeliveryRating],
+            ["Communication", reviewSummary.averageCommunicationRating],
+            ["Value for money", reviewSummary.averageValueForMoneyRating],
+          ].map(([label, value]) => (
+            <div key={label} className="flex items-center justify-between gap-4">
+              <span className="text-[12px] text-[#98A4B5]">{label}</span>
+              <span className="inline-flex items-center gap-[4px] text-[13px] font-medium text-[#4F5F77]">
+                <svg viewBox="0 0 24 24" className="h-[12px] w-[12px]" aria-hidden="true">
+                  <path
+                    d="m12 3 2.77 5.61 6.19.9-4.48 4.36 1.06 6.16L12 17.1l-5.54 2.93 1.06-6.16L3.04 9.5l6.19-.9L12 3Z"
+                    fill="#FFC700"
+                  />
+                </svg>
+                {formatRatingValue(value as number | null)}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ReviewCard({
+  review,
+}: {
+  review: SupplierProfileDetails["reviews"][number];
+}) {
+  const reviewerName = review.buyerName ?? "Verified buyer";
+
+  return (
+    <article className="rounded-[18px] border border-[#E6EBF2] bg-white px-[16px] py-[16px] shadow-[0_8px_20px_rgba(15,23,42,0.03)]">
+      <div className="flex items-start justify-between gap-[12px]">
+        <div className="flex min-w-0 items-start gap-[12px]">
+          <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-[#D949FF] text-[13px] font-medium text-white">
+            {getInitials(reviewerName)}
+          </div>
+
+          <div className="min-w-0">
+            <p className="truncate text-[15px] font-medium leading-none text-[#4A576B]">
+              {reviewerName}
+            </p>
+            <p className="mt-[6px] text-[11px] leading-none text-[#A2AAB7]">
+              {formatReviewMonthYear(review.createdAt)}
+              {review.verifiedPurchase ? " · Verified purchase" : ""}
+            </p>
+          </div>
+        </div>
+
+        <div className="shrink-0 pt-[2px]">
+          <RatingStars rating={review.overallRating} size="sm" />
+        </div>
+      </div>
+
+      <div className="mt-[12px] flex flex-wrap gap-[6px]">
+        <ReviewChip label="Quality" value={review.productQualityRating} />
+        <ReviewChip label="Delivery" value={review.deliveryRating} />
+        <ReviewChip label="Communication" value={review.communicationRating} />
+        <ReviewChip label="Value" value={review.valueForMoneyRating} />
+      </div>
+
+      <p className="mt-[14px] text-[14px] leading-[1.5] text-[#6F7B8C]">
+        {review.reviewText?.trim() || "This buyer left ratings without a written review."}
+      </p>
+    </article>
   );
 }
 
@@ -400,12 +691,15 @@ export function BuyerSupplierProfileContent({
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortKey>("match");
+  const [reviewSort, setReviewSort] = useState<ReviewSortKey>("recent");
+  const [visibleReviewCount, setVisibleReviewCount] = useState(4);
   const [selectedProduct, setSelectedProduct] = useState<
     SupplierProfileDetails["products"][number] | null
   >(null);
   const productCount = supplier.products.length;
-  const reviewCount = supplier.reviewSummary.reviewCount;
-  const averageOverallRating = supplier.reviewSummary.averageOverallRating;
+  const normalizedReviewSummary = getNormalizedReviewSummary(supplier);
+  const reviewCount = normalizedReviewSummary.reviewCount;
+  const averageOverallRating = normalizedReviewSummary.averageOverallRating;
 
   const filteredProducts = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -435,6 +729,35 @@ export function BuyerSupplierProfileContent({
 
     return nextProducts;
   }, [search, sort, supplier.products]);
+
+  const visibleReviews = useMemo(() => {
+    const nextReviews = [...supplier.reviews];
+
+    nextReviews.sort((left, right) => {
+      if (reviewSort === "highest") {
+        return right.overallRating - left.overallRating;
+      }
+
+      if (reviewSort === "lowest") {
+        return left.overallRating - right.overallRating;
+      }
+
+      const leftTime = new Date(left.createdAt ?? "").getTime();
+      const rightTime = new Date(right.createdAt ?? "").getTime();
+      const safeLeftTime = Number.isNaN(leftTime) ? 0 : leftTime;
+      const safeRightTime = Number.isNaN(rightTime) ? 0 : rightTime;
+
+      return reviewSort === "oldest"
+        ? safeLeftTime - safeRightTime
+        : safeRightTime - safeLeftTime;
+    });
+
+    return nextReviews;
+  }, [reviewSort, supplier.reviews]);
+
+  useEffect(() => {
+    setVisibleReviewCount(4);
+  }, [reviewSort, supplier.supplierId]);
 
   return (
     <>
@@ -702,100 +1025,52 @@ export function BuyerSupplierProfileContent({
             </p>
           </section>
         ) : (
-          <section className="space-y-4">
-            <section className="rounded-2xl border border-[#e3eaf2] bg-white p-6 shadow-[0_8px_20px_rgba(15,23,42,0.03)]">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-[14px] font-medium text-[#94a3b8]">
-                    Supplier rating
-                  </p>
-                  <div className="mt-2 flex items-center gap-3">
-                    <p className="text-[28px] font-semibold leading-none text-[#223654]">
-                      {averageOverallRating?.toFixed(1) ?? "-"}
-                    </p>
-                    {averageOverallRating ? (
-                      <RatingStars rating={averageOverallRating} size="md" />
-                    ) : null}
-                  </div>
-                </div>
+          <section className="space-y-[12px]">
+            <ReviewSummaryCard supplier={supplier} />
 
-                <div className="rounded-[16px] border border-[#e5edf6] bg-[#fbfcfe] px-4 py-3 text-right">
-                  <p className="text-[12px] font-medium uppercase tracking-[0.04em] text-[#b2bac7]">
-                    Total reviews
-                  </p>
-                  <p className="mt-1 text-[22px] font-semibold text-[#223654]">
-                    {reviewCount}
-                  </p>
-                </div>
-              </div>
+            <section className="flex items-center justify-between gap-4 px-[2px] pt-[2px]">
+              <p className="text-[20px] font-medium text-[#4B576C]">
+                {reviewCount} Reviews
+              </p>
+
+              <label className="flex items-center gap-[10px] text-[13px] text-[#A6AFBD]">
+                <span className="relative flex h-[34px] min-w-[124px] items-center rounded-[10px] border border-[#E3E8EF] bg-white px-[12px] text-[#96A0AE] shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
+                  <select
+                    value={reviewSort}
+                    onChange={(event) => setReviewSort(event.target.value as ReviewSortKey)}
+                    className="w-full appearance-none bg-transparent pr-5 text-[12px] font-medium text-[#A0A8B6] outline-none"
+                  >
+                    <option value="recent">Most recent</option>
+                    <option value="oldest">Oldest</option>
+                    <option value="highest">Highest rating</option>
+                    <option value="lowest">Lowest rating</option>
+                  </select>
+                  <span className="pointer-events-none absolute right-[10px] text-[#B5BDC8]">
+                    <ReviewsChevronDownIcon />
+                  </span>
+                </span>
+              </label>
             </section>
 
-            <section className="space-y-4">
-              {supplier.reviews.map((review) => (
-                <article
-                  key={review.reviewId}
-                  className="rounded-2xl border border-[#e3eaf2] bg-white p-6 shadow-[0_8px_20px_rgba(15,23,42,0.03)]"
-                >
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <p className="text-[16px] font-semibold text-[#223654]">
-                        {review.buyerName ?? "Verified buyer"}
-                      </p>
-                      <p className="mt-1 text-[12px] text-[#94a3b8]">
-                        {formatReviewDate(review.createdAt)}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <RatingStars rating={review.overallRating} />
-                      <span className="text-[14px] font-semibold text-[#223654]">
-                        {review.overallRating.toFixed(1)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    {[
-                      ["Product quality", review.productQualityRating],
-                      ["Delivery", review.deliveryRating],
-                      ["Communication", review.communicationRating],
-                      ["Value for money", review.valueForMoneyRating],
-                    ].map(([label, value]) => (
-                      <div
-                        key={label}
-                        className="rounded-[14px] border border-[#edf2f7] bg-[#fbfcfe] px-3 py-3"
-                      >
-                        <p className="text-[11px] font-medium uppercase tracking-[0.03em] text-[#b2bac7]">
-                          {label}
-                        </p>
-                        <div className="mt-2 flex items-center gap-2">
-                          {typeof value === "number" ? (
-                            <>
-                              <RatingStars rating={value} />
-                              <span className="text-[13px] font-semibold text-[#223654]">
-                                {value.toFixed(1)}
-                              </span>
-                            </>
-                          ) : (
-                            <span className="text-[13px] text-[#94a3b8]">Not rated</span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {review.reviewText ? (
-                    <p className="mt-4 text-[14px] leading-7 text-[#5f6d80]">
-                      {review.reviewText}
-                    </p>
-                  ) : (
-                    <p className="mt-4 text-[13px] text-[#94a3b8]">
-                      This buyer left ratings without a written review.
-                    </p>
-                  )}
-                </article>
+            <section className="space-y-[10px]">
+              {visibleReviews.slice(0, visibleReviewCount).map((review) => (
+                <ReviewCard key={review.reviewId} review={review} />
               ))}
             </section>
+
+            {visibleReviewCount < visibleReviews.length ? (
+              <button
+                type="button"
+                onClick={() =>
+                  setVisibleReviewCount((currentCount) =>
+                    Math.min(currentCount + 4, visibleReviews.length),
+                  )
+                }
+                className="flex h-[52px] w-full items-center justify-center rounded-[14px] border border-dashed border-[#CBD4E0] bg-white text-[16px] font-medium text-[#8895A8] transition hover:border-[#B8C3D2] hover:text-[#5D6B7F]"
+              >
+                Load more reviews
+              </button>
+            ) : null}
           </section>
         )
       ) : null}

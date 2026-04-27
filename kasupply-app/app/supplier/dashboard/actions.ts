@@ -242,7 +242,10 @@ function isMissingRelationError(error: { code?: string; message?: string } | nul
 }
 
 async function readOptionalCount(
-  query: Promise<{ count: number | null; error: { code?: string; message?: string } | null }>,
+  query: PromiseLike<{
+    count: number | null;
+    error: { code?: string; message?: string } | null;
+  }>,
 ) {
   const { count, error } = await query;
   if (error) {
@@ -253,7 +256,10 @@ async function readOptionalCount(
 }
 
 async function readOptionalRows<T>(
-  query: Promise<{ data: T[] | null; error: { code?: string; message?: string } | null }>,
+  query: PromiseLike<{
+    data: T[] | null;
+    error: { code?: string; message?: string } | null;
+  }>,
 ) {
   const { data, error } = await query;
   if (error) {
@@ -845,7 +851,7 @@ export async function getSupplierDashboardData(): Promise<SupplierDashboardData>
     return !isOwn && !isRead;
   });
 
-  const notifications = [
+  const notifications: SupplierDashboardData["notifications"] = [
     requestMatchesResult[0]
       ? (() => {
           const rfq = getSingleRfq(requestMatchesResult[0].rfqs);
@@ -1007,13 +1013,17 @@ export async function openMatchedRfq(formData: FormData) {
     }
 
     engagementId = insertedEngagement.engagement_id;
-  } else if (existingEngagement.status !== "rejected") {
+  } else if (existingEngagement && existingEngagement.status !== "rejected") {
     await supabase
       .from("rfq_engagements")
       .update({
         viewed_at: new Date().toISOString(),
       })
       .eq("engagement_id", engagementId);
+  }
+
+  if (!engagementId) {
+    throw new Error("Failed to resolve RFQ engagement.");
   }
 
   await ensureSupplierConversationForEngagement(supabase, {

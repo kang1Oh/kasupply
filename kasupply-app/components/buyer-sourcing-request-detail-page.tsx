@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { BuyerRfqDetailsData } from "@/lib/buyer/rfq-workflows";
+import { BuyerSourcingCloseRequestAction } from "@/components/buyer-sourcing-close-request-action";
 import {
   acceptSourcingQuote,
   closeSourcingRequest,
@@ -58,13 +59,13 @@ function formatCurrencyPerUnit(value: number | null, unit: string | null) {
     maximumFractionDigits: 2,
   }).format(value);
 
-  return `P${amount}${unit ? ` / ${unit}` : ""}`;
+  return `\u20b1${amount}${unit ? ` / ${unit}` : ""}`;
 }
 
 function formatCurrency(value: number | null) {
   if (value == null || Number.isNaN(value)) return "-";
 
-  return `P${new Intl.NumberFormat("en-PH", {
+  return `\u20b1${new Intl.NumberFormat("en-PH", {
     minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
     maximumFractionDigits: 2,
   }).format(value)}`;
@@ -121,6 +122,20 @@ function getQuoteStatusLabel(status: string) {
   return "Submitted";
 }
 
+function getQuoteStatusClassName(status: string) {
+  const normalized = status.toLowerCase();
+
+  if (normalized === "accepted") {
+    return "bg-[#edf8ef] text-[#2e8b57]";
+  }
+
+  if (normalized === "rejected") {
+    return "bg-[#faecee] text-[#b35f68]";
+  }
+
+  return "bg-[#edf8ef] text-[#2e8b57]";
+}
+
 function buildMetricValueTotal(pricePerUnit: number | null, quantity: number | null) {
   if (pricePerUnit == null || quantity == null) return "-";
   return formatCurrency(pricePerUnit * quantity);
@@ -134,11 +149,30 @@ function MetricCell({
   value: React.ReactNode;
 }) {
   return (
-    <div className="rounded-[8px] bg-[#f3f4f6] px-[14px] py-[12px]">
-      <p className="text-[10px] font-medium uppercase tracking-[0.04em] text-[#a3acb8]">
+    <div className="min-w-0 px-[16px] py-[14px]">
+      <p className="text-[14px] font-normal uppercase tracking-[0.03em] text-[#A7AFBC]">
         {label}
       </p>
-      <p className="mt-[4px] text-[14px] font-semibold leading-[1.35] text-[#394150]">
+      <p className="mt-[3px] text-[16px] font-[500] leading-[1.35] text-[#394150]">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function QuotationMetricCell({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-[14px] border border-[#d9dee6] bg-[rgba(55,65,81,0.06)] px-[22px] py-[18px]">
+      <p className="text-[15px] font-normal uppercase tracking-[0.04em] leading-none text-[#7f8da3]">
+        {label}
+      </p>
+      <p className="mt-[10px] text-[16px] font-[500] leading-none text-[#394150]">
         {value}
       </p>
     </div>
@@ -188,56 +222,60 @@ export function BuyerSourcingRequestDetailPage({
 
   return (
     <main className="mx-auto max-w-[1120px] px-6 py-8">
-      <nav className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-[#b4bcc8]">
+      <nav className="flex flex-wrap items-center gap-[7px] text-[14px] font-normal text-[#bcc2cb]">
         <Link href="/buyer/sourcing-board" className="transition hover:text-[#223654]">
           Sourcing Board
         </Link>
         <span className="text-[#c7ced8]">&gt;</span>
-        <span className="text-[#8f9bac]">{data.rfq.productName}</span>
+        <span className="text-[14px] font-normal text-[#6A717F]">
+          {data.rfq.productName}
+        </span>
       </nav>
 
-      <section className="mt-4 overflow-hidden rounded-[18px] border border-[#e5eaf0] bg-white shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
-        <div className="px-[18px] py-[16px]">
+      <section className="mt-4 overflow-hidden rounded-[22px] border border-[#E2E8F0] bg-white px-[24px] py-[18px] shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
+        <div className="flex flex-col gap-[12px]">
           <div className="flex flex-col gap-[12px] lg:flex-row lg:items-start lg:justify-between">
-            <div className="flex min-w-0 items-start gap-[12px]">
-              <div className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-full bg-[#ffc3d0] text-[17px] font-medium text-[#cb5c7b]">
+            <div className="flex min-w-0 items-start gap-[14px]">
+              <div className="flex h-[55px] w-[55px] shrink-0 items-center justify-center rounded-full bg-[#FFC3D0] text-[22px] font-[500] leading-none text-[#CB5C7B]">
                 {getInitials(buyerBusinessName)}
               </div>
 
               <div className="min-w-0">
-                <p className="truncate text-[16px] font-semibold text-[#394150]">
+                <p className="truncate text-[16px] font-[500] leading-none text-[#455060]">
                   {buyerBusinessName}
                 </p>
 
-                <div className="mt-[3px] flex flex-wrap items-center gap-[7px] text-[12px] text-[#a0a8b4]">
-                  <span className="inline-flex rounded-[5px] border border-[#e6ebf1] bg-[#f8f9fb] px-[6px] py-[2px] text-[11px] font-medium text-[#7d8794]">
+                <div className="mt-[6px] flex flex-wrap items-center gap-[6px] text-[14px] text-[#A3ACB8]">
+                  <span className="rounded-[5px] border border-[#D9DDD8] bg-[#EAEAE8] px-[6px] py-[2px] text-[14px] leading-none text-[#646764]">
                     {data.rfq.category?.categoryName ?? "General sourcing"}
                   </span>
                   <span>&bull;</span>
-                  <span>{formatCompactDate(data.rfq.createdAt)}</span>
+                  <span className="text-[14px]">
+                    {formatCompactDate(data.rfq.createdAt)}
+                  </span>
                 </div>
+
+                <h1 className="mt-[10px] text-[17px] font-[500] leading-[1.35] text-[#364152]">
+                  {data.rfq.productName}
+                </h1>
+                <p className="mt-[3px] max-w-[920px] text-[15px] font-[300] leading-[1.45] text-[#7D8794]">
+                  {data.rfq.specifications || "No additional specifications provided yet."}
+                </p>
               </div>
             </div>
 
             <span
-              className={`inline-flex h-[28px] items-center self-start rounded-full px-[10px] text-[13px] font-medium ${requestStatus.className}`}
+              className={`inline-flex h-[30px] items-center gap-[8px] self-start rounded-full px-[12px] text-[14px] font-medium leading-none ${requestStatus.className}`}
             >
               <span
-                className={`mr-[7px] inline-flex h-[7px] w-[7px] rounded-full ${requestStatus.dotClassName}`}
+                className={`inline-flex h-[8px] w-[8px] rounded-full ${requestStatus.dotClassName}`}
               />
               {requestStatus.label}
             </span>
           </div>
 
-          <div className="mt-[4px] lg:pl-[56px]">
-            <h1 className="text-[17px] font-semibold leading-[1.4] text-[#364152]">
-              {data.rfq.productName}
-            </h1>
-            <p className="max-w-[760px] text-[15px] leading-[1.45] text-[#7d8794]">
-              {data.rfq.specifications || "No additional specifications provided yet."}
-            </p>
-
-            <div className="mt-[12px] overflow-hidden rounded-[12px] border border-[#e4e7eb] bg-[#f3f4f6]">
+          <div className="pl-0 lg:pl-[69px]">
+            <div className="overflow-hidden rounded-[12px] border border-[#E4E7EB] bg-[#F3F4F6]">
               <div className="grid md:grid-cols-2 xl:grid-cols-4">
                 <MetricCell
                   label="Quantity"
@@ -259,21 +297,19 @@ export function BuyerSourcingRequestDetailPage({
             </div>
 
             {requestIsClosable ? (
-              <form action={closeSourcingRequest} className="mt-[12px]">
-                <input type="hidden" name="rfqId" value={data.rfq.rfqId} />
-                <button
-                  type="submit"
-                  className="inline-flex h-[38px] w-full items-center justify-center rounded-[8px] border border-[#ff8f87] bg-white text-[12px] font-semibold text-[#ff5b4d] transition hover:bg-[#fff7f6]"
-                >
-                  Close Request
-                </button>
-              </form>
+              <div className="mt-[12px]">
+                <BuyerSourcingCloseRequestAction
+                  rfqId={data.rfq.rfqId}
+                  requestTitle={data.rfq.productName}
+                  closeAction={closeSourcingRequest}
+                />
+              </div>
             ) : null}
           </div>
         </div>
       </section>
 
-      <div className="py-[14px] text-center text-[12px] text-[#b3bbc6]">
+      <div className="py-[14px] text-center text-[14px] text-[#b3bbc6]">
         {quotationCount} quotation{quotationCount === 1 ? "" : "s"} received
       </div>
 
@@ -302,79 +338,83 @@ export function BuyerSourcingRequestDetailPage({
             return (
               <article
                 key={card.engagement.engagementId}
-                className="rounded-[18px] border border-[#e5eaf0] bg-white shadow-[0_8px_24px_rgba(15,23,42,0.04)]"
+                className="overflow-hidden rounded-[22px] border border-[#dfe5ec] bg-white px-[28px] py-[24px] shadow-[0_10px_30px_rgba(15,23,42,0.05)]"
               >
-                <div className="px-[16px] py-[16px]">
-                  <div className="flex flex-col gap-[12px] lg:flex-row lg:items-start lg:justify-between">
-                    <div className="flex min-w-0 items-start gap-[12px]">
+                <div className="flex flex-col gap-[18px]">
+                  <div className="flex flex-col gap-[14px] lg:flex-row lg:items-start lg:justify-between">
+                    <div className="flex min-w-0 items-start gap-[14px]">
                       <div
-                        className={`flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-[12px] text-[14px] font-semibold ${tone}`}
+                        className={`flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-[10px] text-[23px] font-[500] leading-none ${tone}`}
                       >
                         {getInitials(card.engagement.supplierName)}
                       </div>
 
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-[7px]">
-                          <p className="text-[15px] font-semibold text-[#394150]">
+                      <div className="min-w-0 pt-[4px]">
+                        <div className="flex flex-wrap items-center gap-[8px]">
+                          <p className="text-[16px] font-[500] leading-none text-[#5d6778]">
                             {card.engagement.supplierName}
                           </p>
                           {card.engagement.verifiedBadge ? (
-                            <span className="inline-flex items-center rounded-full border border-[#b7d7c3] bg-[#f5fbf6] px-[7px] py-[2px] text-[10px] font-medium text-[#4e8664]">
+                            <span className="inline-flex h-[24px] items-center rounded-full border border-[#7fb490] bg-[#f5fbf6] px-[10px] text-[11px] font-semibold leading-none text-[#387d54]">
                               Verified
                             </span>
                           ) : null}
                         </div>
 
-                        <p className="mt-[3px] text-[12px] text-[#9aa4b3]">
+                        <p className="mt-[4px] text-[14px] font-normal leading-[1.35] text-[#9aa3b2]">
                           {[card.engagement.businessType, card.engagement.locationLabel]
                             .filter(Boolean)
-                            .join(", ") || "Supplier details available"}
+                            .join(" · ") || "Supplier details available"}
                         </p>
                       </div>
                     </div>
 
                     <div className="shrink-0 text-left lg:text-right">
-                      <p className="text-[12px] font-semibold text-[#2e8b57]">
+                      <p
+                        className={`inline-flex h-[32px] items-center rounded-full px-[14px] text-[16px] font-[500] leading-none ${getQuoteStatusClassName(
+                          card.quotation.status,
+                        )}`}
+                      >
                         {quoteStatusLabel}
                       </p>
-                      <p className="mt-[2px] text-[11px] font-medium text-[#4d7be8]">
+                      <p className="mt-[8px] text-[14px] font-[500] leading-none text-[#3169f5]">
                         Match Score: {card.matchScore == null ? "-" : `${Math.round(card.matchScore)}%`}
                       </p>
                     </div>
                   </div>
 
-                  <div className="mt-[12px] grid gap-[8px] md:grid-cols-2 xl:grid-cols-4">
-                    <MetricCell
+                  <div className="grid gap-[12px] md:grid-cols-2 xl:grid-cols-4">
+                    <QuotationMetricCell
                       label="Quoted Price"
                       value={formatCurrencyPerUnit(
                         card.quotation.pricePerUnit,
                         data.rfq.unit,
                       )}
                     />
-                    <MetricCell
+                    <QuotationMetricCell
                       label="Total / Week"
                       value={buildMetricValueTotal(
                         card.quotation.pricePerUnit,
                         card.quotation.quantity,
                       )}
                     />
-                    <MetricCell
+                    <QuotationMetricCell
                       label="Lead Time"
                       value={card.quotation.leadTime || "-"}
                     />
-                    <MetricCell
+                    <QuotationMetricCell
                       label="MOQ"
                       value={formatQuantity(card.quotation.moq, data.rfq.unit)}
                     />
                   </div>
 
-                  <div className="mt-[10px] rounded-[8px] border border-[#edf1f4] bg-[#fafbfc] px-[12px] py-[11px]">
-                    <p className="text-[11px] leading-[1.5] text-[#8f99a8]">
+                  <div className="rounded-[16px] border border-[#dfe5ec] bg-[rgba(55,65,81,0.06)] px-[20px] py-[16px]">
+                    <p className="text-[15px] font-normal leading-[1.6] text-[rgba(106,113,127,0.8)]">
                       {card.quotation.notes || "No supplier note was included with this quotation."}
                     </p>
                   </div>
 
-                  <div className="mt-[12px] grid gap-[8px] sm:grid-cols-[minmax(0,1fr)_110px]">
+                  <div className="grid gap-[10px] sm:grid-cols-[minmax(0,1fr)_120px]">
                     {canAccept ? (
                       <form action={acceptSourcingQuote}>
                         <input type="hidden" name="rfqId" value={data.rfq.rfqId} />
@@ -390,13 +430,13 @@ export function BuyerSourcingRequestDetailPage({
                         />
                         <button
                           type="submit"
-                          className="inline-flex h-[36px] w-full items-center justify-center rounded-[6px] bg-[#223f68] text-[12px] font-semibold text-white transition hover:bg-[#1d3558]"
+                          className="inline-flex h-[44px] w-full items-center justify-center rounded-[10px] bg-[#233f68] text-[15px] font-[500] text-white transition hover:bg-[#1c3354]"
                         >
                           Accept Quote
                         </button>
                       </form>
                     ) : (
-                      <div className="inline-flex h-[36px] w-full items-center justify-center rounded-[6px] bg-[#223f68] text-[12px] font-semibold text-white opacity-60">
+                      <div className="inline-flex h-[44px] w-full items-center justify-center rounded-[10px] bg-[#233f68] text-[15px] font-[500] text-white opacity-60">
                         Accept Quote
                       </div>
                     )}
@@ -416,13 +456,13 @@ export function BuyerSourcingRequestDetailPage({
                         />
                         <button
                           type="submit"
-                          className="inline-flex h-[36px] w-full items-center justify-center rounded-[6px] border border-[#dfe5ec] bg-white text-[12px] font-medium text-[#5f6b7e] transition hover:bg-[#f8fafc]"
+                          className="inline-flex h-[44px] w-full items-center justify-center rounded-[10px] border border-[#d7dde6] bg-white text-[15px] font-[500] text-[#4e5c70] transition hover:bg-[#f8fafc]"
                         >
                           Decline
                         </button>
                       </form>
                     ) : (
-                      <div className="inline-flex h-[36px] w-full items-center justify-center rounded-[6px] border border-[#dfe5ec] bg-white text-[12px] font-medium text-[#5f6b7e] opacity-60">
+                      <div className="inline-flex h-[44px] w-full items-center justify-center rounded-[10px] border border-[#d7dde6] bg-white text-[15px] font-[500] text-[#4e5c70] opacity-60">
                         Decline
                       </div>
                     )}

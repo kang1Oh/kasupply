@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { submitPurchaseOrderReview } from "../../actions";
@@ -66,6 +67,19 @@ function formatBusinessType(value: string | null | undefined) {
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" / ");
 }
+
+const REVIEW_PAGE_MAX_WIDTH_CLASS = "mx-auto w-full max-w-[1180px] space-y-5 pb-8";
+const REVIEW_BREADCRUMB_CLASS = "flex flex-wrap items-center gap-2 text-[14px] text-[#A4ACB9]";
+const REVIEW_PAGE_TITLE_CLASS = "text-[20px] font-semibold text-[#223654]";
+const REVIEW_PAGE_SUBTITLE_CLASS = "text-[15px] text-[#A0A9B8]";
+const REVIEW_CARD_CLASS =
+  "overflow-hidden rounded-[18px] border border-[#E4ECF5] bg-white shadow-[0_10px_24px_rgba(15,23,42,0.04)]";
+const REVIEW_CARD_HEADER_CLASS = "border-b border-[#E9EEF5] px-[22px] py-[14px]";
+const REVIEW_CARD_TITLE_CLASS =
+  "text-[17px] font-semibold uppercase tracking-[0.01em] text-[#183B6B]";
+const REVIEW_CARD_BODY_CLASS = "px-[22px] py-[25px]";
+const REVIEW_SUPPLIER_SUBTITLE_CLASS =
+  "mt-[8px] truncate text-[14px] font-normal leading-none text-[#a7aebb]";
 
 function ReviewErrorNotice({ message }: { message: string }) {
   return (
@@ -154,54 +168,48 @@ export default async function BuyerPurchaseOrderReviewPage({
   const reviewError = String(resolvedSearchParams.error || "").trim();
 
   return (
-    <main className="mx-auto w-full max-w-[1042px] space-y-[10px] pb-8">
+    <main className={REVIEW_PAGE_MAX_WIDTH_CLASS}>
       <section className="pb-[4px]">
-        <nav className="flex items-center gap-[7px] text-[11px] font-medium text-[#bcc2cb]">
+        <nav className={REVIEW_BREADCRUMB_CLASS}>
           <Link
             href={`/buyer/purchase-orders/${order.poId}`}
-            className="transition hover:text-[#7f8a99]"
+            className="transition hover:text-[#526176]"
           >
             {referenceCode}
           </Link>
           <span>&gt;</span>
-          <span>Leave a Review</span>
+          <span className="text-[#6B7280]">Leave a Review</span>
         </nav>
       </section>
 
-      <section className="pb-[8px]">
-        <h1 className="text-[32px] font-semibold tracking-[-0.04em] text-[#455060]">
-          Leave a Review
-        </h1>
-        <p className="mt-[5px] text-[14px] font-normal leading-none text-[#c1c6cf]">
+      <section className="pb-[4px]">
+        <h1 className={REVIEW_PAGE_TITLE_CLASS}>Leave a Review</h1>
+        <p className={REVIEW_PAGE_SUBTITLE_CLASS}>
           Share your experience with this supplier.
         </p>
       </section>
 
-      <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
-        <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
-          <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
-            Supplier Info
-          </h2>
+      <section className={REVIEW_CARD_CLASS}>
+        <div className={REVIEW_CARD_HEADER_CLASS}>
+          <h2 className={REVIEW_CARD_TITLE_CLASS}>Supplier Info</h2>
         </div>
 
-        <div className="flex items-center justify-between gap-4 px-[18px] py-[16px]">
+        <div className={`${REVIEW_CARD_BODY_CLASS} flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between`}>
           <div className="flex min-w-0 items-center gap-[12px]">
             <div className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-[#eefaf3] text-[22px] font-medium leading-none text-[#4f9b72]">
               {getInitials(supplierName)}
             </div>
 
             <div className="min-w-0">
-              <div className="flex items-center gap-[6px]">
-                <p className="truncate text-[14px] font-semibold leading-none text-[#5d6778]">
-                  {supplierName}
-                </p>
+              <div className="flex flex-wrap items-center gap-[8px]">
+                <p className="text-[15px] font-semibold text-[#223654]">{supplierName}</p>
                 {order.supplierInfo?.verifiedBadge ? (
                   <span className="inline-flex h-[18px] items-center rounded-full border border-[#94cfaa] bg-[#f5fbf6] px-[6px] text-[10px] font-semibold leading-none text-[#4f996e]">
                     Verified
                   </span>
                 ) : null}
               </div>
-              <p className="mt-[6px] truncate text-[13px] font-normal leading-none text-[#a7aebb]">
+              <p className={REVIEW_SUPPLIER_SUBTITLE_CLASS}>
                 {supplierSubtitle || "Supplier details will appear once available."}
               </p>
             </div>
@@ -209,60 +217,41 @@ export default async function BuyerPurchaseOrderReviewPage({
 
           <Link
             href={supplierProfileHref}
-            className="inline-flex h-[28px] shrink-0 items-center justify-center rounded-[8px] border border-[#e2e5ea] bg-white px-[14px] text-[11px] font-semibold text-[#5f6877] transition hover:bg-[#f8fafc]"
+            className="inline-flex h-[34px] shrink-0 items-center justify-center rounded-[8px] border border-[#e2e5ea] bg-white px-[18px] text-[13px] font-semibold text-[#5f6877] transition hover:bg-[#f8fafc]"
           >
             View Profile
           </Link>
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
-        <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
-          <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
-            Order Summary
-          </h2>
+      <section className={REVIEW_CARD_CLASS}>
+        <div className={REVIEW_CARD_HEADER_CLASS}>
+          <h2 className={REVIEW_CARD_TITLE_CLASS}>Order Summary</h2>
         </div>
 
-        <div className="flex items-center justify-between gap-4 px-[18px] py-[16px]">
+        <div className={`${REVIEW_CARD_BODY_CLASS} flex items-center justify-between gap-4`}>
           <div className="flex min-w-0 items-center gap-[14px]">
-            <div className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-[#fff2e7] text-[#f08b38]">
-              <svg viewBox="0 0 24 24" className="h-[20px] w-[20px]" aria-hidden="true">
-                <path
-                  d="M7.75 5.75h11.5v12.5H7.75a2 2 0 0 1-2-2V7.75a2 2 0 0 1 2-2Z"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.7"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M9.75 9.25h6.5M9.75 12h4.5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.7"
-                  strokeLinecap="round"
-                />
-                <path
-                  d="m16.25 5.75 2-2"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.7"
-                  strokeLinecap="round"
-                />
-              </svg>
+            <div className="flex h-[56px] w-[56px] shrink-0 items-center justify-center rounded-[10px] bg-[#FFE9D9]">
+              <Image
+                src="/icons/cardboard_box.svg"
+                alt=""
+                width={28}
+                height={28}
+                aria-hidden="true"
+              />
             </div>
 
             <div className="min-w-0">
-              <p className="text-[18px] font-semibold leading-none text-[#27456f]">
+              <p className="text-[17px] font-medium leading-none text-[#1E3A5F]">
                 Order #{referenceCode}
               </p>
-              <p className="mt-[8px] text-[13px] leading-none text-[#a7aebb]">
+              <p className="mt-[8px] text-[14px] font-normal leading-none text-[#8B909A]">
                 Delivered {formatDate(order.completedAt)} {"\u00b7"} 1 Item {"\u00b7"} {formatCurrency(orderSummaryTotal)}
               </p>
             </div>
           </div>
 
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#d7f0dd] bg-[#edf8ef] px-[11px] py-[5px] text-[12px] font-medium leading-none text-[#2f7a45]">
+          <span className="inline-flex items-center gap-[10px] rounded-full bg-[#DDFBEA] px-[14px] py-[8px] text-[14px] font-medium leading-none text-[#249A62]">
             <svg viewBox="0 0 16 16" className="h-[12px] w-[12px]" aria-hidden="true">
               <path
                 d="M3.5 8.1 6.4 11l6.1-6.1"

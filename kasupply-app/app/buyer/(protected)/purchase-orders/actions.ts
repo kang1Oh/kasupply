@@ -33,6 +33,53 @@ function createAdminClient() {
   });
 }
 
+function getMissingPurchaseOrderColumn(message: string | null | undefined) {
+  const match = String(message ?? "").match(
+    /could not find the '([^']+)' column of 'purchase_orders'/i,
+  );
+
+  return match?.[1] ?? null;
+}
+
+async function insertPurchaseOrderWithSchemaFallback(params: {
+  databaseClient:
+    | Awaited<ReturnType<typeof createClient>>
+    | NonNullable<ReturnType<typeof createAdminClient>>;
+  payload: Record<string, unknown>;
+}) {
+  const optionalColumns = new Set([
+    "unit_price",
+    "subtotal",
+    "expected_delivery_date",
+    "delivery_address",
+    "payment_method",
+    "terms_and_conditions",
+    "additional_notes",
+  ]);
+
+  const payload = { ...params.payload };
+
+  for (;;) {
+    const { data, error } = await params.databaseClient
+      .from("purchase_orders")
+      .insert(payload)
+      .select("po_id")
+      .single();
+
+    if (!error && data) {
+      return { data, error: null };
+    }
+
+    const missingColumn = getMissingPurchaseOrderColumn(error?.message);
+
+    if (!missingColumn || !optionalColumns.has(missingColumn) || !(missingColumn in payload)) {
+      return { data: null, error };
+    }
+
+    delete payload[missingColumn];
+  }
+}
+
 async function uploadReceiptWithUserSession(params: {
   supabase: Awaited<ReturnType<typeof createClient>>;
   adminSupabase: ReturnType<typeof createAdminClient>;
@@ -205,7 +252,11 @@ export async function createPurchaseOrder(formData: FormData) {
   const quoteId = Number(formData.get("quoteId")?.toString() ?? "");
   const paymentMethod = String(formData.get("paymentMethod") || "").trim();
   const normalizedPaymentMethod = normalizePurchaseOrderPaymentMethod(paymentMethod);
-  const termsAndConditions = String(formData.get("termsAndConditions") || "").trim();
+  const paymentTerms = String(
+    formData.get("paymentTerms") ?? formData.get("termsAndConditions") ?? "",
+  ).trim();
+  const expectedDeliveryDate = String(formData.get("expectedDeliveryDate") || "").trim();
+  const deliveryAddress = String(formData.get("deliveryAddress") || "").trim();
   const additionalNotes = String(formData.get("additionalNotes") || "").trim();
 
   if (!rfqId || Number.isNaN(rfqId) || !quoteId || Number.isNaN(quoteId)) {
@@ -220,6 +271,18 @@ export async function createPurchaseOrder(formData: FormData) {
     throw new Error("Select a valid payment method.");
   }
 
+  if (!expectedDeliveryDate) {
+    throw new Error("Expected delivery date is required.");
+  }
+
+  if (!deliveryAddress) {
+    throw new Error("Delivery address is required.");
+  }
+
+  if (!paymentTerms) {
+    throw new Error("Payment terms are required.");
+  }
+
   const draft = await getPurchaseOrderCreationDraft(rfqId, quoteId);
 
   if (!draft) {
@@ -230,24 +293,28 @@ export async function createPurchaseOrder(formData: FormData) {
     redirect(`/buyer/purchase-orders/${draft.existingPurchaseOrderId}`);
   }
 
-  const { data: insertedOrder, error: insertError } = await databaseClient
-    .from("purchase_orders")
-    .insert({
-      quote_id: quoteId,
-      buyer_id: buyerContext.buyerId,
-      supplier_id: draft.supplierId,
-      product_id: draft.productId,
-      quantity: draft.quantity,
-      total_amount: draft.totalAmount,
-      status: "confirmed",
-      payment_method: normalizedPaymentMethod,
-      terms_and_conditions: termsAndConditions || null,
-      additional_notes: additionalNotes || null,
-      confirmed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .select("po_id")
-    .single();
+  const { data: insertedOrder, error: insertError } =
+    await insertPurchaseOrderWithSchemaFallback({
+      databaseClient,
+      payload: {
+        quote_id: quoteId,
+        buyer_id: buyerContext.buyerId,
+        supplier_id: draft.supplierId,
+        product_id: draft.productId,
+        quantity: draft.quantity,
+        unit_price: draft.pricePerUnit,
+        subtotal: draft.totalAmount,
+        total_amount: draft.totalAmount,
+        status: "confirmed",
+        expected_delivery_date: expectedDeliveryDate,
+        delivery_address: deliveryAddress,
+        payment_method: normalizedPaymentMethod,
+        terms_and_conditions: paymentTerms || null,
+        additional_notes: additionalNotes || null,
+        confirmed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+    });
 
   if (insertError || !insertedOrder) {
     if (

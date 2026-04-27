@@ -288,50 +288,50 @@ export function SupplierInventoryTableClient({
           <table className="w-full table-fixed border-collapse">
             <colgroup>
               <col className="w-[5%]" />
-              <col className="w-[16%]" />
-              <col className="w-[14%]" />
+              <col className="w-[15%]" />
+              <col className="w-[13%]" />
               <col className="w-[7%]" />
               <col className="w-[8%]" />
-              <col className="w-[8%]" />
-              <col className="w-[9%]" />
+              <col className="w-[7%]" />
               <col className="w-[8%]" />
               <col className="w-[7%]" />
-              <col className="w-[9%]" />
-              <col className="w-[9%]" />
+              <col className="w-[8%]" />
+              <col className="w-[11%]" />
+              <col className="w-[11%]" />
             </colgroup>
             <thead>
               <tr className="bg-[#F0F0F0] text-left">
-                <th className="px-3 py-4 text-center text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">
+                <th className="px-3 py-4 text-center text-[12px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">
                   #
                 </th>
-                <th className="px-3 py-4 text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">
+                <th className="px-3 py-4 text-[12px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">
                   Product
                 </th>
-                <th className="px-3 py-4 text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">
+                <th className="px-3 py-4 text-[12px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">
                   Description
                 </th>
-                <th className="px-3 py-4 text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">
+                <th className="px-3 py-4 text-[12px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">
                   Stock
                 </th>
-                <th className="px-3 py-4 text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">
+                <th className="px-3 py-4 text-[12px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">
                   Price
                 </th>
-                <th className="px-3 py-4 text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">
+                <th className="px-3 py-4 text-[12px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">
                   Min Qty
                 </th>
-                <th className="whitespace-nowrap px-3 py-4 text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">
+                <th className="whitespace-nowrap px-3 py-4 text-[12px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">
                   Max Capacity
                 </th>
-                <th className="px-3 py-4 text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">
+                <th className="whitespace-nowrap px-3 py-4 text-[12px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">
                   Lead Time
                 </th>
-                <th className="px-3 py-4 text-center text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">
+                <th className="px-3 py-4 text-center text-[12px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">
                   Visibility
                 </th>
-                <th className="px-3 py-4 text-center text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">
+                <th className="px-3 py-4 text-center text-[12px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">
                   Status
                 </th>
-                <th className="pl-3 pr-6 py-4 text-center text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">
+                <th className="pl-3 pr-6 py-4 text-center text-[12px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">
                   Actions
                 </th>
               </tr>
@@ -360,21 +360,27 @@ export function SupplierInventoryTableClient({
                         : "Out of stock";
                   const statusClassName =
                     product.status === "in-stock"
-                      ? "bg-[#ECFBF1] text-[#22A658]"
+                      ? "border border-[#9ED9B0] bg-[#ECFBF1] text-[#1F7A45]"
                       : product.status === "low-stock"
-                        ? "bg-[#FFF3EA] text-[#FF8A2D]"
-                        : "bg-[#FFF0EF] text-[#FF5454]";
+                        ? "border border-[#FFC9A8] bg-[#FFF3EA] text-[#FF6B00]"
+                        : "border border-[#FFB9B5] bg-[#FFF0EF] text-[#FF3B30]";
+                  const statusDotClassName =
+                    product.status === "in-stock"
+                      ? "bg-[#1F7A45]"
+                      : product.status === "low-stock"
+                        ? "bg-[#FF6B00]"
+                        : "bg-[#FF3B30]";
                   const visibilityLabel = product.isPublished ? "Visible" : "Hidden";
                   const visibilityClassName = product.isPublished
-                    ? "bg-[#EAF1FF] text-[#3E73F7] border border-[#D6E3FF]"
-                    : "bg-[#F5F6F7] text-[#A4ACBA] border border-[#E2E8F0]";
+                    ? "border border-[#C9D9FF] bg-[#EAF1FF] text-[#356CF9]"
+                    : "border border-[#C5CCD8] bg-[#F5F6F7] text-[#98A2B3]";
 
                   return (
                     <tr
                       key={product.productId}
                       className="border-t border-[#EEF2F7] text-[12px] text-[#66748B]"
                     >
-                      <td className="px-3 py-3.5 align-middle text-center font-medium text-[#B6BFCC]">
+                      <td className="px-3 py-3.5 align-middle text-center text-[16px] font-normal text-[#B6BFCC]">
                         {String((safePage - 1) * pageSize + index + 1).padStart(2, "0")}
                       </td>
                       <td className="px-3 py-3.5 align-middle">
@@ -383,11 +389,11 @@ export function SupplierInventoryTableClient({
                             <img
                               src={product.imageSrc}
                               alt={product.productName}
-                              className="h-10 w-10 rounded-[10px] border border-[#EDF2F7] object-cover"
+                              className="h-[50px] w-[50px] rounded-[7px] border border-[#EDF2F7] object-cover"
                             />
                           ) : (
                             <div
-                              className={`flex h-10 w-10 items-center justify-center rounded-[10px] text-[16px] ${
+                              className={`flex h-[50px] w-[50px] items-center justify-center rounded-[7px] text-[16px] ${
                                 product.status === "out-of-stock"
                                   ? "bg-[#C28A35]"
                                   : "bg-[#E9F7EA]"
@@ -400,51 +406,55 @@ export function SupplierInventoryTableClient({
                           )}
 
                           <div className="min-w-0">
-                            <p className="truncate text-[12px] font-semibold text-[#39455C]">
+                            <p className="truncate text-[13px] font-semibold text-[#39455C]">
                               {product.productName}
                             </p>
-                            <span className="mt-1 inline-flex rounded-full bg-[#F6F7F8] px-2.5 py-0.5 text-[10px] text-[#A0A8B7]">
+                            <span className="mt-1 inline-flex rounded-full border border-[#D4DAE3] bg-[#F6F7F8] px-2.5 py-0.5 text-[11px] text-[#A0A8B7]">
                               {product.categoryLabel}
                             </span>
                           </div>
                         </div>
                       </td>
-                      <td className="px-3 py-3.5 align-middle text-[12px] leading-5 text-[#66748B]">
+                      <td className="px-3 py-3.5 align-middle text-[13px] leading-5 text-[#66748B]">
                         <p className="line-clamp-2">
                           {product.description?.trim() || "No description added yet."}
                         </p>
                       </td>
-                      <td className="px-3 py-3.5 align-middle font-medium text-[#66748B]">
+                      <td className="px-3 py-3.5 align-middle text-[14px] font-normal text-[#66748B]">
                         {product.stockAvailable} {product.unit}
                       </td>
-                      <td className="px-3 py-3.5 align-middle font-medium text-[#66748B]">
+                      <td className="px-3 py-3.5 align-middle text-[14px] font-normal text-[#66748B]">
                         {formatCurrency(Number(product.pricePerUnit))}
                         <span className="text-[#96A0AF]">/{product.unit}</span>
                       </td>
-                      <td className="px-3 py-3.5 align-middle font-medium text-[#66748B]">
+                      <td className="px-3 py-3.5 align-middle text-[14px] font-normal text-[#66748B]">
                         {product.moq} {product.unit}
                       </td>
-                      <td className="px-3 py-3.5 align-middle font-medium text-[#66748B]">
+                      <td className="px-3 py-3.5 align-middle text-[14px] font-normal text-[#66748B]">
                         {product.maxCapacity.toLocaleString()}
                       </td>
-                      <td className="px-3 py-3.5 align-middle font-medium text-[#66748B]">
+                      <td className="px-3 py-3.5 align-middle text-[14px] font-normal text-[#66748B]">
                         {product.leadTime}
                       </td>
-                      <td className="px-3 py-3.5 align-middle text-center">
+                      <td className="px-2 py-3.5 align-middle text-center">
                         <span
-                          className={`inline-flex rounded-[6px] px-2.5 py-1 text-[10px] font-medium whitespace-nowrap ${visibilityClassName}`}
+                          className={`inline-flex min-h-[30px] items-center justify-center rounded-full px-[14px] py-[5px] text-[13px] font-medium whitespace-nowrap ${visibilityClassName}`}
                         >
                           {visibilityLabel}
                         </span>
                       </td>
-                      <td className="px-3 py-3.5 align-middle text-center">
+                      <td className="px-2 py-3.5 align-middle text-center">
                         <span
-                          className={`inline-flex rounded-[6px] px-2.5 py-1 text-[10px] font-medium whitespace-nowrap ${statusClassName}`}
+                          className={`inline-flex min-h-[30px] items-center gap-[6px] rounded-full px-[12px] py-[5px] text-[13px] font-medium whitespace-nowrap ${statusClassName}`}
                         >
+                          <span
+                            className={`h-[7px] w-[7px] rounded-full ${statusDotClassName}`}
+                            aria-hidden="true"
+                          />
                           {statusLabel}
                         </span>
                       </td>
-                      <td className="pl-3 pr-6 py-3.5 align-middle">
+                      <td className="pl-2 pr-4 py-3.5 align-middle">
                         <div className="flex items-center justify-center gap-1.5">
                           <Link
                             href={buildInventoryHref({

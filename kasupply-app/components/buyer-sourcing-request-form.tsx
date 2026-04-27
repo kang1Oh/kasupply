@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { DatePickerInput } from "@/components/date-picker-input";
@@ -16,8 +17,8 @@ const QUICK_PRICE_OPTIONS = [10, 20, 50, 100];
 
 function SectionHeading({ title }: { title: string }) {
   return (
-    <div className="border-b border-[#edf1f5] px-[16px] py-[12px]">
-      <h2 className="text-[13px] font-semibold uppercase tracking-[-0.01em] text-[#27456f]">
+    <div className="border-b border-[#E9EEF5] px-[22px] py-[14px]">
+      <h2 className="text-[17px] font-semibold uppercase tracking-[0.01em] text-[#183B6B]">
         {title}
       </h2>
     </div>
@@ -34,7 +35,7 @@ function InputLabel({
   required?: boolean;
 }) {
   return (
-    <label htmlFor={htmlFor} className="text-[12px] font-medium text-[#223654]">
+    <label htmlFor={htmlFor} className="text-[15px] font-medium text-[#223654]">
       {children}
       {required ? <span className="text-[#f05b50]"> *</span> : null}
     </label>
@@ -66,9 +67,9 @@ function FormCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-[16px] border border-[#e8edf3] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.02)]">
+    <section className="overflow-hidden rounded-[18px] border border-[#E4ECF5] bg-white shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
       <SectionHeading title={title} />
-      <div className="px-[14px] py-[16px]">{children}</div>
+      <div className="px-[22px] py-[25px]">{children}</div>
     </section>
   );
 }
@@ -101,7 +102,7 @@ function TextField({
       inputMode={inputMode}
       min={type === "number" ? "1" : undefined}
       step={type === "number" ? "any" : undefined}
-      className="h-[40px] w-full rounded-[8px] border border-[#ccd5e1] bg-white px-[12px] text-[12px] text-[#223654] outline-none transition placeholder:text-[#b5bdc8] focus:border-[#223654] [color-scheme:light]"
+      className="h-[40px] w-full rounded-[8px] border border-[#ccd5e1] bg-white px-[12px] text-[14px] font-normal text-[#223654] outline-none transition placeholder:text-[#b5bdc8] focus:border-[#223654] [color-scheme:light]"
     />
   );
 }
@@ -112,13 +113,14 @@ export function BuyerSourcingRequestForm({
   defaultDeliveryLocation,
   action,
 }: BuyerSourcingRequestFormProps) {
+  const [categoryId, setCategoryId] = useState("");
   const [targetPricePerUnit, setTargetPricePerUnit] = useState("");
 
   return (
-    <form action={action} className="space-y-[10px]">
+    <form action={action} className="space-y-5">
       <FormCard title="WHAT DO YOU NEED?">
-        <div className="space-y-[12px]">
-          <div className="space-y-[6px]">
+        <div className="space-y-[18px]">
+          <div className="space-y-[8px]">
             <InputLabel htmlFor="requestedProductName" required>
               Title
             </InputLabel>
@@ -130,7 +132,7 @@ export function BuyerSourcingRequestForm({
             />
           </div>
 
-          <div className="space-y-[6px]">
+          <div className="space-y-[8px]">
             <InputLabel htmlFor="categoryId" required>
               Category
             </InputLabel>
@@ -138,9 +140,12 @@ export function BuyerSourcingRequestForm({
               <select
                 id="categoryId"
                 name="categoryId"
-                defaultValue=""
+                value={categoryId}
+                onChange={(event) => setCategoryId(event.target.value)}
                 required
-                className="h-[40px] w-full appearance-none rounded-[8px] border border-[#ccd5e1] bg-white px-[12px] pr-[34px] text-[12px] text-[#223654] outline-none transition focus:border-[#223654]"
+                className={`h-[40px] w-full appearance-none rounded-[8px] border border-[#ccd5e1] bg-white px-[12px] pr-[34px] text-[14px] font-normal outline-none transition focus:border-[#223654] ${
+                  categoryId ? "text-[#223654]" : "text-[#A2A8B3]"
+                }`}
               >
                 <option value="">Select a Category</option>
                 {categories.map((category) => (
@@ -153,11 +158,11 @@ export function BuyerSourcingRequestForm({
             </div>
           </div>
 
-          <div className="space-y-[6px]">
+          <div className="space-y-[8px]">
             <InputLabel htmlFor="quantity" required>
               Quantity
             </InputLabel>
-            <div className="grid grid-cols-[minmax(0,1fr)_64px] gap-[8px]">
+            <div className="grid grid-cols-[minmax(0,1fr)_80px] gap-[8px]">
               <TextField
                 id="quantity"
                 name="quantity"
@@ -173,7 +178,7 @@ export function BuyerSourcingRequestForm({
                   name="unit"
                   defaultValue={units[0] ?? "kg"}
                   required
-                  className="h-[40px] w-full appearance-none rounded-[8px] border border-[#ccd5e1] bg-white px-[12px] pr-[28px] text-[12px] text-[#223654] outline-none transition focus:border-[#223654]"
+                  className="h-[40px] w-full appearance-none rounded-[8px] border border-[#ccd5e1] bg-white px-[12px] pr-[30px] text-[14px] font-normal text-[#223654] outline-none transition focus:border-[#223654]"
                 >
                   {units.map((unit) => (
                     <option key={unit} value={unit}>
@@ -186,7 +191,7 @@ export function BuyerSourcingRequestForm({
             </div>
           </div>
 
-          <div className="space-y-[6px]">
+          <div className="space-y-[8px]">
             <InputLabel htmlFor="targetPricePerUnit" required>
               Target Price (per unit)
             </InputLabel>
@@ -201,11 +206,11 @@ export function BuyerSourcingRequestForm({
               placeholder={"e.g. \u20B110"}
               required
               inputMode="decimal"
-              className="h-[40px] w-full rounded-[8px] border border-[#ccd5e1] bg-white px-[12px] text-[12px] text-[#223654] outline-none transition placeholder:text-[#b5bdc8] focus:border-[#223654] [color-scheme:light]"
+              className="h-[40px] w-full rounded-[8px] border border-[#ccd5e1] bg-white px-[12px] text-[14px] font-normal text-[#223654] outline-none transition placeholder:text-[#b5bdc8] focus:border-[#223654] [color-scheme:light]"
             />
 
             <div className="flex flex-wrap items-center gap-[6px] pt-[2px]">
-              <span className="text-[10px] text-[#b6bec9]">Quick pick:</span>
+              <span className="text-[13px] text-[#b6bec9]">Quick pick:</span>
               {QUICK_PRICE_OPTIONS.map((price) => {
                 const isActive = targetPricePerUnit === String(price);
 
@@ -231,8 +236,8 @@ export function BuyerSourcingRequestForm({
       </FormCard>
 
       <FormCard title="DELIVERY DETAILS">
-        <div className="grid gap-[10px] md:grid-cols-2">
-          <div className="space-y-[6px]">
+        <div className="grid gap-[18px] md:grid-cols-2">
+          <div className="space-y-[8px]">
             <InputLabel htmlFor="needBy" required>
               Needed by
             </InputLabel>
@@ -241,11 +246,11 @@ export function BuyerSourcingRequestForm({
               name="needBy"
               required
               placeholder="dd/mm/yyyy"
-              className="h-[40px] w-full rounded-[8px] border border-[#ccd5e1] bg-white px-[12px] pr-[40px] text-[12px] text-[#223654] outline-none transition placeholder:text-[#b5bdc8] focus:border-[#223654]"
+              className="h-[40px] w-full rounded-[8px] border border-[#ccd5e1] bg-white px-[12px] pr-[40px] text-[14px] font-normal text-[#223654] outline-none transition placeholder:text-[#b5bdc8] focus:border-[#223654]"
             />
           </div>
 
-          <div className="space-y-[6px]">
+          <div className="space-y-[8px]">
             <InputLabel htmlFor="deliveryLocation" required>
               Location
             </InputLabel>
@@ -261,37 +266,45 @@ export function BuyerSourcingRequestForm({
       </FormCard>
 
       <FormCard title="ADDITIONAL INFO">
-        <div className="space-y-[6px]">
+        <div className="space-y-[8px]">
           <InputLabel htmlFor="specifications">Notes / Specifications</InputLabel>
           <textarea
             id="specifications"
             name="specifications"
             rows={6}
             placeholder="Packaging preferences, quality requirements, special conditions....."
-            className="min-h-[116px] w-full rounded-[8px] border border-[#ccd5e1] bg-white px-[12px] py-[11px] text-[12px] text-[#223654] outline-none transition placeholder:text-[#b5bdc8] focus:border-[#223654]"
+            className="min-h-[116px] w-full rounded-[8px] border border-[#ccd5e1] bg-white px-[12px] py-[11px] text-[14px] font-normal text-[#223654] outline-none transition placeholder:text-[#b5bdc8] focus:border-[#223654]"
           />
-          <p className="text-[10px] text-[#b5bdc8]">
+          <p className="mt-[4px] text-[10px] font-normal text-[#b5bdc8]">
             Optional - helps the supplier prepare a more accurate quote
           </p>
         </div>
       </FormCard>
 
-      <div className="flex items-center gap-[6px] pt-[2px] text-[11px] text-[#a9b2be]">
-        <span className="inline-flex h-[10px] w-[10px] rounded-full border border-[#c7d0db]" />
-        <p>Verified Supplier in your area will be notified</p>
+      <div className="flex items-center gap-[6px] pt-[2px] text-[#a9b2be]">
+        <Image
+          src="/icons/exclamation.svg"
+          alt=""
+          width={18}
+          height={18}
+          aria-hidden="true"
+        />
+        <p className="text-[13px] font-normal">
+          Verified Supplier in your area will be notified
+        </p>
       </div>
 
       <div className="flex items-center justify-end gap-[18px] pt-[2px]">
         <Link
           href="/buyer/sourcing-board"
-          className="inline-flex h-[40px] items-center text-[13px] font-medium text-[#8f99a8] transition hover:text-[#223654]"
+          className="inline-flex h-[44px] items-center px-[6px] text-[14px] font-medium text-[#8f99a8] transition hover:text-[#223654]"
         >
           Cancel
         </Link>
 
         <button
           type="submit"
-          className="inline-flex h-[40px] min-w-[96px] items-center justify-center rounded-[8px] bg-[#223f68] px-[18px] text-[13px] font-semibold text-white transition hover:bg-[#1d3558]"
+          className="inline-flex h-[44px] min-w-[122px] items-center justify-center rounded-[6px] bg-[#223f68] px-[20px] text-[14px] font-medium text-white transition hover:bg-[#1d3558]"
         >
           Post Request
         </button>

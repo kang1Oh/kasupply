@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import {
   ACCEPTED_RECEIPT_TYPES,
@@ -17,7 +18,6 @@ type ReceiptUploadDetailPanelProps = {
 };
 
 const ACCEPTED_TYPES_TEXT = "PDF, JPG, JPEG, PNG, or WEBP";
-
 export function ReceiptUploadDetailPanel({
   poId,
   mode,
@@ -30,10 +30,10 @@ export function ReceiptUploadDetailPanel({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const isRejected = mode === "resubmit";
-  const displayedFileName = selectedFile?.name || currentFileName || "No file selected";
+  const displayedFileName = selectedFile?.name || currentFileName || "No file choosen";
 
   function validateFile(file: File) {
-    if (!ACCEPTED_RECEIPT_TYPES.includes(file.type)) {
+    if (!ACCEPTED_RECEIPT_TYPES.some((acceptedType) => acceptedType === file.type)) {
       return `Upload a valid receipt file (${ACCEPTED_TYPES_TEXT}).`;
     }
 
@@ -67,30 +67,41 @@ export function ReceiptUploadDetailPanel({
 
   return (
     <section
-      className={`overflow-hidden rounded-[14px] border bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)] ${
-        isRejected ? "border-[#ffb8b1]" : "border-[#eceef2]"
+      className={`overflow-hidden rounded-[18px] border bg-white shadow-[0_10px_24px_rgba(15,23,42,0.04)] ${
+        isRejected ? "border-[#ffb8b1]" : "border-[#E4ECF5]"
       }`}
     >
-      <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
-        <div className="flex items-center gap-2">
-          <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
-            Upload Receipt
-          </h2>
-          <span className="inline-flex h-[18px] items-center rounded-full bg-[#ffe6e3] px-[8px] text-[10px] font-semibold leading-none text-[#ff5a47]">
-            Required
-          </span>
-        </div>
-        <p className="mt-[10px] text-[15px] font-semibold leading-[1.35] text-[#223654]">
-          Upload payment receipt after delivery to confirm completion
-        </p>
-        <p className="mt-[4px] text-[12px] leading-[1.4] text-[#a3adbc]">
-          JPG or PNG, maximum file size: 5MB
-        </p>
-      </div>
+      <div className="px-[20px] py-[18px]">
+        <div className="flex items-start gap-[12px]">
+          <div className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[7px] bg-[#F0F0F0]">
+            <Image
+              src="/icons/file_icon.svg"
+              alt=""
+              width={18}
+              height={18}
+              className="h-[18px] w-[18px]"
+              aria-hidden="true"
+            />
+          </div>
 
-      <div className="px-[16px] py-[16px]">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-[8px]">
+              <h2 className="text-[15px] font-medium leading-[1.35] text-[#223654]">
+                Upload payment receipt after delivery to confirm completion
+              </h2>
+              <span className="inline-flex h-[20px] items-center rounded-full border border-[#FE1601] bg-white px-[10px] text-[11px] font-medium leading-none text-[#FE1601]">
+                Required
+              </span>
+            </div>
+
+            <p className="mt-[1px] text-[13px] leading-[1.4] text-[#A2A8B3]">
+              JPG or PNG, maximum file size: 5MB
+            </p>
+          </div>
+        </div>
+
         {isRejected ? (
-          <div className="rounded-[12px] border border-[#ffd1cb] bg-[#fff6f5] px-[12px] py-[10px]">
+          <div className="mt-[16px] rounded-[12px] border border-[#ffd1cb] bg-[#fff6f5] px-[12px] py-[10px]">
             <div className="flex items-start justify-between gap-3">
               <div className="flex min-w-0 items-start gap-[10px]">
                 <span className="mt-[1px] flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full bg-[#ff5a47] text-white">
@@ -128,34 +139,36 @@ export function ReceiptUploadDetailPanel({
           <input type="hidden" name="redirectStep" value={redirectStep} />
 
           <div className="flex flex-col gap-[10px] md:flex-row md:items-center">
-            <label className="inline-flex h-[38px] shrink-0 cursor-pointer items-center justify-center rounded-[8px] border border-[#dbe3ef] bg-[#f8fafc] px-[14px] text-[12px] font-medium text-[#526176] transition hover:border-[#c7d3e4]">
-              Choose file
-              <input
-                type="file"
-                name="receiptFile"
-                accept={ACCEPTED_RECEIPT_TYPES.join(",")}
-                className="sr-only"
-                required
-                onChange={handleFileChange}
-              />
-            </label>
+            <div className="flex min-w-0 flex-1 overflow-hidden rounded-[8px]">
+              <label className="inline-flex h-[40px] shrink-0 cursor-pointer items-center justify-center rounded-l-[8px] border border-r-0 border-[#D1D1D1] bg-[#F0F0EE] px-[20px] text-[14px] font-normal text-[#7C7C7B] transition hover:bg-[#eaeaE7]">
+                Choose file
+                <input
+                  type="file"
+                  name="receiptFile"
+                  accept={ACCEPTED_RECEIPT_TYPES.join(",")}
+                  className="sr-only"
+                  required
+                  onChange={handleFileChange}
+                />
+              </label>
 
-            <div
-              className={`flex h-[38px] min-w-0 flex-1 items-center rounded-[8px] border px-[12px] text-[12px] ${
-                isRejected
-                  ? "border-[#ffb8b1] bg-[#fffafb] text-[#5f6d81]"
-                  : "border-[#dbe3ef] bg-white text-[#5f6d81]"
-              }`}
-            >
-              <span className="truncate">{displayedFileName}</span>
+              <div
+                className={`flex h-[40px] min-w-0 flex-1 items-center rounded-r-[8px] border px-[18px] text-[14px] font-normal text-[#A2A8B3] ${
+                  isRejected
+                    ? "border-[#FFB8B1] bg-[#FFFAF8]"
+                    : "border-[#D1D1D1] bg-[#FAFAF8]"
+                }`}
+              >
+                <span className="truncate">{displayedFileName}</span>
+              </div>
             </div>
 
             <button
               type="submit"
-              className={`inline-flex h-[38px] shrink-0 items-center justify-center rounded-[8px] px-[16px] text-[12px] font-semibold text-white transition ${
+              className={`inline-flex h-[40px] shrink-0 items-center justify-center rounded-[8px] px-[28px] text-[14px] font-normal text-white transition ${
                 isRejected
                   ? "bg-[#ff5a47] hover:bg-[#ef4638]"
-                  : "bg-[#27466f] hover:bg-[#1f3958]"
+                  : "bg-[#1F436E] hover:bg-[#183555]"
               }`}
             >
               {isRejected ? "Resubmit" : "Upload"}

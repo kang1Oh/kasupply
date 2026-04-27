@@ -1,11 +1,24 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ModalShell } from "@/components/modals";
 import { cancelPurchaseOrder, uploadPurchaseOrderReceipt } from "../actions";
-import { getBuyerPurchaseOrderDetail } from "../data";
+import { getBuyerPurchaseOrderDetail, getBuyerPurchaseOrderReviewDraft } from "../data";
 import { CompletedOrderActions } from "./completed-order-actions";
 import { ReceiptUploadDetailPanel } from "./receipt-upload-detail-panel";
 import { ReceiptUploadWidget } from "./receipt-upload-widget";
+
+const BUYER_SUPPLIER_SUBTITLE_CLASS =
+  "mt-[8px] truncate text-[14px] font-normal leading-none text-[#a7aebb]";
+const BUYER_SUPPLIER_PROFILE_BUTTON_CLASS =
+  "inline-flex h-[34px] shrink-0 items-center justify-center rounded-[8px] border border-[#e2e5ea] bg-white px-[18px] text-[13px] font-semibold text-[#5f6877] transition hover:bg-[#f8fafc]";
+const BUYER_SUPPLIER_ROW_CLASS = "flex min-w-0 items-center gap-[12px]";
+const BUYER_SUPPLIER_AVATAR_CLASS =
+  "flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-[#eefaf3] text-[22px] font-medium leading-none text-[#4f9b72]";
+const BUYER_PO_CANCEL_BUTTON_CLASS =
+  "inline-flex h-[44px] items-center justify-center px-[12px] text-[15px] font-medium leading-none text-[#ff3b30] transition hover:text-[#e5352b]";
+const BUYER_PO_PRIMARY_DISABLED_BUTTON_CLASS =
+  "inline-flex h-[44px] min-w-[198px] items-center justify-center rounded-[12px] bg-[#b7c2d3] px-[20px] text-[15px] font-medium leading-none text-white";
 
 function formatCurrency(value: number | null) {
   if (value === null || Number.isNaN(value)) return "Not available";
@@ -66,6 +79,13 @@ function formatBusinessType(value: string | null | undefined) {
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" / ");
+}
+
+function buildSupplierSubtitle(
+  businessType: string | null | undefined,
+  location: string | null | undefined,
+) {
+  return [formatBusinessType(businessType), location].filter(Boolean).join(" \u00b7 ");
 }
 
 function getInitials(value: string | null | undefined) {
@@ -142,11 +162,13 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-[22px] border border-[#e8edf5] bg-white px-4 py-5 shadow-[0_10px_28px_rgba(15,23,42,0.04)] sm:px-5">
-      <p className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#3b5a83]">
-        {title}
-      </p>
-      <div className="mt-4">{children}</div>
+    <section className="overflow-hidden rounded-[18px] border border-[#E4ECF5] bg-white shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+      <div className="border-b border-[#E9EEF5] px-[22px] py-[14px]">
+        <p className="text-[17px] font-semibold uppercase tracking-[0.01em] text-[#183B6B]">
+          {title}
+        </p>
+      </div>
+      <div className="px-[22px] py-[25px]">{children}</div>
     </section>
   );
 }
@@ -160,13 +182,146 @@ function DetailMetric({
 }) {
   return (
     <div>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#c0c8d4]">
+      <p className="text-[14px] font-medium uppercase tracking-[0.02em] text-[#A4AFBF]">
         {label}
       </p>
-      <div className="mt-1.5 text-[16px] font-semibold leading-tight text-[#223654]">
+      <div className="mt-[2px] text-[16px] font-normal leading-[1.6] text-[#374151]">
         {value}
       </div>
     </div>
+  );
+}
+
+function SupplierInfoCard({
+  supplierName,
+  supplierSubtitle,
+  supplierProfileHref,
+  supplierVerified,
+}: {
+  supplierName: string;
+  supplierSubtitle: string;
+  supplierProfileHref: string;
+  supplierVerified: boolean;
+}) {
+  return (
+    <SectionCard title="Supplier Info">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className={BUYER_SUPPLIER_ROW_CLASS}>
+          <div className={BUYER_SUPPLIER_AVATAR_CLASS}>{getInitials(supplierName)}</div>
+
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-[8px]">
+              <p className="text-[15px] font-semibold text-[#223654]">{supplierName}</p>
+              {supplierVerified ? <VerifiedBadge /> : null}
+            </div>
+
+            <p className={BUYER_SUPPLIER_SUBTITLE_CLASS}>
+              {supplierSubtitle || "Supplier details will appear once available."}
+            </p>
+          </div>
+        </div>
+
+        <Link href={supplierProfileHref} className={BUYER_SUPPLIER_PROFILE_BUTTON_CLASS}>
+          View Profile
+        </Link>
+      </div>
+    </SectionCard>
+  );
+}
+
+function OrderSummaryCard({
+  productName,
+  quantityLabel,
+  pricePerUnit,
+  unit,
+  subtotal,
+  deliveryFeeLabel,
+  totalAmount,
+}: {
+  productName: string;
+  quantityLabel: string;
+  pricePerUnit: number | null;
+  unit: string | null;
+  subtotal: number | null;
+  deliveryFeeLabel: string;
+  totalAmount: number | null;
+}) {
+  return (
+    <SectionCard title="Order Summary">
+      <div>
+        <div className="grid grid-cols-[2.7fr_0.55fr_0.75fr_0.7fr] gap-[8px] border-b border-[#EDF2F7] px-[14px] pb-[12px] pt-[3px] text-[14px] font-medium uppercase tracking-[0.02em] text-[#A4AFBF]">
+          <span>Item</span>
+          <span className="text-center">Qty</span>
+          <span className="text-right">Unit Price</span>
+          <span className="text-right">Total</span>
+        </div>
+
+        <div className="grid grid-cols-[2.7fr_0.55fr_0.75fr_0.7fr] gap-[8px] border-b border-[#EDF2F7] px-[14px] py-[18px] text-[15px] text-[#334155]">
+          <span className="text-[16px] font-medium text-[#374151]">{productName}</span>
+          <span className="text-center font-normal text-[#8E99AB]">{quantityLabel}</span>
+          <span className="text-right font-normal text-[#8E99AB]">
+            {formatUnitPrice(pricePerUnit, unit)}
+          </span>
+          <span className="text-right font-normal text-[#374151]">
+            {formatCurrency(subtotal)}
+          </span>
+        </div>
+
+        <div className="space-y-[8px] px-[14px] py-[16px]">
+          <div className="grid grid-cols-[2.7fr_0.55fr_0.75fr_0.7fr] items-center gap-[8px] font-normal text-[#B5BCC8]">
+            <span className="col-span-3 text-[15px]">Subtotal</span>
+            <span className="text-right text-[15px]">{formatCurrency(subtotal)}</span>
+          </div>
+          <div className="grid grid-cols-[2.7fr_0.55fr_0.75fr_0.7fr] items-center gap-[8px] font-normal text-[#B5BCC8]">
+            <span className="col-span-3 text-[15px]">Delivery Fee</span>
+            <span className="text-right text-[15px]">{deliveryFeeLabel}</span>
+          </div>
+          <div className="mt-[14px] grid grid-cols-[2.7fr_0.55fr_0.75fr_0.7fr] items-center gap-[8px] border-t border-[#EDF2F7] pt-[14px] text-[15px] font-semibold text-[#334155]">
+            <span className="col-span-3">TOTAL</span>
+            <span className="text-right text-[17px] font-semibold">
+              {formatCurrency(totalAmount)}
+            </span>
+          </div>
+        </div>
+      </div>
+    </SectionCard>
+  );
+}
+
+function MoreDetailsCard({
+  deliveryLocation,
+  preferredDeliveryDate,
+  deadline,
+  paymentMethod,
+  termsAndConditions,
+  notes,
+}: {
+  deliveryLocation: string | null;
+  preferredDeliveryDate: string | null;
+  deadline: string | null;
+  paymentMethod: string | null;
+  termsAndConditions: string | null;
+  notes: string;
+}) {
+  return (
+    <SectionCard title="More Details">
+      <div className="grid gap-5 md:grid-cols-2">
+        <DetailMetric label="Deliver To" value={deliveryLocation || "Not specified"} />
+        <DetailMetric
+          label="Expected Delivery"
+          value={formatDate(preferredDeliveryDate ?? deadline)}
+        />
+        <DetailMetric label="Payment Method" value={paymentMethod || "Not specified"} />
+        <DetailMetric
+          label="Payment Terms"
+          value={termsAndConditions || "Not specified"}
+        />
+      </div>
+
+      <div className="mt-[18px]">
+        <DetailMetric label="Notes From Buyer" value={notes} />
+      </div>
+    </SectionCard>
   );
 }
 
@@ -187,33 +342,81 @@ function VerifiedBadge() {
   );
 }
 
-function ConfirmedProgressCard() {
-  const steps = [
-    { label: "Confirmed", active: true },
-    { label: "Processing", active: false, number: 2 },
-    { label: "Shipped", active: false, number: 3 },
-    { label: "Completed", active: false, number: 4 },
-  ];
-
+function PurchaseOrderTracker({
+  steps,
+  activeStepIcon = "number",
+  activeStepTone = "blue",
+}: {
+  steps: Array<{
+    label: string;
+    date: string;
+    state: "completed" | "active" | "pending";
+  }>;
+  activeStepIcon?: "number" | "check";
+  activeStepTone?: "blue" | "navy";
+}) {
   return (
-    <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
-      <div className="px-[18px] py-[18px]">
-        <div className="flex items-start justify-between gap-[14px]">
-          {steps.map((step, index) => (
-            <div key={step.label} className="flex flex-1 items-start">
-              <div className="flex min-w-0 flex-1 flex-col items-center text-center">
-                <span
-                  className={`flex h-[28px] w-[28px] items-center justify-center rounded-full text-[12px] font-semibold leading-none ${
-                    step.active
-                      ? "bg-[#3d73f1] text-white"
-                      : "bg-[#aeb6c3] text-white"
-                  }`}
+    <section className="rounded-[18px] border border-[#E4ECF5] bg-white px-[28px] py-[24px] shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+      <div className="flex items-center justify-center">
+        <div className="grid w-full max-w-[1180px] grid-cols-4 items-start gap-0">
+          {steps.map((step, index) => {
+            const stepNumber = index + 1;
+            const isCompleted = step.state === "completed";
+            const isActive = step.state === "active";
+            const activeCircleClass =
+              activeStepTone === "navy"
+                ? "border-[#1F436E] bg-[#1F436E] text-white"
+                : "border-[#2F6BFF] bg-[#2F6BFF] text-white";
+            const activeLabelClass =
+              activeStepTone === "navy" ? "text-[#1F436E]" : "text-[#2F6BFF]";
+            const circleClass = isCompleted
+              ? "border-[#1F436E] bg-[#1F436E] text-white"
+              : isActive
+                ? activeCircleClass
+                : "border-[#B8C1CD] bg-[#B8C1CD] text-white";
+            const labelClass = isCompleted
+              ? "text-[#1F436E]"
+              : isActive
+                ? activeLabelClass
+                : "text-[#9AA5B5]";
+            const lineClass = "bg-[#C9D2DD]";
+            const trailingLineClass = "bg-[#C9D2DD]";
+
+            return (
+              <div
+                key={step.label}
+                className="relative flex flex-col items-center px-[8px] text-center"
+              >
+                {index > 0 ? (
+                  <span
+                    className={`absolute top-[18px] h-[1.5px] rounded-full ${lineClass}`}
+                    style={{ left: "calc(-50% + 24px)", width: "calc(100% - 48px)" }}
+                  />
+                ) : null}
+                {index === 0 ? (
+                  <span
+                    className={`absolute top-[18px] h-[1.5px] w-[40px] rounded-full ${trailingLineClass}`}
+                    style={{ left: "calc(50% - 64px)" }}
+                  />
+                ) : null}
+                {index === steps.length - 1 ? (
+                  <span
+                    className={`absolute top-[18px] h-[1.5px] w-[40px] rounded-full ${trailingLineClass}`}
+                    style={{ right: "calc(50% - 64px)" }}
+                  />
+                ) : null}
+                <div
+                  className={`relative z-[1] flex h-[44px] w-[44px] items-center justify-center rounded-full border text-[15px] font-medium ${circleClass}`}
                 >
-                  {step.active ? (
-                    <svg viewBox="0 0 16 16" className="h-[12px] w-[12px]" aria-hidden="true">
+                  {isCompleted || (isActive && activeStepIcon === "check") ? (
+                    <svg
+                      viewBox="0 0 16 16"
+                      className="h-[16px] w-[16px]"
+                      fill="none"
+                      aria-hidden="true"
+                    >
                       <path
                         d="M3.5 8.1 6.4 11l6.1-6.1"
-                        fill="none"
                         stroke="currentColor"
                         strokeWidth="2"
                         strokeLinecap="round"
@@ -221,28 +424,35 @@ function ConfirmedProgressCard() {
                       />
                     </svg>
                   ) : (
-                    step.number
+                    stepNumber
                   )}
-                </span>
-                <p
-                  className={`mt-[12px] text-[11px] font-semibold uppercase leading-none ${
-                    step.active ? "text-[#3d73f1]" : "text-[#9da7b6]"
-                  }`}
-                >
+                </div>
+                <p className={`mt-[12px] text-[15px] font-semibold uppercase ${labelClass}`}>
                   {step.label}
                 </p>
-                <p className="mt-[8px] text-[12px] leading-none text-[#c8ced8]">-</p>
+                <p className="mt-[2px] text-[11px] text-[#9AA5B5]">{step.date}</p>
               </div>
-
-              {index < steps.length - 1 ? (
-                <span className="mt-[14px] block h-px flex-1 bg-[#cfd7e4]" />
-              ) : null}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>
   );
+}
+
+function ConfirmedProgressCard() {
+  const steps: Array<{
+    label: string;
+    date: string;
+    state: "completed" | "active" | "pending";
+  }> = [
+    { label: "Confirmed", date: "-", state: "active" },
+    { label: "Processing", date: "-", state: "pending" },
+    { label: "Shipped", date: "-", state: "pending" },
+    { label: "Completed", date: "-", state: "pending" },
+  ];
+
+  return <PurchaseOrderTracker steps={steps} activeStepIcon="check" />;
 }
 
 function ProcessingProgressCard({
@@ -252,101 +462,42 @@ function ProcessingProgressCard({
   confirmedAt: string | null;
   processingAt: string | null;
 }) {
-  const steps = [
+  const steps: Array<{
+    label: string;
+    timestamp: string;
+    state: "completed" | "active" | "pending";
+  }> = [
     {
       label: "Confirmed",
-      tone: "completed" as const,
-      content: (
-        <svg viewBox="0 0 16 16" className="h-[12px] w-[12px]" aria-hidden="true">
-          <path
-            d="M3.5 8.1 6.4 11l6.1-6.1"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      ),
       timestamp: confirmedAt ? formatStepTimestamp(confirmedAt) : "-",
+      state: "completed",
     },
     {
       label: "Processing",
-      tone: "active" as const,
-      content: (
-        <svg viewBox="0 0 16 16" className="h-[12px] w-[12px]" aria-hidden="true">
-          <path
-            d="M3.5 8.1 6.4 11l6.1-6.1"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      ),
       timestamp: processingAt ? formatStepTimestamp(processingAt) : "-",
+      state: "active",
     },
     {
       label: "Shipped",
-      tone: "pending" as const,
-      content: 3,
       timestamp: "-",
+      state: "pending",
     },
     {
       label: "Completed",
-      tone: "pending" as const,
-      content: 4,
       timestamp: "-",
+      state: "pending",
     },
   ];
 
   return (
-    <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
-      <div className="px-[18px] py-[18px]">
-        <div className="flex items-start justify-between gap-[14px]">
-          {steps.map((step, index) => (
-            <div key={step.label} className="flex flex-1 items-start">
-              <div className="flex min-w-0 flex-1 flex-col items-center text-center">
-                <span
-                  className={`flex h-[28px] w-[28px] items-center justify-center rounded-full text-[12px] font-semibold leading-none ${
-                    step.tone === "completed"
-                      ? "bg-[#233f68] text-white"
-                      : step.tone === "active"
-                        ? "bg-[#3d73f1] text-white"
-                        : "bg-[#aeb6c3] text-white"
-                  }`}
-                >
-                  {step.content}
-                </span>
-                <p
-                  className={`mt-[12px] text-[11px] font-semibold uppercase leading-none ${
-                    step.tone === "active"
-                      ? "text-[#3d73f1]"
-                      : step.tone === "completed"
-                        ? "text-[#233f68]"
-                        : "text-[#9da7b6]"
-                  }`}
-                >
-                  {step.label}
-                </p>
-                <p
-                  className={`mt-[8px] text-[11px] leading-none ${
-                    step.tone === "pending" ? "text-[#c8ced8]" : "text-[#9aa4b3]"
-                  }`}
-                >
-                  {step.timestamp}
-                </p>
-              </div>
-
-              {index < steps.length - 1 ? (
-                <span className="mt-[14px] block h-px flex-1 bg-[#cfd7e4]" />
-              ) : null}
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
+    <PurchaseOrderTracker
+      steps={steps.map((step) => ({
+        label: step.label,
+        date: step.timestamp,
+        state: step.state,
+      }))}
+      activeStepIcon="check"
+    />
   );
 }
 
@@ -359,102 +510,34 @@ function ShippedProgressCard({
   processingAt: string | null;
   shippedAt: string | null;
 }) {
-  const steps = [
+  const steps: Array<{
+    label: string;
+    timestamp: string;
+    state: "completed" | "active" | "pending";
+  }> = [
     {
       label: "Confirmed",
-      tone: "completed" as const,
-      content: (
-        <svg viewBox="0 0 16 16" className="h-[12px] w-[12px]" aria-hidden="true">
-          <path
-            d="M3.5 8.1 6.4 11l6.1-6.1"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      ),
       timestamp: confirmedAt ? formatStepTimestamp(confirmedAt) : "-",
+      state: "completed",
     },
     {
       label: "Processing",
-      tone: "completed" as const,
-      content: (
-        <svg viewBox="0 0 16 16" className="h-[12px] w-[12px]" aria-hidden="true">
-          <path
-            d="M3.5 8.1 6.4 11l6.1-6.1"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      ),
       timestamp: processingAt ? formatStepTimestamp(processingAt) : "-",
+      state: "completed",
     },
     {
       label: "Shipped",
-      tone: "active" as const,
-      content: 3,
       timestamp: shippedAt ? formatStepTimestamp(shippedAt) : "-",
+      state: "active",
     },
     {
       label: "Completed",
-      tone: "pending" as const,
-      content: 4,
       timestamp: "-",
+      state: "pending",
     },
   ];
 
-  return (
-    <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
-      <div className="px-[18px] py-[18px]">
-        <div className="flex items-start justify-between gap-[14px]">
-          {steps.map((step, index) => (
-            <div key={step.label} className="flex flex-1 items-start">
-              <div className="flex min-w-0 flex-1 flex-col items-center text-center">
-                <span
-                  className={`flex h-[28px] w-[28px] items-center justify-center rounded-full text-[12px] font-semibold leading-none ${
-                    step.tone === "completed"
-                      ? "bg-[#233f68] text-white"
-                      : step.tone === "active"
-                        ? "bg-[#3d73f1] text-white"
-                        : "bg-[#aeb6c3] text-white"
-                  }`}
-                >
-                  {step.content}
-                </span>
-                <p
-                  className={`mt-[12px] text-[11px] font-semibold uppercase leading-none ${
-                    step.tone === "active"
-                      ? "text-[#3d73f1]"
-                      : step.tone === "completed"
-                        ? "text-[#233f68]"
-                        : "text-[#9da7b6]"
-                  }`}
-                >
-                  {step.label}
-                </p>
-                <p
-                  className={`mt-[8px] text-[11px] leading-none ${
-                    step.tone === "pending" ? "text-[#c8ced8]" : "text-[#9aa4b3]"
-                  }`}
-                >
-                  {step.timestamp}
-                </p>
-              </div>
-
-              {index < steps.length - 1 ? (
-                <span className="mt-[14px] block h-px flex-1 bg-[#cfd7e4]" />
-              ) : null}
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
+  return <PurchaseOrderTracker steps={steps.map((step) => ({ ...step, date: step.timestamp }))} />;
 }
 
 function UploadReceiptProgressCard({
@@ -462,130 +545,67 @@ function UploadReceiptProgressCard({
   processingAt,
   shippedAt,
   completedAt,
+  activeStepIcon = "number",
+  activeStepTone = "blue",
 }: {
   confirmedAt: string | null;
   processingAt: string | null;
   shippedAt: string | null;
   completedAt: string | null;
+  activeStepIcon?: "number" | "check";
+  activeStepTone?: "blue" | "navy";
 }) {
-  const steps = [
+  const steps: Array<{
+    label: string;
+    timestamp: string;
+    state: "completed" | "active" | "pending";
+  }> = [
     {
       label: "Confirmed",
-      tone: "completed" as const,
-      content: (
-        <svg viewBox="0 0 16 16" className="h-[12px] w-[12px]" aria-hidden="true">
-          <path
-            d="M3.5 8.1 6.4 11l6.1-6.1"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      ),
       timestamp: confirmedAt ? formatStepTimestamp(confirmedAt) : "-",
+      state: "completed",
     },
     {
       label: "Processing",
-      tone: "completed" as const,
-      content: (
-        <svg viewBox="0 0 16 16" className="h-[12px] w-[12px]" aria-hidden="true">
-          <path
-            d="M3.5 8.1 6.4 11l6.1-6.1"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      ),
       timestamp: processingAt ? formatStepTimestamp(processingAt) : "-",
+      state: "completed",
     },
     {
       label: "Shipped",
-      tone: "completed" as const,
-      content: (
-        <svg viewBox="0 0 16 16" className="h-[12px] w-[12px]" aria-hidden="true">
-          <path
-            d="M3.5 8.1 6.4 11l6.1-6.1"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      ),
       timestamp: shippedAt ? formatStepTimestamp(shippedAt) : "-",
+      state: "completed",
     },
     {
       label: "Completed",
-      tone: "active" as const,
-      content: 4,
       timestamp: completedAt ? formatStepTimestamp(completedAt) : "-",
+      state: "active",
     },
   ];
 
   return (
-    <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
-      <div className="px-[18px] py-[18px]">
-        <div className="flex items-start justify-between gap-[14px]">
-          {steps.map((step, index) => (
-            <div key={step.label} className="flex flex-1 items-start">
-              <div className="flex min-w-0 flex-1 flex-col items-center text-center">
-                <span
-                  className={`flex h-[28px] w-[28px] items-center justify-center rounded-full text-[12px] font-semibold leading-none ${
-                    step.tone === "completed"
-                      ? "bg-[#233f68] text-white"
-                      : "bg-[#3d73f1] text-white"
-                  }`}
-                >
-                  {step.content}
-                </span>
-                <p
-                  className={`mt-[12px] text-[11px] font-semibold uppercase leading-none ${
-                    step.tone === "active" ? "text-[#3d73f1]" : "text-[#233f68]"
-                  }`}
-                >
-                  {step.label}
-                </p>
-                <p className="mt-[8px] text-[11px] leading-none text-[#9aa4b3]">
-                  {step.timestamp}
-                </p>
-              </div>
-
-              {index < steps.length - 1 ? (
-                <span className="mt-[14px] block h-px flex-1 bg-[#cfd7e4]" />
-              ) : null}
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
+    <PurchaseOrderTracker
+      steps={steps.map((step) => ({ ...step, date: step.timestamp }))}
+      activeStepIcon={activeStepIcon}
+      activeStepTone={activeStepTone}
+    />
   );
 }
 
 function PaymentReceiptCard({
   receiptFileUrl,
-  receiptFilePath,
 }: {
   receiptFileUrl: string | null;
-  receiptFilePath: string | null;
 }) {
   if (!receiptFileUrl) {
     return null;
   }
 
   return (
-    <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
-      <div className="flex items-center justify-between gap-4 px-[16px] py-[14px]">
+    <section className="rounded-[18px] border border-[#E4ECF5] bg-white px-[28px] py-[26px] shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+      <div className="flex flex-col gap-[18px] sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <p className="text-[12px] font-semibold leading-none text-[#5a6678]">
-            Payment Receipt
-          </p>
-          <p className="mt-[6px] text-[12px] leading-[1.45] text-[#b0b7c2]">
+          <p className="text-[18px] font-medium text-[#334155]">Payment Receipt</p>
+          <p className="text-[15px] font-normal text-[#B0B7C3]">
             Payment receipt uploaded. Awaiting supplier verification.
           </p>
         </div>
@@ -594,17 +614,11 @@ function PaymentReceiptCard({
           href={receiptFileUrl}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex h-[32px] shrink-0 items-center justify-center rounded-[8px] border border-[#d8dee7] bg-white px-[14px] text-[11px] font-semibold text-[#5f6877] transition hover:bg-[#f8fafc]"
+          className="inline-flex h-[48px] shrink-0 items-center justify-center rounded-[10px] border border-[#AEB8C7] bg-white px-[30px] text-[15px] font-medium text-[#455468] transition hover:border-[#8F9CAF] hover:text-[#243B68]"
         >
           View Receipt
         </a>
       </div>
-
-      {!isImageFile(receiptFileUrl) && receiptFilePath ? (
-        <div className="border-t border-[#f0f2f5] px-[16px] py-[10px] text-[11px] text-[#a0a9b7]">
-          {getFileName(receiptFilePath)}
-        </div>
-      ) : null}
     </section>
   );
 }
@@ -612,9 +626,11 @@ function PaymentReceiptCard({
 function StatusStepper({
   status,
   timeline,
+  activeStepIcon = "number",
 }: {
   status: string;
   timeline: Record<string, string | null>;
+  activeStepIcon?: "number" | "check";
 }) {
   const steps = [
     { key: "confirmed", label: "Confirmed" },
@@ -624,69 +640,18 @@ function StatusStepper({
   ];
   const safeStatus = status === "cancelled" ? "confirmed" : status;
   const activeIndex = steps.findIndex((step) => step.key === safeStatus);
+  const trackerSteps = steps.map((step, index) => ({
+    label: step.label,
+    date: timeline[step.key] ? formatStepTimestamp(timeline[step.key]) : "-",
+    state:
+      activeIndex > index
+        ? ("completed" as const)
+        : activeIndex === index
+          ? ("active" as const)
+          : ("pending" as const),
+  }));
 
-  return (
-    <section className="rounded-[22px] border border-[#e8edf5] bg-white px-4 py-5 shadow-[0_10px_28px_rgba(15,23,42,0.04)] sm:px-5">
-      <div className="flex items-start overflow-x-auto pb-1">
-        {steps.map((step, index) => {
-          const isComplete = activeIndex > index;
-          const isCurrent = activeIndex === index;
-          const isFuture = activeIndex < index;
-          const circleClassName = isCurrent
-            ? "border-[#3f73e0] bg-[#3f73e0] text-white"
-            : isComplete
-              ? "border-[#223f68] bg-[#223f68] text-white"
-              : "border-[#b9c2d0] bg-white text-[#9ca7b6]";
-          const connectorClassName = activeIndex > index
-            ? "bg-[#223f68]"
-            : activeIndex === index
-              ? "bg-[linear-gradient(90deg,#223f68_0%,#cfd7e4_100%)]"
-              : "bg-[#cfd7e4]";
-
-          return (
-            <div key={step.key} className="flex min-w-[144px] flex-1 items-start">
-              <div className="flex min-w-0 flex-1 flex-col items-center text-center">
-                <span
-                  className={`flex h-8 w-8 items-center justify-center rounded-full border text-[13px] font-semibold transition ${circleClassName}`}
-                >
-                  {isComplete ? (
-                    <svg viewBox="0 0 20 20" className="h-4 w-4" aria-hidden="true">
-                      <path
-                        d="m5.5 10 2.5 2.5 6-6"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.9"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  ) : (
-                    index + 1
-                  )}
-                </span>
-                <p
-                  className={`mt-3 text-[12px] font-semibold uppercase tracking-[0.04em] ${
-                    isFuture ? "text-[#9ca7b6]" : "text-[#223654]"
-                  }`}
-                >
-                  {step.label}
-                </p>
-                <p className="mt-1 text-[11px] text-[#9ca7b6]">
-                  {timeline[step.key] ? formatStepTimestamp(timeline[step.key]) : "-"}
-                </p>
-              </div>
-
-              {index < steps.length - 1 ? (
-                <div className="mx-3 mt-4 h-px min-w-[60px] flex-1 sm:min-w-[88px]">
-                  <div className={`h-full w-full ${connectorClassName}`} />
-                </div>
-              ) : null}
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
+  return <PurchaseOrderTracker steps={trackerSteps} activeStepIcon={activeStepIcon} />;
 }
 
 function NotificationCard({
@@ -708,13 +673,13 @@ function NotificationCard({
       description: "text-[#7f90aa]",
     },
     orange: {
-      container: "border-[#ffbe92] bg-[#fff8f2]",
+      container: "border-[#ffbe92] bg-[#FDFFFE]",
       icon: "bg-[#ff7a1a] text-white",
       title: "text-[#f08b38]",
       description: "text-[#8c97a7]",
     },
     purple: {
-      container: "border-[#d4b6fa] bg-[#fbf7ff]",
+      container: "border-[#d4b6fa] bg-[#FDFFFE]",
       icon: "bg-[#6f35d4] text-white",
       title: "text-[#6f35d4]",
       description: "text-[#8c97a7]",
@@ -726,7 +691,7 @@ function NotificationCard({
       description: "text-[#8c97a7]",
     },
     green: {
-      container: "border-[#9fd2ae] bg-[#f4fbf5]",
+      container: "border-[#9fd2ae] bg-[#FDFFFE]",
       icon: "bg-[#267c46] text-white",
       title: "text-[#2f7a45]",
       description: "text-[#7f90aa]",
@@ -739,22 +704,60 @@ function NotificationCard({
     },
   }[tone];
 
+  const iconContent =
+    tone === "orange" ? (
+      <Image
+        src="/icons/order_processed.svg"
+        alt=""
+        width={22}
+        height={22}
+        className="h-[22px] w-[22px]"
+        aria-hidden="true"
+      />
+    ) : tone === "purple" ? (
+      <Image
+        src="/icons/order_arrived.svg"
+        alt=""
+        width={22}
+        height={22}
+        className="h-[22px] w-[22px]"
+        aria-hidden="true"
+      />
+    ) : tone === "green" ? (
+      <Image
+        src="/icons/order_arrived.svg"
+        alt=""
+        width={22}
+        height={22}
+        className="h-[22px] w-[22px]"
+        aria-hidden="true"
+      />
+    ) : (
+      <svg viewBox="0 0 20 20" className="h-5 w-5" aria-hidden="true">
+        <path
+          d="m5.5 10 2.5 2.5 6-6"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+
   return (
     <section className={`rounded-[18px] border px-4 py-4 ${toneClasses.container}`}>
       <div className="flex items-start gap-3">
         <div
-          className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] ${toneClasses.icon}`}
+          className={`mt-0.5 flex h-[44px] w-[44px] shrink-0 items-center justify-center ${
+            tone === "orange" || tone === "green"
+              ? "rounded-[7px]"
+              : tone === "purple"
+                ? "rounded-[10px]"
+                : "rounded-[12px]"
+          } ${toneClasses.icon}`}
         >
-          <svg viewBox="0 0 20 20" className="h-5 w-5" aria-hidden="true">
-            <path
-              d="m5.5 10 2.5 2.5 6-6"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          {iconContent}
         </div>
 
         <div className="min-w-0 flex-1">
@@ -860,12 +863,10 @@ export default async function BuyerPurchaseOrderDetailPage({
   const referenceCode = getPurchaseOrderCode(order.poId, order.createdAt);
   const placedOnDate = formatDate(order.createdAt);
   const supplierName = order.supplierInfo?.businessName ?? "Unknown supplier";
-  const supplierSubtitle = [
-    formatBusinessType(order.supplierInfo?.businessType ?? null),
+  const supplierSubtitle = buildSupplierSubtitle(
+    order.supplierInfo?.businessType ?? null,
     order.supplierInfo?.location ?? null,
-  ]
-    .filter(Boolean)
-    .join(" \u00b7 ");
+  );
   const stepTimeline = {
     confirmed: order.confirmedAt ?? order.createdAt,
     processing: order.status === "processing" ? order.updatedAt : null,
@@ -889,6 +890,9 @@ export default async function BuyerPurchaseOrderDetailPage({
   const shouldShowReceiptApproved =
     order.status === "shipped" && order.receiptStatus === "approved";
   const showCompletedReceipt = order.status === "completed" && Boolean(order.receiptFileUrl);
+  const reviewDraft =
+    order.status === "completed" ? await getBuyerPurchaseOrderReviewDraft(order.poId) : null;
+  const hasSubmittedReview = Boolean(reviewDraft?.existingReview);
   const shouldOpenReceiptUploadStep =
     currentStep === "upload-receipt" || shouldShowReceiptResubmission;
   const notesFromBuyer = [order.additionalNotes, order.quotationNotes]
@@ -913,30 +917,28 @@ export default async function BuyerPurchaseOrderDetailPage({
   if (order.status === "completed" && order.receiptFileUrl) {
     return (
       <>
-        <main className="mx-auto w-full max-w-[1042px] space-y-[10px] pb-2">
+        <main className="mx-auto w-full max-w-[1180px] space-y-5 pb-2">
           <section className="pb-[4px]">
-            <nav className="flex items-center gap-[7px] text-[11px] font-medium text-[#bcc2cb]">
+            <nav className="flex flex-wrap items-center gap-2 text-[14px] text-[#A4ACB9]">
               <Link href="/buyer/purchase-orders" className="transition hover:text-[#7f8a99]">
-                Purchase Order
+                Purchase Orders
               </Link>
               <span>&gt;</span>
-              <span>{referenceCode}</span>
+              <span className="font-semibold text-[#506073]">{referenceCode}</span>
             </nav>
           </section>
 
-          <section className="flex items-start justify-between gap-6 pb-[6px]">
+          <section className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
-              <h1 className="text-[32px] font-semibold tracking-[-0.04em] text-[#455060]">
-                {referenceCode}
-              </h1>
-              <p className="mt-[5px] text-[14px] font-normal leading-none text-[#c1c6cf]">
+              <h1 className="text-[20px] font-semibold text-[#223654]">{referenceCode}</h1>
+              <p className="mt-[3px] text-[15px] text-[#A0A9B8]">
                 Placed on {placedOnDate} {"\u00b7"} {supplierName}
               </p>
             </div>
 
             <div className="pt-[4px]">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#d7f0dd] bg-[#edf8ef] px-[11px] py-[5px] text-[12px] font-medium leading-none text-[#2f7a45]">
-                <span className="h-[7px] w-[7px] rounded-full bg-[#2f7a45]" />
+              <span className="inline-flex items-center gap-[10px] rounded-full bg-[#DDFBEA] px-[14px] py-[8px] text-[14px] font-medium leading-none text-[#249A62]">
+                <span className="inline-flex h-[10px] w-[10px] rounded-full bg-[#249A62]" />
                 Completed
               </span>
             </div>
@@ -947,171 +949,52 @@ export default async function BuyerPurchaseOrderDetailPage({
             processingAt={processingStartedAt}
             shippedAt={shippedAt}
             completedAt={uploadReceiptCompletedAt}
+            activeStepIcon={hasSubmittedReview ? "check" : "number"}
+            activeStepTone={hasSubmittedReview ? "navy" : "blue"}
           />
 
-          <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
-            <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
-              <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
-                Supplier Info
-              </h2>
-            </div>
+          <SupplierInfoCard
+            supplierName={supplierName}
+            supplierSubtitle={supplierSubtitle}
+            supplierProfileHref={supplierProfileHref}
+            supplierVerified={Boolean(order.supplierInfo?.verifiedBadge)}
+          />
 
-            <div className="flex items-center justify-between gap-4 px-[18px] py-[16px]">
-              <div className="flex min-w-0 items-center gap-[12px]">
-                <div className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-[#eefaf3] text-[22px] font-medium leading-none text-[#4f9b72]">
-                  {getInitials(supplierName)}
-                </div>
+          <OrderSummaryCard
+            productName={order.productName}
+            quantityLabel={order.quantityLabel}
+            pricePerUnit={order.pricePerUnit}
+            unit={order.unit}
+            subtotal={order.subtotal}
+            deliveryFeeLabel={shippedDeliveryFeeLabel}
+            totalAmount={orderSummaryTotal}
+          />
 
-                <div className="min-w-0">
-                  <div className="flex items-center gap-[6px]">
-                    <p className="truncate text-[14px] font-semibold leading-none text-[#5d6778]">
-                      {supplierName}
-                    </p>
-                    {order.supplierInfo?.verifiedBadge ? <VerifiedBadge /> : null}
-                  </div>
-                  <p className="mt-[6px] truncate text-[13px] font-normal leading-none text-[#a7aebb]">
-                    {supplierSubtitle || "Supplier details will appear once available."}
-                  </p>
-                </div>
-              </div>
-
-              <Link
-                href={supplierProfileHref}
-                className="inline-flex h-[28px] shrink-0 items-center justify-center rounded-[8px] border border-[#e2e5ea] bg-white px-[14px] text-[11px] font-semibold text-[#5f6877] transition hover:bg-[#f8fafc]"
-              >
-                View Profile
-              </Link>
-            </div>
-          </section>
-
-          <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
-            <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
-              <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
-                Order Summary
-              </h2>
-            </div>
-
-            <div className="px-[16px] py-[14px]">
-              <div className="grid grid-cols-[minmax(0,1.4fr)_0.7fr_0.7fr_0.7fr] gap-[18px] text-[11px] font-medium uppercase leading-none tracking-[0.02em] text-[#c0c5ce]">
-                <span>Item</span>
-                <span className="text-right">Qty</span>
-                <span className="text-right">Unit Price</span>
-                <span className="text-right">Total</span>
-              </div>
-
-              <div className="mt-[16px] grid grid-cols-[minmax(0,1.4fr)_0.7fr_0.7fr_0.7fr] gap-[18px] border-b border-[#edf0f4] pb-[14px] text-[14px] leading-none text-[#445062]">
-                <span className="font-semibold">{order.productName}</span>
-                <span className="text-right text-[#8f98a7]">{order.quantityLabel}</span>
-                <span className="text-right text-[#8f98a7]">
-                  {formatUnitPrice(order.pricePerUnit, order.unit)}
-                </span>
-                <span className="text-right font-semibold">{formatCurrency(order.subtotal)}</span>
-              </div>
-
-              <div className="pt-[8px] text-[14px]">
-                <div className="flex items-center justify-between py-[4px] text-[#b0b6c1]">
-                  <span>Subtotal</span>
-                  <span>{formatCurrency(order.subtotal)}</span>
-                </div>
-                <div className="flex items-center justify-between py-[4px] text-[#b0b6c1]">
-                  <span>Delivery Fee</span>
-                  <span>{shippedDeliveryFeeLabel}</span>
-                </div>
-                <div className="mt-[6px] flex items-center justify-between border-t border-[#edf0f4] pt-[10px] text-[16px] font-semibold text-[#2f3948]">
-                  <span>TOTAL</span>
-                  <span>{formatCurrency(orderSummaryTotal)}</span>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
-            <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
-              <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
-                More Details
-              </h2>
-            </div>
-
-            <div className="px-[16px] py-[16px]">
-              <div className="grid grid-cols-2 gap-x-[66px] gap-y-[18px]">
-                <div>
-                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
-                    Deliver To
-                  </p>
-                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
-                    {order.deliveryLocation || "Not specified"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
-                    Expected Delivery
-                  </p>
-                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
-                    {formatDate(order.preferredDeliveryDate ?? order.deadline)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
-                    Payment Method
-                  </p>
-                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
-                    {order.paymentMethod || "Not specified"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
-                    Payment Terms
-                  </p>
-                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
-                    {order.termsAndConditions || "Not specified"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-[18px]">
-                <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
-                  Notes From Buyer
-                </p>
-                <p className="mt-[8px] max-w-[780px] text-[14px] font-semibold leading-[1.4] text-[#4c5767]">
-                  {shippedNotes}
-                </p>
-              </div>
-            </div>
-          </section>
+          <MoreDetailsCard
+            deliveryLocation={order.deliveryLocation}
+            preferredDeliveryDate={order.preferredDeliveryDate}
+            deadline={order.deadline}
+            paymentMethod={order.paymentMethod}
+            termsAndConditions={order.termsAndConditions}
+            notes={shippedNotes}
+          />
 
           <PaymentReceiptCard
             receiptFileUrl={order.receiptFileUrl}
-            receiptFilePath={order.receiptFilePath}
           />
 
-          <section className="rounded-[10px] border border-[#9fd2ae] bg-[#f4fbf5] px-[12px] py-[11px]">
-            <div className="flex items-start gap-[10px]">
-              <span className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-[8px] bg-[#267c46] text-white">
-                <svg viewBox="0 0 16 16" className="h-[12px] w-[12px]" aria-hidden="true">
-                  <path
-                    d="M3.5 8.1 6.4 11l6.1-6.1"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </span>
-              <div className="min-w-0 pt-[1px]">
-                <p className="text-[14px] font-semibold leading-none text-[#2f7a45]">
-                  Order completed successfully
-                </p>
-                <p className="mt-[8px] text-[12px] leading-[1.45] text-[#7f90aa]">
-                  This order was fulfilled and marked complete on {formatDate(order.completedAt)}. Total payment collected via COD: {formatCurrency(orderSummaryTotal)}.
-                </p>
-              </div>
-            </div>
-          </section>
+          <NotificationCard
+            tone="green"
+            title="Order completed successfully"
+            description={`This order was fulfilled and marked complete on ${formatDate(
+              order.completedAt,
+            )}. Total payment collected via COD: ${formatCurrency(orderSummaryTotal)}.`}
+          />
 
           <CompletedOrderActions
             disputeHref={messageSupplierHref}
             reviewHref={supplierReviewHref}
+            reviewSubmitted={hasSubmittedReview}
           />
         </main>
       </>
@@ -1121,34 +1004,30 @@ export default async function BuyerPurchaseOrderDetailPage({
   if (order.status === "confirmed") {
     return (
       <>
-        <main className="mx-auto w-full max-w-[1042px] space-y-[10px] pb-2">
+        <main className="mx-auto w-full max-w-[1180px] space-y-[14px] pb-2">
           <section className="pb-[4px]">
-            <nav className="flex items-center gap-[7px] text-[11px] font-medium text-[#bcc2cb]">
+            <nav className="flex items-center gap-[7px] text-[14px] font-normal text-[#bcc2cb]">
               <Link href="/buyer/purchase-orders" className="transition hover:text-[#7f8a99]">
                 Purchase Order
               </Link>
               <span>&gt;</span>
-              <span>{referenceCode}</span>
+              <span className="text-[#6A717F]">{referenceCode}</span>
             </nav>
           </section>
 
           <section className="flex items-start justify-between gap-6 pb-[6px]">
             <div>
-              <h1 className="text-[32px] font-semibold tracking-[-0.04em] text-[#455060]">
+              <h1 className="text-[20px] font-semibold text-[#223654]">
                 {referenceCode}
               </h1>
-              <p className="mt-[5px] text-[14px] font-normal leading-none text-[#c1c6cf]">
+              <p className="mt-[3px] text-[15px] font-normal leading-none text-[#A0A9B8]">
                 Placed on {placedOnDate} {"\u00b7"} {supplierName}
               </p>
             </div>
 
             <div className="pt-[4px]">
-              <span
-                className={`inline-flex items-center gap-1.5 rounded-full border px-[11px] py-[5px] text-[12px] font-medium leading-none ${getStatusBadgeClasses(
-                  order.status,
-                )}`}
-              >
-                <span className="h-[7px] w-[7px] rounded-full bg-[#f08b38]" />
+              <span className="inline-flex items-center gap-[10px] rounded-full bg-[#FFF1E7] px-[14px] py-[8px] text-[14px] font-medium leading-none text-[#FF7A1A]">
+                <span className="h-[10px] w-[10px] rounded-full bg-[#FF7A1A]" />
                 Confirmed
               </span>
             </div>
@@ -1156,27 +1035,27 @@ export default async function BuyerPurchaseOrderDetailPage({
 
           <ConfirmedProgressCard />
 
-          <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
-            <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
-              <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
+          <section className="overflow-hidden rounded-[18px] border border-[#E4ECF5] bg-white shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+            <div className="border-b border-[#E9EEF5] px-[22px] py-[14px]">
+              <h2 className="text-[17px] font-semibold uppercase tracking-[0.01em] text-[#183B6B]">
                 Supplier Info
               </h2>
             </div>
 
-            <div className="flex items-center justify-between gap-4 px-[18px] py-[16px]">
-              <div className="flex min-w-0 items-center gap-[12px]">
-                <div className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-[#eefaf3] text-[22px] font-medium leading-none text-[#4f9b72]">
+            <div className="flex items-center justify-between gap-4 px-[22px] py-[25px]">
+              <div className={BUYER_SUPPLIER_ROW_CLASS}>
+                <div className={BUYER_SUPPLIER_AVATAR_CLASS}>
                   {getInitials(supplierName)}
                 </div>
 
                 <div className="min-w-0">
-                  <div className="flex items-center gap-[6px]">
-                    <p className="truncate text-[14px] font-semibold leading-none text-[#5d6778]">
+                  <div className="flex items-center gap-[8px]">
+                    <p className="truncate text-[15px] font-semibold leading-none text-[#223654]">
                       {supplierName}
                     </p>
                     {order.supplierInfo?.verifiedBadge ? <VerifiedBadge /> : null}
                   </div>
-                  <p className="mt-[6px] truncate text-[13px] font-normal leading-none text-[#a7aebb]">
+                  <p className={BUYER_SUPPLIER_SUBTITLE_CLASS}>
                     {supplierSubtitle || "Supplier details will appear once available."}
                   </p>
                 </div>
@@ -1184,144 +1063,129 @@ export default async function BuyerPurchaseOrderDetailPage({
 
               <Link
                 href={supplierProfileHref}
-                className="inline-flex h-[28px] shrink-0 items-center justify-center rounded-[8px] border border-[#e2e5ea] bg-white px-[14px] text-[11px] font-semibold text-[#5f6877] transition hover:bg-[#f8fafc]"
+                className={BUYER_SUPPLIER_PROFILE_BUTTON_CLASS}
               >
                 View Profile
               </Link>
             </div>
           </section>
 
-          <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
-            <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
-              <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
+          <section className="overflow-hidden rounded-[18px] border border-[#E4ECF5] bg-white shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+            <div className="border-b border-[#E9EEF5] px-[22px] py-[14px]">
+              <h2 className="text-[17px] font-semibold uppercase tracking-[0.01em] text-[#223F68]">
                 Order Summary
               </h2>
             </div>
 
-            <div className="px-[16px] py-[14px]">
-              <div className="grid grid-cols-[minmax(0,1.4fr)_0.7fr_0.7fr_0.7fr] gap-[18px] text-[11px] font-medium uppercase leading-none tracking-[0.02em] text-[#c0c5ce]">
+            <div className="px-[22px] py-[25px]">
+              <div className="grid grid-cols-[2.7fr_0.55fr_0.75fr_0.7fr] gap-[8px] border-b border-[#EDF2F7] px-[14px] pb-[12px] pt-[3px] text-[14px] font-medium uppercase tracking-[0.02em] text-[#A4AFBF]">
                 <span>Item</span>
-                <span className="text-right">Qty</span>
+                <span className="text-center">Qty</span>
                 <span className="text-right">Unit Price</span>
                 <span className="text-right">Total</span>
               </div>
 
-              <div className="mt-[16px] grid grid-cols-[minmax(0,1.4fr)_0.7fr_0.7fr_0.7fr] gap-[18px] border-b border-[#edf0f4] pb-[14px] text-[14px] leading-none text-[#445062]">
-                <span className="font-semibold">{order.productName}</span>
-                <span className="text-right text-[#8f98a7]">{order.quantityLabel}</span>
-                <span className="text-right text-[#8f98a7]">
+              <div className="grid grid-cols-[2.7fr_0.55fr_0.75fr_0.7fr] gap-[8px] border-b border-[#EDF2F7] px-[14px] py-[18px] text-[15px] text-[#334155]">
+                <span className="text-[16px] font-medium text-[#374151]">{order.productName}</span>
+                <span className="text-center font-normal text-[#8E99AB]">{order.quantityLabel}</span>
+                <span className="text-right font-normal text-[#8E99AB]">
                   {formatUnitPrice(order.pricePerUnit, order.unit)}
                 </span>
-                <span className="text-right font-semibold">{formatCurrency(order.subtotal)}</span>
+                <span className="text-right font-normal text-[#374151]">
+                  {formatCurrency(order.subtotal)}
+                </span>
               </div>
 
-              <div className="pt-[8px] text-[14px]">
-                <div className="flex items-center justify-between py-[4px] text-[#b0b6c1]">
-                  <span>Subtotal</span>
-                  <span>{formatCurrency(order.subtotal)}</span>
+              <div className="space-y-[8px] px-[14px] py-[16px]">
+                <div className="grid grid-cols-[2.7fr_0.55fr_0.75fr_0.7fr] items-center gap-[8px] font-normal text-[#B5BCC8]">
+                  <span className="col-span-3 text-[15px]">Subtotal</span>
+                  <span className="text-right text-[15px]">{formatCurrency(order.subtotal)}</span>
                 </div>
-                <div className="flex items-center justify-between py-[4px] text-[#b0b6c1]">
-                  <span>Delivery Fee</span>
-                  <span>{deliveryFeeLabel}</span>
+                <div className="grid grid-cols-[2.7fr_0.55fr_0.75fr_0.7fr] items-center gap-[8px] font-normal text-[#B5BCC8]">
+                  <span className="col-span-3 text-[15px]">Delivery Fee</span>
+                  <span className="text-right text-[15px]">{deliveryFeeLabel}</span>
                 </div>
-                <div className="mt-[6px] flex items-center justify-between border-t border-[#edf0f4] pt-[10px] text-[16px] font-semibold text-[#2f3948]">
-                  <span>TOTAL</span>
-                  <span>{formatCurrency(orderSummaryTotal)}</span>
+                <div className="mt-[14px] grid grid-cols-[2.7fr_0.55fr_0.75fr_0.7fr] items-center gap-[8px] border-t border-[#EDF2F7] pt-[14px] text-[15px] font-semibold text-[#334155]">
+                  <span className="col-span-3">TOTAL</span>
+                  <span className="text-right text-[17px] font-semibold">
+                    {formatCurrency(orderSummaryTotal)}
+                  </span>
                 </div>
               </div>
             </div>
           </section>
 
-          <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
-            <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
-              <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
+          <section className="overflow-hidden rounded-[18px] border border-[#E4ECF5] bg-white shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+            <div className="border-b border-[#E9EEF5] px-[22px] py-[14px]">
+              <h2 className="text-[17px] font-semibold uppercase tracking-[0.01em] text-[#183B6B]">
                 More Details
               </h2>
             </div>
 
-            <div className="px-[16px] py-[16px]">
+            <div className="px-[22px] py-[25px]">
               <div className="grid grid-cols-2 gap-x-[66px] gap-y-[18px]">
                 <div>
-                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                  <p className="text-[14px] font-medium uppercase tracking-[0.02em] text-[#A4AFBF]">
                     Deliver To
                   </p>
-                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
+                  <p className="mt-[2px] text-[16px] font-normal leading-[1.6] text-[#374151]">
                     {order.deliveryLocation || "Not specified"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                  <p className="text-[14px] font-medium uppercase tracking-[0.02em] text-[#A4AFBF]">
                     Expected Delivery
                   </p>
-                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
+                  <p className="mt-[2px] text-[16px] font-normal leading-[1.6] text-[#374151]">
                     {formatDate(order.preferredDeliveryDate ?? order.deadline)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                  <p className="text-[14px] font-medium uppercase tracking-[0.02em] text-[#A4AFBF]">
                     Payment Method
                   </p>
-                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
+                  <p className="mt-[2px] text-[16px] font-normal leading-[1.6] text-[#374151]">
                     {order.paymentMethod || "Not specified"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                  <p className="text-[14px] font-medium uppercase tracking-[0.02em] text-[#A4AFBF]">
                     Payment Terms
                   </p>
-                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
+                  <p className="mt-[2px] text-[16px] font-normal leading-[1.6] text-[#374151]">
                     {order.termsAndConditions || "Not specified"}
                   </p>
                 </div>
               </div>
 
               <div className="mt-[18px]">
-                <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
+                <p className="text-[14px] font-medium uppercase tracking-[0.02em] text-[#A4AFBF]">
                   Notes From Buyer
                 </p>
-                <p className="mt-[8px] max-w-[780px] text-[14px] font-semibold leading-[1.4] text-[#4c5767]">
+                <p className="mt-[2px] max-w-[780px] text-[16px] font-normal leading-[1.6] text-[#374151]">
                   {confirmedNotes}
                 </p>
               </div>
             </div>
           </section>
 
-          <section className="rounded-[10px] border border-[#9db8ff] bg-[#f7faff] px-[12px] py-[11px]">
-            <div className="flex items-start gap-[10px]">
-              <span className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-[8px] bg-[#3f73e0] text-white">
-                <svg viewBox="0 0 16 16" className="h-[12px] w-[12px]" aria-hidden="true">
-                  <path
-                    d="M3.5 8.1 6.4 11l6.1-6.1"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </span>
-              <div className="min-w-0 pt-[1px]">
-                <p className="text-[14px] font-semibold leading-none text-[#2b5bc7]">
-                  Purchase Order Sent
-                </p>
-                <p className="mt-[8px] text-[12px] leading-[1.45] text-[#7f90aa]">
-                  The purchase order has been successfully submitted to the supplier. Please wait for confirmation.
-                </p>
-              </div>
-            </div>
-          </section>
+          <NotificationCard
+            tone="blue"
+            title="Purchase Order Sent"
+            description="The purchase order has been successfully submitted to the supplier. Please wait for confirmation."
+          />
 
           <div className="flex items-center justify-end gap-[12px] pt-[2px]">
             <Link
               href={buildDetailHref(order.poId, { modal: "cancel" })}
-              className="inline-flex h-[38px] items-center justify-center px-[6px] text-[13px] font-semibold text-[#ff5a47] transition hover:text-[#ef4638]"
+              className={BUYER_PO_CANCEL_BUTTON_CLASS}
             >
               Cancel Order
             </Link>
             <button
               type="button"
               disabled
-              className="inline-flex h-[38px] min-w-[132px] items-center justify-center rounded-[8px] bg-[#cfd5de] px-[18px] text-[13px] font-semibold text-white"
+              className={BUYER_PO_PRIMARY_DISABLED_BUTTON_CLASS}
             >
               Mark as Completed
             </button>
@@ -1356,34 +1220,28 @@ export default async function BuyerPurchaseOrderDetailPage({
   if (order.status === "processing") {
     return (
       <>
-        <main className="mx-auto w-full max-w-[1042px] space-y-[10px] pb-2">
+        <main className="mx-auto w-full max-w-[1180px] space-y-5 pb-2">
           <section className="pb-[4px]">
-            <nav className="flex items-center gap-[7px] text-[11px] font-medium text-[#bcc2cb]">
+            <nav className="flex flex-wrap items-center gap-2 text-[14px] text-[#A4ACB9]">
               <Link href="/buyer/purchase-orders" className="transition hover:text-[#7f8a99]">
-                Purchase Order
+                Purchase Orders
               </Link>
               <span>&gt;</span>
-              <span>{referenceCode}</span>
+              <span className="font-semibold text-[#506073]">{referenceCode}</span>
             </nav>
           </section>
 
-          <section className="flex items-start justify-between gap-6 pb-[6px]">
+          <section className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
-              <h1 className="text-[32px] font-semibold tracking-[-0.04em] text-[#455060]">
-                {referenceCode}
-              </h1>
-              <p className="mt-[5px] text-[14px] font-normal leading-none text-[#c1c6cf]">
+              <h1 className="text-[20px] font-semibold text-[#223654]">{referenceCode}</h1>
+              <p className="mt-[3px] text-[15px] text-[#A0A9B8]">
                 Placed on {placedOnDate} {"\u00b7"} {supplierName}
               </p>
             </div>
 
             <div className="pt-[4px]">
-              <span
-                className={`inline-flex items-center gap-1.5 rounded-full border px-[11px] py-[5px] text-[12px] font-medium leading-none ${getStatusBadgeClasses(
-                  order.status,
-                )}`}
-              >
-                <span className="h-[7px] w-[7px] rounded-full bg-[#f08b38]" />
+              <span className="inline-flex items-center gap-[10px] rounded-full bg-[#FFF1E7] px-[14px] py-[8px] text-[14px] font-medium leading-none text-[#FF8A2A]">
+                <span className="inline-flex h-[10px] w-[10px] rounded-full bg-[#FF8A2A]" />
                 Processing
               </span>
             </div>
@@ -1394,172 +1252,49 @@ export default async function BuyerPurchaseOrderDetailPage({
             processingAt={processingStartedAt}
           />
 
-          <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
-            <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
-              <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
-                Supplier Info
-              </h2>
-            </div>
+          <SupplierInfoCard
+            supplierName={supplierName}
+            supplierSubtitle={supplierSubtitle}
+            supplierProfileHref={supplierProfileHref}
+            supplierVerified={Boolean(order.supplierInfo?.verifiedBadge)}
+          />
 
-            <div className="flex items-center justify-between gap-4 px-[18px] py-[16px]">
-              <div className="flex min-w-0 items-center gap-[12px]">
-                <div className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-[#eefaf3] text-[22px] font-medium leading-none text-[#4f9b72]">
-                  {getInitials(supplierName)}
-                </div>
+          <OrderSummaryCard
+            productName={order.productName}
+            quantityLabel={order.quantityLabel}
+            pricePerUnit={order.pricePerUnit}
+            unit={order.unit}
+            subtotal={order.subtotal}
+            deliveryFeeLabel={processingDeliveryFeeLabel}
+            totalAmount={orderSummaryTotal}
+          />
 
-                <div className="min-w-0">
-                  <div className="flex items-center gap-[6px]">
-                    <p className="truncate text-[14px] font-semibold leading-none text-[#5d6778]">
-                      {supplierName}
-                    </p>
-                    {order.supplierInfo?.verifiedBadge ? <VerifiedBadge /> : null}
-                  </div>
-                  <p className="mt-[6px] truncate text-[13px] font-normal leading-none text-[#a7aebb]">
-                    {supplierSubtitle || "Supplier details will appear once available."}
-                  </p>
-                </div>
-              </div>
+          <MoreDetailsCard
+            deliveryLocation={order.deliveryLocation}
+            preferredDeliveryDate={order.preferredDeliveryDate}
+            deadline={order.deadline}
+            paymentMethod={order.paymentMethod}
+            termsAndConditions={order.termsAndConditions}
+            notes={processingNotes}
+          />
 
-              <Link
-                href={supplierProfileHref}
-                className="inline-flex h-[28px] shrink-0 items-center justify-center rounded-[8px] border border-[#e2e5ea] bg-white px-[14px] text-[11px] font-semibold text-[#5f6877] transition hover:bg-[#f8fafc]"
-              >
-                View Profile
-              </Link>
-            </div>
-          </section>
-
-          <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
-            <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
-              <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
-                Order Summary
-              </h2>
-            </div>
-
-            <div className="px-[16px] py-[14px]">
-              <div className="grid grid-cols-[minmax(0,1.4fr)_0.7fr_0.7fr_0.7fr] gap-[18px] text-[11px] font-medium uppercase leading-none tracking-[0.02em] text-[#c0c5ce]">
-                <span>Item</span>
-                <span className="text-right">Qty</span>
-                <span className="text-right">Unit Price</span>
-                <span className="text-right">Total</span>
-              </div>
-
-              <div className="mt-[16px] grid grid-cols-[minmax(0,1.4fr)_0.7fr_0.7fr_0.7fr] gap-[18px] border-b border-[#edf0f4] pb-[14px] text-[14px] leading-none text-[#445062]">
-                <span className="font-semibold">{order.productName}</span>
-                <span className="text-right text-[#8f98a7]">{order.quantityLabel}</span>
-                <span className="text-right text-[#8f98a7]">
-                  {formatUnitPrice(order.pricePerUnit, order.unit)}
-                </span>
-                <span className="text-right font-semibold">{formatCurrency(order.subtotal)}</span>
-              </div>
-
-              <div className="pt-[8px] text-[14px]">
-                <div className="flex items-center justify-between py-[4px] text-[#b0b6c1]">
-                  <span>Subtotal</span>
-                  <span>{formatCurrency(order.subtotal)}</span>
-                </div>
-                <div className="flex items-center justify-between py-[4px] text-[#b0b6c1]">
-                  <span>Delivery Fee</span>
-                  <span>{processingDeliveryFeeLabel}</span>
-                </div>
-                <div className="mt-[6px] flex items-center justify-between border-t border-[#edf0f4] pt-[10px] text-[16px] font-semibold text-[#2f3948]">
-                  <span>TOTAL</span>
-                  <span>{formatCurrency(orderSummaryTotal)}</span>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
-            <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
-              <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
-                More Details
-              </h2>
-            </div>
-
-            <div className="px-[16px] py-[16px]">
-              <div className="grid grid-cols-2 gap-x-[66px] gap-y-[18px]">
-                <div>
-                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
-                    Deliver To
-                  </p>
-                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
-                    {order.deliveryLocation || "Not specified"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
-                    Expected Delivery
-                  </p>
-                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
-                    {formatDate(order.preferredDeliveryDate ?? order.deadline)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
-                    Payment Method
-                  </p>
-                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
-                    {order.paymentMethod || "Not specified"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
-                    Payment Terms
-                  </p>
-                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
-                    {order.termsAndConditions || "Not specified"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-[18px]">
-                <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
-                  Notes From Buyer
-                </p>
-                <p className="mt-[8px] max-w-[780px] text-[14px] font-semibold leading-[1.4] text-[#4c5767]">
-                  {processingNotes}
-                </p>
-              </div>
-            </div>
-          </section>
-
-          <section className="rounded-[10px] border border-[#ffbe92] bg-[#fff8f2] px-[12px] py-[11px]">
-            <div className="flex items-start gap-[10px]">
-              <span className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-[8px] bg-[#ff7a1a] text-white">
-                <svg viewBox="0 0 16 16" className="h-[12px] w-[12px]" aria-hidden="true">
-                  <path
-                    d="M3.5 8.1 6.4 11l6.1-6.1"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </span>
-              <div className="min-w-0 pt-[1px]">
-                <p className="text-[14px] font-semibold leading-none text-[#f08b38]">
-                  Order is being processed
-                </p>
-                <p className="mt-[8px] text-[12px] leading-[1.45] text-[#8c97a7]">
-                  You are currently preparing this order. Mark as shipped once it has been dispatched to the buyer.
-                </p>
-              </div>
-            </div>
-          </section>
+          <NotificationCard
+            tone="orange"
+            title="Order is being processed"
+            description="You are currently preparing this order. Mark as shipped once it has been dispatched to the buyer."
+          />
 
           <div className="flex items-center justify-end gap-[12px] pt-[2px]">
             <Link
               href={buildDetailHref(order.poId, { modal: "cancel" })}
-              className="inline-flex h-[38px] items-center justify-center px-[6px] text-[13px] font-semibold text-[#ff5a47] transition hover:text-[#ef4638]"
+              className={BUYER_PO_CANCEL_BUTTON_CLASS}
             >
               Cancel Order
             </Link>
             <button
               type="button"
               disabled
-              className="inline-flex h-[38px] min-w-[132px] items-center justify-center rounded-[8px] bg-[#cfd5de] px-[18px] text-[13px] font-semibold text-white"
+              className={BUYER_PO_PRIMARY_DISABLED_BUTTON_CLASS}
             >
               Mark as Completed
             </button>
@@ -1595,30 +1330,28 @@ export default async function BuyerPurchaseOrderDetailPage({
     if (shouldOpenReceiptUploadStep) {
       return (
         <>
-          <main className="mx-auto w-full max-w-[1042px] space-y-[10px] pb-2">
+          <main className="mx-auto w-full max-w-[1180px] space-y-5 pb-2">
             <section className="pb-[4px]">
-              <nav className="flex items-center gap-[7px] text-[11px] font-medium text-[#bcc2cb]">
+              <nav className="flex flex-wrap items-center gap-2 text-[14px] text-[#A4ACB9]">
                 <Link href="/buyer/purchase-orders" className="transition hover:text-[#7f8a99]">
-                  Purchase Order
+                  Purchase Orders
                 </Link>
                 <span>&gt;</span>
-                <span>{referenceCode}</span>
+                <span className="font-semibold text-[#506073]">{referenceCode}</span>
               </nav>
             </section>
 
-            <section className="flex items-start justify-between gap-6 pb-[6px]">
+            <section className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
-                <h1 className="text-[32px] font-semibold tracking-[-0.04em] text-[#455060]">
-                  {referenceCode}
-                </h1>
-                <p className="mt-[5px] text-[14px] font-normal leading-none text-[#c1c6cf]">
+                <h1 className="text-[20px] font-semibold text-[#223654]">{referenceCode}</h1>
+                <p className="mt-[3px] text-[15px] text-[#A0A9B8]">
                   Placed on {placedOnDate} {"\u00b7"} {supplierName}
                 </p>
               </div>
 
               <div className="pt-[4px]">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#d7f0dd] bg-[#edf8ef] px-[11px] py-[5px] text-[12px] font-medium leading-none text-[#2f7a45]">
-                  <span className="h-[7px] w-[7px] rounded-full bg-[#2f7a45]" />
+                <span className="inline-flex items-center gap-[10px] rounded-full bg-[#DDFBEA] px-[14px] py-[8px] text-[14px] font-medium leading-none text-[#249A62]">
+                  <span className="h-[10px] w-[10px] rounded-full bg-[#249A62]" />
                   Completed
                 </span>
               </div>
@@ -1631,135 +1364,31 @@ export default async function BuyerPurchaseOrderDetailPage({
               completedAt={uploadReceiptCompletedAt}
             />
 
-            <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
-              <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
-                <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
-                  Supplier Info
-                </h2>
-              </div>
+            <SupplierInfoCard
+              supplierName={supplierName}
+              supplierSubtitle={supplierSubtitle}
+              supplierProfileHref={supplierProfileHref}
+              supplierVerified={Boolean(order.supplierInfo?.verifiedBadge)}
+            />
 
-              <div className="flex items-center justify-between gap-4 px-[18px] py-[16px]">
-                <div className="flex min-w-0 items-center gap-[12px]">
-                  <div className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-[#eefaf3] text-[22px] font-medium leading-none text-[#4f9b72]">
-                    {getInitials(supplierName)}
-                  </div>
+            <OrderSummaryCard
+              productName={order.productName}
+              quantityLabel={order.quantityLabel}
+              pricePerUnit={order.pricePerUnit}
+              unit={order.unit}
+              subtotal={order.subtotal}
+              deliveryFeeLabel={shippedDeliveryFeeLabel}
+              totalAmount={orderSummaryTotal}
+            />
 
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-[6px]">
-                      <p className="truncate text-[14px] font-semibold leading-none text-[#5d6778]">
-                        {supplierName}
-                      </p>
-                      {order.supplierInfo?.verifiedBadge ? <VerifiedBadge /> : null}
-                    </div>
-                    <p className="mt-[6px] truncate text-[13px] font-normal leading-none text-[#a7aebb]">
-                      {supplierSubtitle || "Supplier details will appear once available."}
-                    </p>
-                  </div>
-                </div>
-
-                <Link
-                  href={supplierProfileHref}
-                  className="inline-flex h-[28px] shrink-0 items-center justify-center rounded-[8px] border border-[#e2e5ea] bg-white px-[14px] text-[11px] font-semibold text-[#5f6877] transition hover:bg-[#f8fafc]"
-                >
-                  View Profile
-                </Link>
-              </div>
-            </section>
-
-            <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
-              <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
-                <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
-                  Order Summary
-                </h2>
-              </div>
-
-              <div className="px-[16px] py-[14px]">
-                <div className="grid grid-cols-[minmax(0,1.4fr)_0.7fr_0.7fr_0.7fr] gap-[18px] text-[11px] font-medium uppercase leading-none tracking-[0.02em] text-[#c0c5ce]">
-                  <span>Item</span>
-                  <span className="text-right">Qty</span>
-                  <span className="text-right">Unit Price</span>
-                  <span className="text-right">Total</span>
-                </div>
-
-                <div className="mt-[16px] grid grid-cols-[minmax(0,1.4fr)_0.7fr_0.7fr_0.7fr] gap-[18px] border-b border-[#edf0f4] pb-[14px] text-[14px] leading-none text-[#445062]">
-                  <span className="font-semibold">{order.productName}</span>
-                  <span className="text-right text-[#8f98a7]">{order.quantityLabel}</span>
-                  <span className="text-right text-[#8f98a7]">
-                    {formatUnitPrice(order.pricePerUnit, order.unit)}
-                  </span>
-                  <span className="text-right font-semibold">{formatCurrency(order.subtotal)}</span>
-                </div>
-
-                <div className="pt-[8px] text-[14px]">
-                  <div className="flex items-center justify-between py-[4px] text-[#b0b6c1]">
-                    <span>Subtotal</span>
-                    <span>{formatCurrency(order.subtotal)}</span>
-                  </div>
-                  <div className="flex items-center justify-between py-[4px] text-[#b0b6c1]">
-                    <span>Delivery Fee</span>
-                    <span>{shippedDeliveryFeeLabel}</span>
-                  </div>
-                  <div className="mt-[6px] flex items-center justify-between border-t border-[#edf0f4] pt-[10px] text-[16px] font-semibold text-[#2f3948]">
-                    <span>TOTAL</span>
-                    <span>{formatCurrency(orderSummaryTotal)}</span>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
-              <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
-                <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
-                  More Details
-                </h2>
-              </div>
-
-              <div className="px-[16px] py-[16px]">
-                <div className="grid grid-cols-2 gap-x-[66px] gap-y-[18px]">
-                  <div>
-                    <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
-                      Deliver To
-                    </p>
-                    <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
-                      {order.deliveryLocation || "Not specified"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
-                      Expected Delivery
-                    </p>
-                    <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
-                      {formatDate(order.preferredDeliveryDate ?? order.deadline)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
-                      Payment Method
-                    </p>
-                    <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
-                      {order.paymentMethod || "Not specified"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
-                      Payment Terms
-                    </p>
-                    <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
-                      {order.termsAndConditions || "Not specified"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-[18px]">
-                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
-                    Notes From Buyer
-                  </p>
-                  <p className="mt-[8px] max-w-[780px] text-[14px] font-semibold leading-[1.4] text-[#4c5767]">
-                    {shippedNotes}
-                  </p>
-                </div>
-              </div>
-            </section>
+            <MoreDetailsCard
+              deliveryLocation={order.deliveryLocation}
+              preferredDeliveryDate={order.preferredDeliveryDate}
+              deadline={order.deadline}
+              paymentMethod={order.paymentMethod}
+              termsAndConditions={order.termsAndConditions}
+              notes={shippedNotes}
+            />
 
             {shouldShowReceiptUpload ? (
               <ReceiptUploadDetailPanel
@@ -1812,14 +1441,14 @@ export default async function BuyerPurchaseOrderDetailPage({
             <div className="flex items-center justify-end gap-[12px] pt-[2px]">
               <Link
                 href={messageSupplierHref}
-                className="inline-flex h-[38px] items-center justify-center px-[6px] text-[13px] font-semibold text-[#ff5a47] transition hover:text-[#ef4638]"
+                className="inline-flex h-[44px] items-center justify-center px-[6px] text-[14px] font-semibold text-[#ff5a47] transition hover:text-[#ef4638]"
               >
                 Raise Dispute
               </Link>
               <button
                 type="button"
                 disabled
-                className="inline-flex h-[38px] min-w-[132px] items-center justify-center rounded-[8px] bg-[#cfd5de] px-[18px] text-[13px] font-semibold text-white"
+                className={BUYER_PO_PRIMARY_DISABLED_BUTTON_CLASS}
               >
                 Mark as Completed
               </button>
@@ -1853,12 +1482,8 @@ export default async function BuyerPurchaseOrderDetailPage({
             </div>
 
             <div className="pt-[4px]">
-              <span
-                className={`inline-flex items-center gap-1.5 rounded-full border px-[11px] py-[5px] text-[12px] font-medium leading-none ${getStatusBadgeClasses(
-                  order.status,
-                )}`}
-              >
-                <span className="h-[7px] w-[7px] rounded-full bg-[#a15bd3]" />
+              <span className="inline-flex items-center gap-[10px] rounded-full bg-[#F5E8FF] px-[14px] py-[8px] text-[14px] font-medium leading-none text-[#A54FF6]">
+                <span className="inline-flex h-[10px] w-[10px] rounded-full bg-[#A54FF6]" />
                 Shipped
               </span>
             </div>
@@ -1870,172 +1495,51 @@ export default async function BuyerPurchaseOrderDetailPage({
             shippedAt={shippedAt}
           />
 
-          <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
-            <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
-              <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
-                Supplier Info
-              </h2>
-            </div>
+            <SupplierInfoCard
+              supplierName={supplierName}
+              supplierSubtitle={supplierSubtitle}
+              supplierProfileHref={supplierProfileHref}
+              supplierVerified={Boolean(order.supplierInfo?.verifiedBadge)}
+            />
 
-            <div className="flex items-center justify-between gap-4 px-[18px] py-[16px]">
-              <div className="flex min-w-0 items-center gap-[12px]">
-                <div className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-[#eefaf3] text-[22px] font-medium leading-none text-[#4f9b72]">
-                  {getInitials(supplierName)}
-                </div>
+            <OrderSummaryCard
+              productName={order.productName}
+              quantityLabel={order.quantityLabel}
+              pricePerUnit={order.pricePerUnit}
+              unit={order.unit}
+              subtotal={order.subtotal}
+              deliveryFeeLabel={shippedDeliveryFeeLabel}
+              totalAmount={orderSummaryTotal}
+            />
 
-                <div className="min-w-0">
-                  <div className="flex items-center gap-[6px]">
-                    <p className="truncate text-[14px] font-semibold leading-none text-[#5d6778]">
-                      {supplierName}
-                    </p>
-                    {order.supplierInfo?.verifiedBadge ? <VerifiedBadge /> : null}
-                  </div>
-                  <p className="mt-[6px] truncate text-[13px] font-normal leading-none text-[#a7aebb]">
-                    {supplierSubtitle || "Supplier details will appear once available."}
-                  </p>
-                </div>
-              </div>
+            <MoreDetailsCard
+              deliveryLocation={order.deliveryLocation}
+              preferredDeliveryDate={order.preferredDeliveryDate}
+              deadline={order.deadline}
+              paymentMethod={order.paymentMethod}
+              termsAndConditions={order.termsAndConditions}
+              notes={shippedNotes}
+            />
 
-              <Link
-                href={supplierProfileHref}
-                className="inline-flex h-[28px] shrink-0 items-center justify-center rounded-[8px] border border-[#e2e5ea] bg-white px-[14px] text-[11px] font-semibold text-[#5f6877] transition hover:bg-[#f8fafc]"
-              >
-                View Profile
-              </Link>
-            </div>
-          </section>
-
-          <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
-            <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
-              <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
-                Order Summary
-              </h2>
-            </div>
-
-            <div className="px-[16px] py-[14px]">
-              <div className="grid grid-cols-[minmax(0,1.4fr)_0.7fr_0.7fr_0.7fr] gap-[18px] text-[11px] font-medium uppercase leading-none tracking-[0.02em] text-[#c0c5ce]">
-                <span>Item</span>
-                <span className="text-right">Qty</span>
-                <span className="text-right">Unit Price</span>
-                <span className="text-right">Total</span>
-              </div>
-
-              <div className="mt-[16px] grid grid-cols-[minmax(0,1.4fr)_0.7fr_0.7fr_0.7fr] gap-[18px] border-b border-[#edf0f4] pb-[14px] text-[14px] leading-none text-[#445062]">
-                <span className="font-semibold">{order.productName}</span>
-                <span className="text-right text-[#8f98a7]">{order.quantityLabel}</span>
-                <span className="text-right text-[#8f98a7]">
-                  {formatUnitPrice(order.pricePerUnit, order.unit)}
-                </span>
-                <span className="text-right font-semibold">{formatCurrency(order.subtotal)}</span>
-              </div>
-
-              <div className="pt-[8px] text-[14px]">
-                <div className="flex items-center justify-between py-[4px] text-[#b0b6c1]">
-                  <span>Subtotal</span>
-                  <span>{formatCurrency(order.subtotal)}</span>
-                </div>
-                <div className="flex items-center justify-between py-[4px] text-[#b0b6c1]">
-                  <span>Delivery Fee</span>
-                  <span>{shippedDeliveryFeeLabel}</span>
-                </div>
-                <div className="mt-[6px] flex items-center justify-between border-t border-[#edf0f4] pt-[10px] text-[16px] font-semibold text-[#2f3948]">
-                  <span>TOTAL</span>
-                  <span>{formatCurrency(orderSummaryTotal)}</span>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white shadow-[0_1px_1px_rgba(15,23,42,0.02)]">
-            <div className="border-b border-[#f0f2f5] px-[16px] py-[12px]">
-              <h2 className="text-[12px] font-semibold uppercase leading-none text-[#27456f]">
-                More Details
-              </h2>
-            </div>
-
-            <div className="px-[16px] py-[16px]">
-              <div className="grid grid-cols-2 gap-x-[66px] gap-y-[18px]">
-                <div>
-                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
-                    Deliver To
-                  </p>
-                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
-                    {order.deliveryLocation || "Not specified"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
-                    Expected Delivery
-                  </p>
-                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
-                    {formatDate(order.preferredDeliveryDate ?? order.deadline)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
-                    Payment Method
-                  </p>
-                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
-                    {order.paymentMethod || "Not specified"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
-                    Payment Terms
-                  </p>
-                  <p className="mt-[8px] text-[14px] font-semibold leading-[1.35] text-[#4c5767]">
-                    {order.termsAndConditions || "Not specified"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-[18px]">
-                <p className="text-[11px] font-medium uppercase leading-none text-[#b8bec8]">
-                  Notes From Buyer
-                </p>
-                <p className="mt-[8px] max-w-[780px] text-[14px] font-semibold leading-[1.4] text-[#4c5767]">
-                  {shippedNotes}
-                </p>
-              </div>
-            </div>
-          </section>
-
-          <section className="rounded-[10px] border border-[#d4b6fa] bg-[#fbf7ff] px-[12px] py-[11px]">
-            <div className="flex items-start gap-[10px]">
-              <span className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-[8px] bg-[#6f35d4] text-white">
-                <svg viewBox="0 0 16 16" className="h-[12px] w-[12px]" aria-hidden="true">
-                  <path
-                    d="M3.5 8.1 6.4 11l6.1-6.1"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </span>
-              <div className="min-w-0 pt-[1px]">
-                <p className="text-[14px] font-semibold leading-none text-[#6f35d4]">
-                  Order on its way
-                </p>
-                <p className="mt-[8px] text-[12px] leading-[1.45] text-[#8c97a7]">
-                  Order was dispatched on {formatDate(shippedAt)}. Waiting for the buyer to confirm receipt. Collect COD payment upon delivery.
-                </p>
-              </div>
-            </div>
-          </section>
+            <NotificationCard
+              tone="purple"
+              title="Order on its way"
+              description={`Order was dispatched on ${formatDate(
+                shippedAt,
+              )}. Waiting for the buyer to confirm receipt. Collect COD payment upon delivery.`}
+            />
 
           <div className="flex items-center justify-end gap-[12px] pt-[2px]">
             <Link
               href="/buyer/purchase-orders"
-              className="inline-flex h-[38px] items-center justify-center px-[6px] text-[13px] font-semibold text-[#ff5a47] transition hover:text-[#ef4638]"
+              className="inline-flex h-[44px] items-center justify-center px-[6px] text-[14px] font-semibold text-[#ff5a47] transition hover:text-[#ef4638]"
             >
               Back to Orders
             </Link>
             {shouldPromptReceiptConfirmation ? (
               <Link
                 href={buildDetailHref(order.poId, { step: "upload-receipt" })}
-                className="inline-flex h-[38px] min-w-[132px] items-center justify-center rounded-[8px] bg-[#6f35d4] px-[18px] text-[13px] font-semibold text-white transition hover:bg-[#5f2abd]"
+                className="inline-flex h-[44px] min-w-[132px] items-center justify-center rounded-[8px] bg-[#6f35d4] px-[18px] text-[14px] font-semibold text-white transition hover:bg-[#5f2abd]"
               >
                 Confirm Receipt
               </Link>
@@ -2048,63 +1552,61 @@ export default async function BuyerPurchaseOrderDetailPage({
 
   return (
     <>
-      <main className="space-y-5 pb-2">
-        <nav className="flex flex-wrap items-center gap-2 text-[12px] text-[#b0bac7]">
+      <main className="mx-auto w-full max-w-[1180px] space-y-5 pb-2">
+        <nav className="flex flex-wrap items-center gap-2 text-[14px] text-[#A4ACB9]">
           <Link href="/buyer/purchase-orders" className="transition hover:text-[#526176]">
             Purchase Orders
           </Link>
           <span>&gt;</span>
-          <span className="text-[#98a3b4]">{referenceCode}</span>
+          <span className="font-semibold text-[#506073]">{referenceCode}</span>
         </nav>
 
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
-            <h1 className="text-[31px] font-semibold tracking-[-0.03em] text-[#223654]">
+            <h1 className="text-[20px] font-semibold text-[#223654]">
               {referenceCode}
             </h1>
-            <p className="mt-1 text-[15px] text-[#8a96a8]">
-              Placed on {placedOnDate} | {supplierName}
+            <p className="mt-[3px] text-[15px] text-[#A0A9B8]">
+              Placed on {placedOnDate} {"\u00b7"} {supplierName}
             </p>
           </div>
 
-          <span
-            className={`inline-flex items-center rounded-full border px-3 py-1.5 text-[12px] font-semibold ${getStatusBadgeClasses(
-              order.status,
-            )}`}
-          >
-            <span className="mr-2 inline-flex h-2.5 w-2.5 rounded-full bg-current/80" />
-            {toTitleCase(order.status)}
+          <span className="inline-flex items-center gap-[10px] rounded-full bg-[#DDFBEA] px-[14px] py-[8px] text-[14px] font-medium leading-none text-[#249A62]">
+            <span className="inline-flex h-[10px] w-[10px] rounded-full bg-[#249A62]" />
+            Completed
           </span>
         </div>
 
-        <StatusStepper status={order.status} timeline={stepTimeline} />
+        <StatusStepper
+          status={order.status}
+          timeline={stepTimeline}
+          activeStepIcon={hasSubmittedReview ? "check" : "number"}
+        />
 
         <SectionCard title="Supplier Info">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-center gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[14px] bg-[#edf8ef] text-[20px] font-semibold text-[#2f7a45]">
+            <div className={BUYER_SUPPLIER_ROW_CLASS}>
+              <div className={BUYER_SUPPLIER_AVATAR_CLASS}>
                 {getInitials(supplierName)}
               </div>
 
               <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-[22px] font-semibold tracking-[-0.03em] text-[#223654]">
+                <div className="flex flex-wrap items-center gap-[8px]">
+                  <p className="text-[15px] font-semibold text-[#223654]">
                     {supplierName}
                   </p>
-                  <span className="inline-flex items-center rounded-full border border-[#9fd2ae] bg-[#f3fbf5] px-2.5 py-1 text-[11px] font-medium text-[#2f7a45]">
-                    Partner Supplier
-                  </span>
+                  {order.supplierInfo?.verifiedBadge ? <VerifiedBadge /> : null}
                 </div>
 
-                <p className="mt-1 text-[14px] text-[#8c97a7]">
-                  {order.supplierInfo?.location ?? "Location not available"}
+                <p className={BUYER_SUPPLIER_SUBTITLE_CLASS}>
+                  {supplierSubtitle || "Supplier details will appear once available."}
                 </p>
               </div>
             </div>
 
             <Link
               href={supplierProfileHref}
-              className="inline-flex h-10 items-center justify-center rounded-[10px] border border-[#d9e1ec] bg-white px-4 text-[13px] font-medium text-[#526176] transition hover:border-[#c5d0df] hover:text-[#223654]"
+              className={BUYER_SUPPLIER_PROFILE_BUTTON_CLASS}
             >
               View Profile
             </Link>
@@ -2112,35 +1614,40 @@ export default async function BuyerPurchaseOrderDetailPage({
         </SectionCard>
 
         <SectionCard title="Order Summary">
-          <div className="overflow-hidden rounded-[16px] border border-[#edf1f7]">
-            <div className="grid grid-cols-[minmax(0,1.4fr)_0.6fr_0.7fr_0.7fr] gap-4 border-b border-[#edf1f7] bg-[#fbfcfe] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#b0bac7]">
+          <div>
+            <div className="grid grid-cols-[2.7fr_0.55fr_0.75fr_0.7fr] gap-[8px] border-b border-[#EDF2F7] px-[14px] pb-[12px] pt-[3px] text-[14px] font-medium uppercase tracking-[0.02em] text-[#A4AFBF]">
               <span>Item</span>
-              <span className="text-right">Qty</span>
+              <span className="text-center">Qty</span>
               <span className="text-right">Unit Price</span>
               <span className="text-right">Total</span>
             </div>
 
-            <div className="grid grid-cols-[minmax(0,1.4fr)_0.6fr_0.7fr_0.7fr] gap-4 px-4 py-4 text-[15px] text-[#223654]">
-              <span className="font-semibold">{order.productName}</span>
-              <span className="text-right text-[#8c97a7]">{order.quantityLabel}</span>
-              <span className="text-right text-[#8c97a7]">
+            <div className="grid grid-cols-[2.7fr_0.55fr_0.75fr_0.7fr] gap-[8px] border-b border-[#EDF2F7] px-[14px] py-[18px] text-[15px] text-[#334155]">
+              <span className="text-[16px] font-medium text-[#374151]">{order.productName}</span>
+              <span className="text-center font-normal text-[#8E99AB]">{order.quantityLabel}</span>
+              <span className="text-right font-normal text-[#8E99AB]">
                 {formatCurrency(order.pricePerUnit)}
+                {order.unit ? ` / ${order.unit}` : ""}
               </span>
-              <span className="text-right font-semibold">{formatCurrency(order.subtotal)}</span>
+              <span className="text-right font-normal text-[#374151]">
+                {formatCurrency(order.subtotal)}
+              </span>
             </div>
 
-            <div className="border-t border-[#edf1f7] px-4 py-3 text-[14px]">
-              <div className="flex items-center justify-between py-1 text-[#b0bac7]">
-                <span>Subtotal</span>
-                <span>{formatCurrency(order.subtotal)}</span>
+            <div className="space-y-[8px] px-[14px] py-[16px]">
+              <div className="grid grid-cols-[2.7fr_0.55fr_0.75fr_0.7fr] items-center gap-[8px] font-normal text-[#B5BCC8]">
+                <span className="col-span-3 text-[15px]">Subtotal</span>
+                <span className="text-right text-[15px]">{formatCurrency(order.subtotal)}</span>
               </div>
-              <div className="flex items-center justify-between py-1 text-[#b0bac7]">
-                <span>Delivery Fee</span>
-                <span>{deliveryFeeLabel}</span>
+              <div className="grid grid-cols-[2.7fr_0.55fr_0.75fr_0.7fr] items-center gap-[8px] font-normal text-[#B5BCC8]">
+                <span className="col-span-3 text-[15px]">Delivery Fee</span>
+                <span className="text-right text-[15px]">{deliveryFeeLabel}</span>
               </div>
-              <div className="mt-2 flex items-center justify-between border-t border-[#edf1f7] pt-3 text-[16px] font-semibold text-[#223654]">
-                <span>Total</span>
-                <span>{formatCurrency(orderSummaryTotal)}</span>
+              <div className="mt-[14px] grid grid-cols-[2.7fr_0.55fr_0.75fr_0.7fr] items-center gap-[8px] border-t border-[#EDF2F7] pt-[14px] text-[15px] font-semibold text-[#334155]">
+                <span className="col-span-3">TOTAL</span>
+                <span className="text-right text-[17px] font-semibold">
+                  {formatCurrency(orderSummaryTotal)}
+                </span>
               </div>
             </div>
           </div>
@@ -2160,7 +1667,7 @@ export default async function BuyerPurchaseOrderDetailPage({
             />
           </div>
 
-          <div className="mt-5 border-t border-[#edf1f7] pt-5">
+          <div className="mt-[18px]">
             <DetailMetric
               label="Notes From Buyer"
               value={notesFromBuyer || "No additional instructions provided."}
@@ -2287,13 +1794,13 @@ export default async function BuyerPurchaseOrderDetailPage({
           <div className="flex flex-wrap items-center gap-3">
             <Link
               href={messageSupplierHref}
-              className="inline-flex h-11 items-center justify-center rounded-[12px] border border-[#d9e1ec] bg-white px-5 text-[14px] font-medium text-[#526176] transition hover:border-[#c5d0df] hover:text-[#223654]"
+              className="inline-flex h-[44px] items-center justify-center rounded-[10px] border border-[#D6DFEA] bg-white px-[22px] text-[14px] font-medium text-[#8A97A8] transition hover:border-[#B9C7D8] hover:text-[#243B68]"
             >
               Message Supplier
             </Link>
             <Link
               href="/buyer/purchase-orders"
-              className="inline-flex h-11 items-center justify-center rounded-[12px] border border-[#d9e1ec] bg-white px-5 text-[14px] font-medium text-[#526176] transition hover:border-[#c5d0df] hover:text-[#223654]"
+              className="inline-flex h-[44px] items-center justify-center rounded-[10px] border border-[#D6DFEA] bg-white px-[22px] text-[14px] font-medium text-[#8A97A8] transition hover:border-[#B9C7D8] hover:text-[#243B68]"
             >
               Back to Orders
             </Link>
@@ -2302,7 +1809,7 @@ export default async function BuyerPurchaseOrderDetailPage({
           {canCancelOrder ? (
             <Link
               href={buildDetailHref(order.poId, { modal: "cancel" })}
-              className="inline-flex h-11 items-center justify-center rounded-[12px] px-5 text-[14px] font-semibold text-[#ff5a47] transition hover:bg-[#fff5f3]"
+              className={BUYER_PO_CANCEL_BUTTON_CLASS}
             >
               Cancel Order
             </Link>

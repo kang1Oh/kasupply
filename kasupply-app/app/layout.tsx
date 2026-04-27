@@ -1,11 +1,7 @@
 import type { Metadata } from "next";
-import { Outfit } from "next/font/google";
+import "@fontsource-variable/outfit";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
-
-const outfit = Outfit({
-  subsets: ["latin"],
-});
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -24,7 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${outfit.className} antialiased`}>
+      <body className="antialiased">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

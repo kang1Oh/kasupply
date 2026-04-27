@@ -125,7 +125,7 @@ export function SupplierBusinessProfileForm({
 
   return (
     <form
-      className="space-y-[12px]"
+      className="space-y-[18px]"
       action={(formData) => {
         setError("");
 
@@ -145,8 +145,8 @@ export function SupplierBusinessProfileForm({
       <input type="hidden" name="province" value={businessProfile.province} />
       <input type="hidden" name="region" value={businessProfile.region} />
 
-      <section className="rounded-[18px] border border-[#E3EAF2] bg-white px-[18px] py-[16px] shadow-[0_4px_14px_rgba(15,23,42,0.03)]">
-        <div className="flex flex-col gap-[12px] sm:flex-row sm:items-center sm:justify-between">
+      <section className="rounded-[24px] border border-[#E6ECF3] bg-white px-[22px] py-[22px] shadow-[0_3px_10px_rgba(15,23,42,0.025)]">
+        <div className="flex flex-col gap-[16px] sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-[14px]">
             <div className="flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-full bg-[#DDF7E8] text-[17px] font-medium text-[#2E7D5B]">
               {avatarInitials}
@@ -160,7 +160,7 @@ export function SupplierBusinessProfileForm({
             </div>
           </div>
 
-          <label className="inline-flex h-[38px] cursor-pointer items-center justify-center rounded-[10px] border border-[#D8E1ED] bg-white px-[18px] text-[13px] font-medium text-[#42536B] transition hover:bg-[#F8FAFC]">
+          <label className="inline-flex h-[40px] cursor-pointer items-center justify-center rounded-[10px] border border-[#D8E1ED] bg-white px-[18px] text-[15px] font-medium text-[#42536B] transition hover:bg-[#F8FAFC]">
             Change photo
             <input
               key={fileInputKey}
@@ -173,28 +173,28 @@ export function SupplierBusinessProfileForm({
         </div>
       </section>
 
-      <section className="rounded-[16px] border border-[#E8EDF5] bg-white shadow-[0_6px_18px_rgba(15,23,42,0.03)]">
-        <div className="border-b border-[#E9EEF5] px-[18px] pb-[18px] pt-[14px]">
-          <h2 className="text-[13px] font-semibold uppercase tracking-[0.02em] text-[#2E446A]">
+      <section className="rounded-[24px] border border-[#E6ECF3] bg-white shadow-[0_3px_10px_rgba(15,23,42,0.025)]">
+        <div className="border-b border-[#E9EEF5] px-[22px] py-[18px]">
+          <h2 className="text-[16px] font-semibold uppercase tracking-[0.02em] text-[#2E446A]">
             Basic Information
           </h2>
         </div>
 
-        <div className="grid gap-[12px] px-[18px] py-[16px] md:grid-cols-2">
+        <div className="grid gap-[16px] px-[22px] py-[22px] md:grid-cols-2">
           <label className="block">
-            <span className="mb-[6px] block text-[12px] font-medium uppercase text-[#A6AFBE]">
+            <span className="mb-[6px] block text-[14px] font-medium uppercase text-[#A6AFBE]">
               Business Name
             </span>
             <input
               name="business_name"
               value={formState.businessName}
               onChange={(event) => updateField("businessName", event.target.value)}
-              className="h-[42px] w-full rounded-[6px] border border-[#D7DFEB] bg-white px-[16px] text-[15px] text-[#334155] outline-none transition focus:border-[#9CB0CB]"
+              className="h-[50px] w-full rounded-[10px] border border-[#D7DFEB] bg-white px-[16px] text-[16px] text-[#334155] outline-none transition focus:border-[#9CB0CB]"
             />
           </label>
 
           <label className="block">
-            <span className="mb-[6px] block text-[12px] font-medium uppercase text-[#A6AFBE]">
+            <span className="mb-[6px] block text-[14px] font-medium uppercase text-[#A6AFBE]">
               Business Type
             </span>
             <div className="relative">
@@ -202,7 +202,7 @@ export function SupplierBusinessProfileForm({
                 name="business_type"
                 value={normalizedBusinessType}
                 onChange={(event) => updateField("businessType", event.target.value)}
-                className="h-[42px] w-full appearance-none rounded-[6px] border border-[#D7DFEB] bg-white px-[16px] pr-[40px] text-[15px] text-[#334155] outline-none transition focus:border-[#9CB0CB]"
+                className="h-[50px] w-full appearance-none rounded-[10px] border border-[#D7DFEB] bg-white px-[16px] pr-[40px] text-[16px] text-[#334155] outline-none transition focus:border-[#9CB0CB]"
               >
                 <option value="" disabled>
                   Select business type
@@ -229,55 +229,55 @@ export function SupplierBusinessProfileForm({
           </label>
 
           <label className="block md:col-span-2">
-            <span className="mb-[6px] block text-[12px] font-medium uppercase text-[#A6AFBE]">
+            <span className="mb-[6px] block text-[14px] font-medium uppercase text-[#A6AFBE]">
               Business Location
             </span>
             <input
               name="business_location"
               value={formState.businessLocation}
               onChange={(event) => updateField("businessLocation", event.target.value)}
-              className="h-[42px] w-full rounded-[6px] border border-[#D7DFEB] bg-white px-[16px] text-[15px] text-[#334155] outline-none transition focus:border-[#9CB0CB]"
+              className="h-[50px] w-full rounded-[10px] border border-[#D7DFEB] bg-white px-[16px] text-[16px] text-[#334155] outline-none transition focus:border-[#9CB0CB]"
             />
           </label>
 
           <label className="block">
-            <span className="mb-[6px] block text-[12px] font-medium uppercase text-[#A6AFBE]">
+            <span className="mb-[6px] block text-[14px] font-medium uppercase text-[#A6AFBE]">
               Email Address
             </span>
             <input
               name="email_address"
               value={formState.emailAddress}
               onChange={(event) => updateField("emailAddress", event.target.value)}
-              className="h-[42px] w-full rounded-[6px] border border-[#D7DFEB] bg-white px-[16px] text-[15px] text-[#334155] outline-none transition focus:border-[#9CB0CB]"
+              className="h-[50px] w-full rounded-[10px] border border-[#D7DFEB] bg-white px-[16px] text-[16px] text-[#334155] outline-none transition focus:border-[#9CB0CB]"
             />
           </label>
 
           <label className="block">
-            <span className="mb-[6px] block text-[12px] font-medium uppercase text-[#A6AFBE]">
+            <span className="mb-[6px] block text-[14px] font-medium uppercase text-[#A6AFBE]">
               Contact Name
             </span>
             <input
               name="contact_name"
               value={formState.contactName}
               onChange={(event) => updateField("contactName", event.target.value)}
-              className="h-[42px] w-full rounded-[6px] border border-[#D7DFEB] bg-white px-[16px] text-[15px] text-[#334155] outline-none transition focus:border-[#9CB0CB]"
+              className="h-[50px] w-full rounded-[10px] border border-[#D7DFEB] bg-white px-[16px] text-[16px] text-[#334155] outline-none transition focus:border-[#9CB0CB]"
             />
           </label>
 
           <label className="block md:col-span-2">
-            <span className="mb-[6px] block text-[12px] font-medium uppercase text-[#A6AFBE]">
+            <span className="mb-[6px] block text-[14px] font-medium uppercase text-[#A6AFBE]">
               Contact Number
             </span>
             <input
               name="contact_number"
               value={formState.contactNumber}
               onChange={(event) => updateField("contactNumber", event.target.value)}
-              className="h-[42px] w-full rounded-[6px] border border-[#D7DFEB] bg-white px-[16px] text-[15px] text-[#334155] outline-none transition focus:border-[#9CB0CB]"
+              className="h-[45px] w-full rounded-[6px] border border-[#D7DFEB] bg-white px-[16px] text-[16px] text-[#334155] outline-none transition focus:border-[#9CB0CB]"
             />
           </label>
 
           <label className="block md:col-span-2">
-            <span className="mb-[6px] block text-[12px] font-medium uppercase text-[#A6AFBE]">
+            <span className="mb-[6px] block text-[14px] font-medium uppercase text-[#A6AFBE]">
               Business Description
             </span>
             <textarea
@@ -285,25 +285,25 @@ export function SupplierBusinessProfileForm({
               rows={5}
               value={formState.businessDescription}
               onChange={(event) => updateField("businessDescription", event.target.value)}
-              className="w-full rounded-[6px] border border-[#D7DFEB] bg-white px-[16px] py-[12px] text-[15px] leading-[1.55] text-[#334155] outline-none transition focus:border-[#9CB0CB]"
+              className="min-h-[120px] w-full rounded-[10px] border border-[#D7DFEB] bg-white px-[16px] py-[14px] text-[16px] leading-[1.55] text-[#334155] outline-none transition focus:border-[#9CB0CB]"
             />
           </label>
         </div>
       </section>
 
-      <section className="rounded-[16px] border border-[#E8EDF5] bg-white shadow-[0_6px_18px_rgba(15,23,42,0.03)]">
-        <div className="border-b border-[#E9EEF5] px-[18px] py-[14px]">
-          <h2 className="text-[13px] font-semibold uppercase tracking-[0.02em] text-[#2E446A]">
+      <section className="rounded-[24px] border border-[#E6ECF3] bg-white shadow-[0_3px_10px_rgba(15,23,42,0.025)]">
+        <div className="border-b border-[#E9EEF5] px-[22px] py-[18px]">
+          <h2 className="text-[16px] font-semibold uppercase tracking-[0.02em] text-[#2E446A]">
             Categories Supplied
           </h2>
         </div>
 
-        <div className="px-[18px] py-[18px]">
+        <div className="px-[22px] py-[22px]">
           <p className="text-[14px] text-[#98A2B3]">
             Select the raw material categories you can supply to buyers.
           </p>
 
-          <div className="mt-[14px] flex flex-wrap gap-[8px]">
+          <div className="mt-[16px] flex flex-wrap gap-[10px]">
             {categories.map((category) => {
               const selected = selectedCategoryIds.includes(category.categoryId);
 
@@ -312,7 +312,7 @@ export function SupplierBusinessProfileForm({
                   key={category.categoryId}
                   type="button"
                   onClick={() => toggleCategory(category.categoryId)}
-                  className={`inline-flex h-[38px] items-center rounded-full border px-[14px] text-[13px] font-medium transition ${
+                  className={`inline-flex h-[40px] items-center rounded-full border px-[16px] text-[15px] font-medium transition ${
                     selected
                       ? "border-[#274C7D] bg-[#274C7D] text-white"
                       : "border-[#AFC0D8] bg-white text-[#35516F] hover:bg-[#F7FAFD]"
@@ -325,13 +325,13 @@ export function SupplierBusinessProfileForm({
           </div>
 
           <label className="mt-[18px] block">
-            <span className="mb-[8px] block text-[15px] font-medium text-[#334155]">Others</span>
+            <span className="mb-[8px] block text-[15px] font-normal text-[#334155]">Others</span>
             <input
               name="other_categories"
               value={formState.otherCategory}
               onChange={(event) => updateField("otherCategory", event.target.value)}
               placeholder="Enter Category"
-              className="h-[46px] w-full rounded-[10px] border border-[#D7DFEB] bg-white px-[18px] text-[15px] text-[#334155] outline-none transition placeholder:text-[#AAB4C3] focus:border-[#9CB0CB]"
+              className="h-[46px] w-full rounded-[10px] border border-[#D7DFEB] bg-white px-[18px] text-[15px] font-normal text-[#334155] outline-none transition placeholder:text-[#AAB4C3] focus:border-[#9CB0CB]"
             />
           </label>
         </div>
@@ -339,21 +339,21 @@ export function SupplierBusinessProfileForm({
 
       {error ? <p className="text-[12px] text-[#D92D20]">{error}</p> : null}
 
-      <div className="flex flex-col gap-3 pt-[6px] sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-[13px] text-[#98A2B3]">Changes are not saved automatically.</p>
+      <div className="flex flex-col gap-3 pt-[8px] sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-[14px] text-[#98A2B3]">Changes are not saved automatically.</p>
 
         <div className="flex items-center justify-end gap-[8px]">
           <button
             type="button"
             onClick={handleDiscard}
-            className="inline-flex h-[33px] items-center justify-center rounded-[6px] border border-[#D7DFEB] bg-white px-[12px] text-[13px] font-medium text-[#5C6A7E] transition hover:bg-[#F8FAFC]"
+            className="inline-flex h-[50px] items-center justify-center rounded-[10px] border border-[#D7DFEB] bg-white px-[18px] text-[15px] font-medium text-[#5C6A7E] transition hover:bg-[#F8FAFC]"
           >
             Discard Changes
           </button>
           <button
             type="submit"
             disabled={isPending}
-            className="inline-flex h-[33px] items-center justify-center rounded-[6px] bg-[#2F6CF6] px-[12px] text-[13px] font-medium text-white transition hover:bg-[#245CE0] disabled:cursor-not-allowed disabled:opacity-70"
+            className="inline-flex h-[50px] items-center justify-center rounded-[10px] bg-[#2F6CF6] px-[18px] text-[15px] font-medium text-white transition hover:bg-[#245CE0] disabled:cursor-not-allowed disabled:opacity-70"
           >
             {isPending ? "Saving..." : "Save Changes"}
           </button>
