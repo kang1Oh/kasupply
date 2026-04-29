@@ -96,7 +96,7 @@ async function BuyerLayoutContent({ children }: { children: ReactNode }) {
         accessLinks={accessLinks}
         unreadNotificationCount={unreadNotificationCount}
       />
-      <main className="mx-auto w-full max-w-[1120px] flex-1 px-4 py-5 sm:px-5 lg:px-6">
+      <main className="mx-auto w-full max-w-[1120px] flex-1 px-4 py-3 sm:px-5 lg:px-6">
         {children}
       </main>
       <BuyerFooter />

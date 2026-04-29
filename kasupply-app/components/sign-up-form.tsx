@@ -1,56 +1,30 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { UserRound, Mail, Eye, EyeOff } from "lucide-react";
 
 type ExistingAppUserRow = {
   user_id: string;
 };
 
 function UserIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6 text-[#a7acb6]" aria-hidden="true">
-      <path
-        d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-3.87 0-7 2.01-7 4.5 0 .28.22.5.5.5h13a.5.5 0 0 0 .5-.5C19 16.01 15.87 14 12 14Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
+  return <UserRound className="h-5 w-5 stroke-[1.8] text-[#a7acb6]" />;
 }
 
 function MailIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6 text-[#a7acb6]" aria-hidden="true">
-      <path
-        d="M4.5 6A2.5 2.5 0 0 0 2 8.5v7A2.5 2.5 0 0 0 4.5 18h15a2.5 2.5 0 0 0 2.5-2.5v-7A2.5 2.5 0 0 0 19.5 6Zm0 1h15a1.47 1.47 0 0 1 .95.34L12 13.9 3.55 7.34A1.47 1.47 0 0 1 4.5 7Zm-1.5 8.5V8.4l8.39 6.52a1 1 0 0 0 1.22 0L21 8.4v7.1a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 15.5Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
+  return <Mail className="h-5 w-5 stroke-[1.8] text-[#a7acb6]" />;
 }
 
 function PasswordIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6 text-[#a7acb6]" aria-hidden="true">
-      <path
-        d="M4.7 4.7a1 1 0 0 0-1.4 1.4l2.08 2.08A8.73 8.73 0 0 0 2 12s3.5 6 10 6a9.6 9.6 0 0 0 4.27-.97l2.03 2.03a1 1 0 1 0 1.4-1.4Zm7.3 10.3a3 3 0 0 1-3-3 2.9 2.9 0 0 1 .22-1.1l3.88 3.88A2.9 2.9 0 0 1 12 15Zm0-9c-1.64 0-3.12.39-4.44 1.01l1.52 1.52A4.9 4.9 0 0 1 12 8a4 4 0 0 1 4 4c0 .66-.16 1.28-.44 1.82l1.53 1.53A10.95 10.95 0 0 0 22 12s-3.5-6-10-6Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
+  return <EyeOff className="h-5 w-5 stroke-[1.8] text-[#a7acb6]" />;
 }
 
 function EyeOpenIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6 text-[#a7acb6]" aria-hidden="true">
-      <path
-        d="M12 5c-6.5 0-10 7-10 7s3.5 7 10 7 10-7 10-7-3.5-7-10-7Zm0 11a4 4 0 1 1 4-4 4 4 0 0 1-4 4Zm0-6.2A2.2 2.2 0 1 0 14.2 12 2.2 2.2 0 0 0 12 9.8Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
+  return <Eye className="h-5 w-5 stroke-[1.8] text-[#a7acb6]" />;
 }
 
 function Field({
@@ -60,6 +34,7 @@ function Field({
   type,
   value,
   onChange,
+  onBlur,
   icon,
   autoComplete,
   rightButton,
@@ -70,30 +45,38 @@ function Field({
   type: string;
   value: string;
   onChange: (value: string) => void;
+  onBlur?: () => void;
   icon: React.ReactNode;
   autoComplete?: string;
   rightButton?: React.ReactNode;
 }) {
   return (
-    <div className="mx-auto w-full max-w-[460px] space-y-1.5">
-      <label
-        htmlFor={id}
-        className="ml-6 inline-block bg-white px-1 text-[16px] font-medium leading-none text-[#334a6f]"
-      >
-        {label}
-      </label>
-      <div className="-mt-2 flex h-[52px] w-full max-w-[460px] items-center rounded-full border border-[#445f88] bg-white px-6">
-        <input
-          id={id}
-          type={type}
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder={placeholder}
-          autoComplete={autoComplete}
-          required
-          className="h-full w-full border-0 bg-transparent text-[16px] text-slate-700 outline-none placeholder:text-[#a7a7a7]"
-        />
-        <span className="ml-4 shrink-0">{rightButton ?? icon}</span>
+    <div className="mx-auto w-full max-w-[530px]">
+      <div className="relative">
+        <label
+          htmlFor={id}
+          className="absolute -top-[10px] left-6 z-10 bg-white px-2 text-[17px] font-semibold leading-none text-[#294773]"
+        >
+          {label}
+        </label>
+
+        <div className="relative h-[64px] w-full rounded-full border border-[#294773] bg-white">
+          <input
+            id={id}
+            type={type}
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            onBlur={onBlur}
+            placeholder={placeholder}
+            autoComplete={autoComplete}
+            required
+            className="h-full w-full rounded-full border-0 bg-transparent pl-7 pr-14 text-[17px] font-normal text-[#294773] outline-none placeholder:font-light placeholder:text-[#a8a8a8]"          
+            />
+
+          <span className="absolute right-6 top-1/2 flex -translate-y-1/2 items-center justify-center text-[#a7acb6]">
+            {rightButton ?? icon}
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -145,11 +128,83 @@ export function SignUpForm() {
     return existingAppUser;
   };
 
+  const toProperName = (value: string) =>
+    value
+      .trim()
+      .replace(/\s+/g, " ")
+      .toLowerCase()
+      .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+  const getPasswordError = (value: string) => {
+    if (value.length < 8) {
+      return "Password must be at least 8 characters long.";
+    }
+
+    if (!/[A-Z]/.test(value)) {
+      return "Password must include at least one uppercase letter.";
+    }
+
+    if (!/[a-z]/.test(value)) {
+      return "Password must include at least one lowercase letter.";
+    }
+
+    if (!/[0-9]/.test(value)) {
+      return "Password must include at least one number.";
+    }
+
+    return "";
+  };
+
+const passwordChecks = [
+  {
+    label: "At least 8 characters",
+    valid: password.length >= 8,
+  },
+  {
+    label: "Uppercase letter (A–Z)",
+    valid: /[A-Z]/.test(password),
+  },
+  {
+    label: "Lowercase letter (a–z)",
+    valid: /[a-z]/.test(password),
+  },
+  {
+    label: "Number (0–9)",
+    valid: /[0-9]/.test(password),
+  },
+];
+
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setMessage("");
     setIsError(false);
+
+    const formattedName = toProperName(name);
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!formattedName) {
+      setIsError(true);
+      setMessage("Please enter your full name.");
+      setLoading(false);
+      return;
+    }
+
+    if (!normalizedEmail) {
+      setIsError(true);
+      setMessage("Please enter your email address.");
+      setLoading(false);
+      return;
+    }
+
+    const passwordError = getPasswordError(password);
+
+    if (passwordError) {
+      setIsError(true);
+      setMessage(passwordError);
+      setLoading(false);
+      return;
+    }
 
     if (password !== repeatPassword) {
       setIsError(true);
@@ -158,13 +213,16 @@ export function SignUpForm() {
       return;
     }
 
+    setName(formattedName);
+    setEmail(normalizedEmail);
+
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
+        email: normalizedEmail,
         password,
         options: {
           data: {
-            full_name: name,
+            full_name: formattedName,
           },
         },
       });
@@ -173,7 +231,7 @@ export function SignUpForm() {
         if (authError.message.toLowerCase().includes("already registered")) {
           const { error: signInError, data: signInData } =
             await supabase.auth.signInWithPassword({
-              email,
+              email: normalizedEmail,
               password,
             });
 
@@ -224,118 +282,156 @@ export function SignUpForm() {
   };
 
   return (
-    <div className="grid min-h-screen w-full bg-[#294773] lg:grid-cols-[1.14fr_0.86fr]">
-      <div className="hidden bg-[#294773] lg:block" />
+    <div className="relative min-h-screen w-full overflow-hidden bg-[#294773]">
+      <div className="absolute inset-y-0 left-0 hidden w-[57%] bg-[url('/images/login-bg.png')] bg-cover bg-left bg-no-repeat lg:block" />
 
-      <div className="flex min-h-screen items-center justify-center rounded-l-[24px] bg-white px-8 py-10 sm:px-10">
-        <div className="w-full max-w-[460px]">
-          <div className="text-center">
-            <h1 className="text-[22px] font-semibold leading-none text-[#3d4659] sm:text-[28px]">
-              Create New Account
-            </h1>
-            <p className="mt-2 text-[20px] font-medium leading-none text-[#ff6f06]">
-              Join KaSupply today
+      <div className="relative z-10 grid min-h-screen w-full lg:grid-cols-[1.14fr_0.86fr]">
+        <div className="hidden lg:block" />
+
+        <div className="-ml-6 flex min-h-screen items-start justify-center rounded-l-[24px] bg-white px-8 pt-10 pb-10 sm:px-10">
+          <div className="w-full max-w-[560px]">
+            <div className="mx-auto flex h-36 w-36 items-center justify-center">
+              <Image
+                src="/images/kasupply-logo.svg"
+                alt="KaSupply logo"
+                width={176}
+                height={176}
+                className="h-auto w-[8.75rem] object-contain drop-shadow-[0_14px_24px_rgba(37,61,98,0.16)]"
+                priority
+              />
+            </div>
+
+            <div className="mt-2 text-center">
+              <h1 className="text-[22px] font-semibold leading-none text-[#3d4659] sm:text-[28px]">
+                Create New Account
+              </h1>
+              <p className="mt-2 text-[20px] font-medium leading-none text-[#ff6f06]">
+                Join KaSupply today
+              </p>
+            </div>
+
+            <form onSubmit={handleSignUp} className="mt-10 flex flex-col items-center gap-5">
+              <Field
+                id="name"
+                label="Full Name"
+                placeholder="Enter your full name"
+                type="text"
+                value={name}
+                onChange={setName}
+                onBlur={() => setName(toProperName(name))}
+                autoComplete="name"
+                icon={<UserIcon />}
+              />
+
+              <Field
+                id="email"
+                label="Email Address"
+                placeholder="Enter your email"
+                type="email"
+                value={email}
+                onChange={setEmail}
+                autoComplete="email"
+                icon={<MailIcon />}
+              />
+
+              <Field
+                id="password"
+                label="Password"
+                placeholder="Enter your password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={setPassword}
+                autoComplete="new-password"
+                icon={<PasswordIcon />}
+                rightButton={
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((current) => !current)}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full transition hover:bg-slate-100"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-pressed={showPassword}
+                  >
+                    {showPassword ? <EyeOpenIcon /> : <PasswordIcon />}
+                  </button>
+                }
+              />
+
+              {password ? (
+                <div className="-mt-1 w-full max-w-[530px] rounded-2xl border border-[#dfe5ef] bg-[#f8fafc] px-5 py-3">
+                  <p className="mb-2 text-[15px] font-semibold text-[#294773]">
+                    Password must include:
+                  </p>
+
+                  <div className="grid gap-1 text-[14px]">
+                    {passwordChecks.map((check) => (
+                      <p
+                        key={check.label}
+                        className={check.valid ? "text-green-600" : "text-[#7b8494]"}
+                      >
+                        {check.valid ? "✓" : "•"} {check.label}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              <Field
+                id="repeat-password"
+                label="Confirm Password"
+                placeholder="Enter your password again"
+                type={showRepeatPassword ? "text" : "password"}
+                value={repeatPassword}
+                onChange={setRepeatPassword}
+                autoComplete="new-password"
+                icon={<PasswordIcon />}
+                rightButton={
+                  <button
+                    type="button"
+                    onClick={() => setShowRepeatPassword((current) => !current)}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full transition hover:bg-slate-100"
+                    aria-label={showRepeatPassword ? "Hide password" : "Show password"}
+                    aria-pressed={showRepeatPassword}
+                  >
+                    {showRepeatPassword ? <EyeOpenIcon /> : <PasswordIcon />}
+                  </button>
+                }
+              />
+
+              {message ? (
+                <div
+                  className={`-mt-1 w-full max-w-[530px] rounded-2xl px-5 py-3 text-sm ${
+                    isError
+                      ? "border border-red-200 bg-red-50 text-red-600"
+                      : "border border-green-200 bg-green-50 text-green-700"
+                  }`}
+                >
+                  {message}
+                </div>
+              ) : null}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="mt-4 h-[54px] w-full rounded-full bg-[#294773] text-[18px] font-semibold text-white transition-colors duration-200 hover:bg-[#1E3A5F]"
+              >
+                {loading ? "Creating account..." : "Create Account"}
+              </button>
+            </form>
+
+            <p className="mx-auto mt-2 max-w-[530px] text-center text-[15px] text-[#3f4a5e]">
+              By signing up, you agree to KaSupply&apos;s Terms &amp; Privacy Policy
+            </p>
+
+            <p className="mx-auto mt-10 max-w-[530px] text-center text-[15px] text-[#3f4a5e]">
+              Already have an account?{" "}
+              <Link
+                href="/auth/login"
+                className="font-semibold text-[#ff6b00] transition-colors duration-200 hover:text-[#d94f00] hover:underline"
+              >
+                Log In
+              </Link>
             </p>
           </div>
-
-          <form onSubmit={handleSignUp} className="mt-10 flex flex-col items-center space-y-6">
-            <Field
-              id="name"
-              label="Full Name"
-              placeholder="Full Name"
-              type="text"
-              value={name}
-              onChange={setName}
-              autoComplete="name"
-              icon={<UserIcon />}
-            />
-
-            <Field
-              id="email"
-              label="Email Address"
-              placeholder="username@mail.com"
-              type="email"
-              value={email}
-              onChange={setEmail}
-              autoComplete="email"
-              icon={<MailIcon />}
-            />
-
-            <Field
-              id="password"
-              label="Password"
-              placeholder="Password"
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={setPassword}
-              autoComplete="new-password"
-              icon={<PasswordIcon />}
-              rightButton={
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((current) => !current)}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-full transition hover:bg-slate-100"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  aria-pressed={showPassword}
-                >
-                  {showPassword ? <EyeOpenIcon /> : <PasswordIcon />}
-                </button>
-              }
-            />
-
-            <Field
-              id="repeat-password"
-              label="Confirm Password"
-              placeholder="Enter password again"
-              type={showRepeatPassword ? "text" : "password"}
-              value={repeatPassword}
-              onChange={setRepeatPassword}
-              autoComplete="new-password"
-              icon={<PasswordIcon />}
-              rightButton={
-                <button
-                  type="button"
-                  onClick={() => setShowRepeatPassword((current) => !current)}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-full transition hover:bg-slate-100"
-                  aria-label={showRepeatPassword ? "Hide password" : "Show password"}
-                  aria-pressed={showRepeatPassword}
-                >
-                  {showRepeatPassword ? <EyeOpenIcon /> : <PasswordIcon />}
-                </button>
-              }
-            />
-
-            {message ? (
-              <div
-                className={`w-full max-w-[520px] rounded-2xl px-5 py-3 text-sm ${
-                  isError
-                    ? "border border-red-200 bg-red-50 text-red-600"
-                    : "border border-green-200 bg-green-50 text-green-700"
-                }`}
-              >
-                {message}
-              </div>
-            ) : null}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="mt-5 h-[54px] w-full max-w-[460px] rounded-full bg-[#294773] text-[17px] font-semibold text-white transition hover:bg-[#233d63] disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              {loading ? "Creating account..." : "Create Account"}
-            </button>
-          </form>
-
-          <p className="mx-auto mt-7 max-w-[460px] text-center text-[15px] font-medium leading-6 text-[#3d4659]">
-            By signing up, you agree to KaSupply&apos;s Terms &amp; Privacy Policy
-          </p>
-
-          <p className="mx-auto mt-12 max-w-[460px] text-center text-[15px] text-[#3d4659]">
-            Already have an account?{" "}
-            <Link href="/auth/login" className="font-semibold text-[#ff6f06]">
-              Log In
-            </Link>
-          </p>
         </div>
       </div>
     </div>

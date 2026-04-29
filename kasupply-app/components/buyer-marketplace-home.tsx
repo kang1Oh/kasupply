@@ -45,7 +45,7 @@ function FilterChip({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full px-3.5 py-1.5 text-[13px] font-medium transition ${
+      className={`shrink-0 rounded-full px-3.5 py-1.5 text-[14px] font-normal transition ${
         active
           ? "bg-[#294773] text-white"
           : "border border-[#e2e8f0] bg-white text-[#6b7280] hover:border-[#c9d4e5] hover:text-[#223654]"
@@ -64,6 +64,7 @@ export function BuyerMarketplaceHome({
   const [heroSearch, setHeroSearch] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("All");
   const [sortBy, setSortBy] = useState("name");
+  const [sortOpen, setSortOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(6);
   const [recommendedPage, setRecommendedPage] = useState(0);
 
@@ -136,22 +137,23 @@ export function BuyerMarketplaceHome({
 
           return a.name.localeCompare(b.name);
         })
-        .slice(0, 3),
+        .slice(0, 4),
     [suppliers]
   );
 
   const recommendedPages = useMemo(() => {
     const pages: BuyerHomepageSupplier[][] = [];
+    const maxStartIndex = Math.max(0, recommendedSuppliers.length - 3);
 
-    for (let index = 0; index < recommendedSuppliers.length; index += 2) {
-      pages.push(recommendedSuppliers.slice(index, index + 2));
+    for (let index = 0; index <= maxStartIndex; index += 1) {
+      pages.push(recommendedSuppliers.slice(index, index + 3));
     }
 
     return pages;
   }, [recommendedSuppliers]);
 
   const visibleRecommendedSuppliers =
-    recommendedPages[recommendedPage] ?? recommendedSuppliers.slice(0, 2);
+    recommendedPages[recommendedPage] ?? recommendedSuppliers.slice(0, 3);
 
   function handleHeroSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -164,26 +166,48 @@ export function BuyerMarketplaceHome({
     setVisibleCount(6);
   }
 
-  return (
-    <div className="space-y-9">
-      <section className="relative overflow-hidden rounded-[22px] bg-[#0d2a50] px-8 pt-5 pb-7 text-white shadow-[0_16px_34px_rgba(15,23,42,0.11)] lg:px-10">
-        <div className="absolute -left-8 top-[110px] h-[140px] w-[140px] rounded-full bg-[#8e5630]" />
-        <div className="absolute bottom-[-48px] left-[320px] h-[150px] w-[150px] rounded-full bg-[#8e5630]" />
-        <div className="absolute -right-2 -top-7 h-[160px] w-[160px] rounded-full bg-[#8e5630]" />
+  function handleNextRecommended() {
+    setRecommendedPage((current) =>
+      Math.min(current + 1, recommendedPages.length - 1)
+    );
+  }
 
-        <div className="relative max-w-4xl">
-          <p className="text-[16px] font-semibold text-[#f39a44]">
+  function handlePrevRecommended() {
+    setRecommendedPage((current) => Math.max(current - 1, 0));
+  }
+
+  return (
+    <div className="space-y-7">
+      <section
+        className="relative overflow-hidden rounded-[22px] px-8 pt-7 pb-9 text-white shadow-[0_16px_34px_rgba(15,23,42,0.11)] lg:px-10"
+        style={{
+          background:
+            "linear-gradient(135deg, #061b3a 0%, #082652 48%, #0b3471 100%)",
+        }}
+      >
+        <div
+          className="pointer-events-none absolute -right-28 -top-40 h-[340px] w-[520px] rounded-bl-full"
+          style={{
+            background:
+              "linear-gradient(215deg, rgba(92,123,180,0.34) 0%, rgba(92,123,180,0.22) 42%, rgba(92,123,180,0.09) 68%, rgba(92,123,180,0) 100%)",
+          }}
+        />
+
+        <div className="relative z-10 max-w-4xl">
+          <p className="text-[16px] font-medium text-[#f39a44]">
             Discover Local Suppliers · Davao Region
           </p>
-          <h1 className="mt-2.5 text-[34px] font-semibold leading-[1.25] tracking-[-0.03em] text-white">
-            Find Verified Local <span className="text-[#f39a44]">Suppliers</span>
+
+          <h1 className="mt-1 text-[32px] font-semibold leading-[1.20] tracking-[-0.03em] text-white">
+            Find Verified Local{" "}
+            <span className="text-[#f39a44]">Suppliers</span>
             <br />
             For Your Business.
           </h1>
 
           <form
             onSubmit={handleHeroSearchSubmit}
-            className="mt-6 flex max-w-[840px] items-center gap-3 rounded-[16px] bg-white px-4 py-2.5 shadow-[0_10px_24px_rgba(15,23,42,0.12)]"
+            className="mt-5 flex max-w-[840px] items-center gap-3 rounded-[16px] bg-white px-4 py-2.5 shadow-[0_10px_24px_rgba(15,23,42,0.12)]"
           >
             <div className="flex flex-1 items-center gap-3 text-[#a8b3c4]">
               <SearchIcon />
@@ -194,15 +218,16 @@ export function BuyerMarketplaceHome({
                 className="w-full bg-transparent text-[16px] text-[#64748b] outline-none placeholder:text-[#b4bcc9]"
               />
             </div>
+
             <button
               type="submit"
-              className="inline-flex h-11 items-center justify-center rounded-[11px] bg-[#294773] px-8 text-[15px] font-semibold text-white transition hover:bg-[#1f3658]"
+              className="inline-flex h-10 items-center justify-center rounded-[10px] bg-[#294773] px-6 text-[15px] font-medium text-white transition hover:bg-[#1f3658]"
             >
               Search
             </button>
           </form>
 
-          <div className="mt-5 flex flex-wrap gap-2.5">
+          <div className="mt-5 flex flex-wrap gap-1.5">
             {heroCategories.map((category) => (
               <button
                 key={category.category_id}
@@ -212,7 +237,7 @@ export function BuyerMarketplaceHome({
                   setSearchQuery(category.category_name);
                   setSelectedFilter("All");
                 }}
-                className="rounded-full border border-[#d3dbe7] bg-transparent px-4 py-1.5 text-[13px] font-medium text-white transition hover:bg-white/10"
+                className="rounded-full border border-[#d3dbe7] bg-transparent px-3 py-1.5 text-[14px] font-normal text-white transition hover:bg-white/10"
               >
                 {category.category_name}
               </button>
@@ -224,28 +249,76 @@ export function BuyerMarketplaceHome({
       <section>
         <div className="mb-4 flex items-end justify-between gap-4">
           <div>
-            <h2 className="text-[28px] font-semibold text-[#223654]">
+            <h2 className="text-[25px] font-semibold leading-tight text-[#223654]">
               Recommended for You
             </h2>
-            <p className="mt-1 text-[16px] text-[#7a8699]">
+            <p className="mt-0.5 text-[18px] leading-tight text-[#7a8699]">
               Suppliers matched to your sourcing categories and location
             </p>
           </div>
+
           <Link
             href="/buyer/search"
-            className="text-[13px] font-medium text-[#4d6ea3] transition hover:text-[#223654]"
+            className="text-[16px] font-medium text-[#4d6ea3] transition hover:text-[#223654] hover:underline"
           >
             See All
           </Link>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          {visibleRecommendedSuppliers.map((supplier) => (
-            <BuyerSupplierCard
-              key={`recommended-${supplier.supplierId}`}
-              supplier={supplier}
-            />
-          ))}
+        <div className="group relative py-1">
+          <div className="overflow-hidden">
+            <div className="flex gap-4 overflow-x-auto py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {visibleRecommendedSuppliers.map((supplier) => (
+                <div
+                  key={`recommended-${supplier.supplierId}`}
+                  className="shrink-0"
+                  style={{ flexBasis: "calc((100% - 2rem) / 2.3)" }}
+                >
+                  <BuyerSupplierCard supplier={supplier} />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {recommendedPage > 0 ? (
+            <button
+              type="button"
+              onClick={handlePrevRecommended}
+              aria-label="Previous recommended suppliers"
+              className="pointer-events-none absolute left-2 top-1/2 z-30 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[#eef2f7] bg-white text-[#294773] opacity-0 shadow-[0_6px_14px_rgba(15,23,42,0.10)] transition hover:bg-[#f8fafc] group-hover:pointer-events-auto group-hover:opacity-100"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+                <path
+                  d="m15 6-6 6 6 6"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          ) : null}
+
+          {recommendedPage < recommendedPages.length - 1 ? (
+            <button
+              type="button"
+              onClick={handleNextRecommended}
+              aria-label="Next recommended suppliers"
+              className="pointer-events-none absolute right-2 top-1/2 z-30 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[#eef2f7] bg-white text-[#294773] opacity-0 shadow-[0_6px_14px_rgba(15,23,42,0.10)] transition hover:bg-[#f8fafc] group-hover:pointer-events-auto group-hover:opacity-100"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+                <path
+                  d="m9 6 6 6-6 6"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          ) : null}
         </div>
 
         {recommendedPages.length > 1 ? (
@@ -273,15 +346,15 @@ export function BuyerMarketplaceHome({
 
       <section>
         <div className="mb-4">
-          <h2 className="text-[28px] font-semibold text-[#223654]">
+          <h2 className="text-[25px] font-semibold leading-tight text-[#223654]">
             Browse suppliers
           </h2>
-          <p className="mt-1 text-[15px] text-[#7a8699]">
-            Explore verified suppliers in the Davao Region
+          <p className="mt-0.5 text-[18px] leading-tight text-[#7a8699]">
+            Explore all verified suppliers in the Davao Region
           </p>
         </div>
 
-        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="relative z-40 mb-8 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex flex-wrap gap-2">
             {filterOptions.map((filter) => (
               <FilterChip
@@ -293,17 +366,70 @@ export function BuyerMarketplaceHome({
             ))}
           </div>
 
-          <label className="inline-flex shrink-0 items-center gap-2.5 self-end whitespace-nowrap rounded-lg bg-white text-[13px] text-[#7a8699] lg:self-start">
-            <span className="leading-none">Sort by</span>
-            <select
-              value={sortBy}
-              onChange={(event) => setSortBy(event.target.value)}
-              className="min-w-[160px] rounded-lg border border-[#dbe3ef] bg-white px-3 py-2.5 text-[13px] leading-none text-[#475569] outline-none"
-            >
-              <option value="name">Supplier name</option>
-              <option value="type">Business type</option>
-            </select>
-          </label>
+          <div className="relative inline-flex shrink-0 items-center gap-2 self-end whitespace-nowrap text-[14px] font-medium text-[#7a8699] lg:self-start">
+            <span>Sort by</span>
+
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setSortOpen((current) => !current)}
+                className="flex h-10 min-w-[145px] items-center justify-between gap-3 rounded-xl border border-[#dbe3ef] bg-white px-3.5 text-[14px] font-medium text-[#223654] transition hover:border-[#c7d3e3]"
+              >
+                {sortBy === "name" ? "Supplier name" : "Business type"}
+
+                <svg
+                  viewBox="0 0 24 24"
+                  className={`h-4 w-4 text-[#7a8699] transition ${
+                    sortOpen ? "rotate-180" : ""
+                  }`}
+                  aria-hidden="true"
+                >
+                  <path
+                    d="m6 9 6 6 6-6"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+
+              {sortOpen ? (
+                <div className="absolute right-0 top-12 z-50 w-full overflow-hidden rounded-xl border border-[#dbe3ef] bg-white shadow-[0_10px_24px_rgba(15,23,42,0.10)]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSortBy("name");
+                      setSortOpen(false);
+                    }}
+                    className={`block w-full px-3.5 py-2.5 text-left text-[14px] transition ${
+                      sortBy === "name"
+                        ? "bg-[#eef4fb] text-[#223654]"
+                        : "text-[#475569] hover:bg-[#f8fafc]"
+                    }`}
+                  >
+                    Supplier name
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSortBy("type");
+                      setSortOpen(false);
+                    }}
+                    className={`block w-full px-3.5 py-2.5 text-left text-[14px] transition ${
+                      sortBy === "type"
+                        ? "bg-[#eef4fb] text-[#223654]"
+                        : "text-[#475569] hover:bg-[#f8fafc]"
+                    }`}
+                  >
+                    Business type
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
