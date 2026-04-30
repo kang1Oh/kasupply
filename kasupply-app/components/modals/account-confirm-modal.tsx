@@ -83,11 +83,11 @@ export function AccountConfirmModal({
             {icon}
           </div>
 
-          <h2 className="mt-[22px] text-[24px] font-semibold leading-none tracking-[-0.03em] text-[#243F68]">
+          <h2 className="mt-[22px] text-[26px] font-semibold leading-none tracking-[-0.03em] text-[#243F68]">
             {title}
           </h2>
 
-          <div className="mt-[10px] max-w-[320px] text-[17px] font-light leading-[1.42] text-[#A7B0BF]">
+          <div className="mt-[10px] max-w-[320px] text-[17px] font-light leading-7 text-[#A7B0BF]">
             {description}
           </div>
 
@@ -96,7 +96,7 @@ export function AccountConfirmModal({
               type="button"
               onClick={onCancel}
               disabled={isSubmitting}
-              className="inline-flex h-[44px] min-w-[154px] items-center justify-center rounded-[12px] bg-[#233F68] px-5 text-[14px] font-medium text-white transition hover:bg-[#1D3557] disabled:cursor-not-allowed disabled:opacity-70"
+              className="inline-flex h-[44px] min-w-[154px] items-center justify-center rounded-[12px] bg-[#e8eef6] px-5 text-[15px] font-medium text-[#243f68] transition hover:bg-[#dbe4f0] disabled:cursor-not-allowed disabled:opacity-70"
             >
               {cancelLabel}
             </button>
@@ -105,10 +105,10 @@ export function AccountConfirmModal({
               type="button"
               onClick={onConfirm}
               disabled={isSubmitting}
-              className={`inline-flex h-[44px] min-w-[154px] items-center justify-center rounded-[12px] px-5 text-[14px] font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-70 ${
+              className={`inline-flex h-[44px] min-w-[154px] items-center justify-center rounded-[12px] px-5 text-[15px] font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-70 ${
                 confirmTone === "danger"
                   ? "bg-[#A9B7C9] hover:bg-[#95A6BC]"
-                  : "bg-[#A9B7C9] hover:bg-[#95A6BC]"
+                  : "bg-[#243f68] hover:bg-[#1e3658]"
               }`}
             >
               {confirmLabel}

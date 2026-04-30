@@ -1,13 +1,6 @@
 import { BuyerMarketplaceHome } from "@/components/buyer-marketplace-home";
-import { AccountActivatedModal } from "@/components/modals";
 import { createClient } from "@/lib/supabase/server";
 import { getSupplierSearchResults } from "./search/actions";
-
-type BuyerPageProps = {
-  searchParams?: Promise<{
-    activated?: string;
-  }>;
-};
 
 function getInitials(name: string) {
   return name
@@ -18,7 +11,7 @@ function getInitials(name: string) {
     .join("");
 }
 
-export default async function BuyerPage({ searchParams }: BuyerPageProps) {
+export default async function BuyerPage() {
   const supabase = await createClient();
   const supplierResults = await getSupplierSearchResults();
   const { data: categoryRows } = await supabase
@@ -26,9 +19,6 @@ export default async function BuyerPage({ searchParams }: BuyerPageProps) {
     .select("category_id, category_name")
     .order("category_name", { ascending: true })
     .limit(6);
-
-  const params = (await searchParams) ?? {};
-  const showActivatedModal = params.activated === "1";
 
   const suppliers = supplierResults.map((supplier) => {
     const categoryTags = Array.from(
@@ -58,21 +48,11 @@ export default async function BuyerPage({ searchParams }: BuyerPageProps) {
   });
 
   return (
-    <>
-      <AccountActivatedModal
-        isOpen={showActivatedModal}
-        title="Account activated!"
-        description="Your buyer account is verified and ready. You can now browse suppliers, send RFQs, and post on the sourcing board."
-        ctaHref="/buyer"
-        ctaLabel="Go To Dashboard"
+    <main className="space-y-6 py-6">
+      <BuyerMarketplaceHome
+        heroCategories={categoryRows ?? []}
+        suppliers={suppliers}
       />
-
-      <main className="space-y-6 py-6">
-        <BuyerMarketplaceHome
-          heroCategories={categoryRows ?? []}
-          suppliers={suppliers}
-        />
-      </main>
-    </>
+    </main>
   );
 }

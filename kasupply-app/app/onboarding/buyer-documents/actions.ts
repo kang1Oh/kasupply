@@ -156,5 +156,20 @@ export async function uploadBuyerDocument(formData: FormData) {
 
   await safeSyncBuyerVerificationProfile(businessProfile.profile_id);
 
-  redirect("/buyer?activated=1");
+  const redirectParams = new URLSearchParams({
+    activated: "1",
+    result: "approved",
+  });
+  const nextPath = String(formData.get("next_path") ?? "");
+  const requiredFlow = String(formData.get("required_flow") ?? "");
+
+  if (nextPath) {
+    redirectParams.set("next", nextPath);
+  }
+
+  if (requiredFlow) {
+    redirectParams.set("required", requiredFlow);
+  }
+
+  redirect(`/onboarding/buyer-documents?${redirectParams.toString()}`);
 }

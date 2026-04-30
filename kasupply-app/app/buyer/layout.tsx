@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import type { ReactNode } from "react";
+import { createClient } from "@/lib/supabase/server";
 import { BuyerFooter } from "@/components/buyer-footer";
 import { BuyerHeader } from "@/components/buyer-header";
 import { getBuyerAccessRedirect } from "@/lib/auth/buyer-access";
@@ -43,12 +44,24 @@ function BuyerLayoutFallback() {
 }
 
 async function BuyerLayoutContent({ children }: { children: ReactNode }) {
+  const supabase = await createClient();
   const status = await getUserOnboardingStatus();
 
   const user = status.appUser;
   const unreadNotificationCount = user
     ? await getBuyerUnreadNotificationCount(user.user_id)
     : 0;
+
+  // Fetch business profile for the header avatar initials
+  let businessName: string | null = null;
+  if (user) {
+    const { data: businessProfile } = await supabase
+      .from("business_profiles")
+      .select("business_name")
+      .eq("user_id", user.user_id)
+      .maybeSingle();
+    businessName = businessProfile?.business_name ?? null;
+  }
 
   const accessLinks = {
     rfqs:
@@ -93,6 +106,7 @@ async function BuyerLayoutContent({ children }: { children: ReactNode }) {
       <BuyerHeader
         isLoggedIn={!!user}
         userName={user?.name ?? null}
+        businessName={businessName}
         accessLinks={accessLinks}
         unreadNotificationCount={unreadNotificationCount}
       />

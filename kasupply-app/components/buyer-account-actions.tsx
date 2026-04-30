@@ -166,12 +166,11 @@ export function BuyerAccountActions({
         title="Log out?"
         description={
           <>
-            <p>Are you sure you want to log out</p>
-            <p>of your account?</p>
+            <p>Are you sure you want to log out of your account?</p>
           </>
         }
         cancelLabel="Stay"
-        confirmLabel={isPending ? "Logging out..." : "Discard"}
+        confirmLabel={isPending ? "Logging out..." : "Log Out"}
         onCancel={() => setIsLoggingOutOpen(false)}
         onConfirm={handleLogout}
         isSubmitting={isPending}

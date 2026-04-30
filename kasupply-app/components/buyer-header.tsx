@@ -29,6 +29,7 @@ type BuyerAccessLinks = {
 type BuyerHeaderProps = {
   isLoggedIn: boolean;
   userName?: string | null;
+  businessName?: string | null;
   accessLinks?: BuyerAccessLinks;
   unreadNotificationCount?: number;
 };
@@ -79,6 +80,7 @@ function isNavItemActive(pathname: string, href: string) {
 export function BuyerHeader({
   isLoggedIn,
   userName,
+  businessName,
   accessLinks,
   unreadNotificationCount = 0,
 }: BuyerHeaderProps) {
@@ -86,7 +88,7 @@ export function BuyerHeader({
   const router = useRouter();
   const [showModal, setShowModal] = useState(false);
 
-  const initials = getInitials(userName);
+  const initials = getInitials(businessName ?? userName);
 
   const protectedNavHrefs: Record<string, string> = {
     "/buyer/rfqs": accessLinks?.rfqs ?? "/buyer/rfqs",
@@ -174,7 +176,7 @@ export function BuyerHeader({
             {/* PROFILE */}
             <Link
               href={accountHref}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-[#3f73e0] text-[15px] font-medium"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-[#dcf8e7] text-[15px] font-medium text-[#18854f]"
             >
               {initials}
             </Link>
