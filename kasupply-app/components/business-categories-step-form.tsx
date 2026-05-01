@@ -87,9 +87,13 @@ export function BusinessCategoriesStepForm({
           try {
             await action(formData);
           } catch (err) {
-            if (err instanceof Error && err.message === "NEXT_REDIRECT") {
-              throw err;
-            }
+            const isRedirect =
+              err instanceof Error &&
+              (err.message === "NEXT_REDIRECT" ||
+                ("digest" in err &&
+                  String((err as any).digest).startsWith("NEXT_REDIRECT")));
+
+            if (isRedirect) throw err;
 
             setError(err instanceof Error ? err.message : "Something went wrong.");
           }
@@ -133,9 +137,9 @@ export function BusinessCategoriesStepForm({
           <h2 className="text-[18px] font-semibold text-[#1f3d67]">
             {sectionTitle}
           </h2>
-          <p className="mt-0.1 text-[16px] text-[#8b95a5]">
+          <p className="mt-0.5 text-[14px] text-[#8b95a5]">
             {sectionDescription}
-          </p>  
+          </p>
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2.5">
@@ -161,7 +165,7 @@ export function BusinessCategoriesStepForm({
 
         <div className="mt-5">
           <label className="block space-y-1">
-            <span className="text-[16px] font-medium text-[#1f3d67]">
+            <span className="text-[15px] font-medium text-[#1f3d67]">
               Others
             </span>
             <input
@@ -170,7 +174,7 @@ export function BusinessCategoriesStepForm({
               value={otherCategories}
               onChange={(event) => setOtherCategories(event.target.value)}
               placeholder="e.g. Spices, Grains"
-              className="h-12 w-full rounded-md border border-[#d7dee8] bg-white px-3 text-[15px] font-normal text-[#334155] outline-none transition placeholder:font-normal placeholder:text-[#bcc5d1] focus:border-[#1f3d67]"
+              className="h-10 w-full rounded-md border border-[#d7dee8] bg-white px-3 text-[14px] font-normal text-[#334155] outline-none transition placeholder:font-normal placeholder:text-[#bcc5d1] focus:border-[#1f3d67]"
             />
           </label>
         </div>

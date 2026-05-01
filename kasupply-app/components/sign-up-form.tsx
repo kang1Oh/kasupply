@@ -174,6 +174,9 @@ const passwordChecks = [
   },
 ];
 
+  const passwordMismatchError =
+    repeatPassword && password !== repeatPassword ? "Passwords do not match." : "";
+
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
@@ -396,6 +399,12 @@ const passwordChecks = [
                   </button>
                 }
               />
+
+              {passwordMismatchError ? (
+                <div className="-mt-3 w-full max-w-[530px] px-5 text-[14px] font-medium text-red-600">
+                  {passwordMismatchError}
+                </div>
+              ) : null}
 
               {message ? (
                 <div
