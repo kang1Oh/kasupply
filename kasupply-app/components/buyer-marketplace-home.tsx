@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import {
   BuyerSupplierCard,
@@ -29,6 +29,67 @@ function SearchIcon() {
         strokeLinejoin="round"
       />
     </svg>
+  );
+}
+
+function StarIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-3.5 w-3.5"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="m12 3 2.55 5.17 5.7.83-4.13 4.03.98 5.67L12 16.02 6.9 18.7l.98-5.67L3.75 9l5.7-.83L12 3Z" />
+    </svg>
+  );
+}
+
+function ArrowIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M5 12h14" />
+      <path d="m13 6 6 6-6 6" />
+    </svg>
+  );
+}
+
+function BuyerPremiumPromo() {
+  return (
+<section className="relative overflow-hidden rounded-[22px] bg-[linear-gradient(115deg,#ffa726_0%,#f57c00_50%,#bf360c_100%)] px-7 py-6 text-white shadow-[0_14px_30px_rgba(255,122,0,0.18)]">      <div className="relative z-10 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+        <div className="max-w-2xl">
+          <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-50 shadow-sm">
+            <StarIcon />
+            Buyer Premium
+          </div>
+
+          <h2 className="text-[22px] font-bold leading-tight tracking-tight text-white">
+            Unlock faster supplier sourcing.
+          </h2>
+
+          <p className="mt-1 text-[17px] leading-6 text-white/80">
+            Better matches • More RFQ access • Faster quotes
+          </p>
+        </div>
+
+        <Link
+          href="/buyer/premium-page"
+          className="inline-flex w-fit shrink-0 items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-white/15"
+        >
+          Explore Premium
+          <ArrowIcon />
+        </Link>
+      </div>
+    </section>
   );
 }
 
@@ -79,7 +140,9 @@ export function BuyerMarketplaceHome({
       }
     }
 
-    const supplierTags = Array.from(tagSet).sort((a, b) => a.localeCompare(b));
+    const supplierTags = Array.from(tagSet).sort((a, b) =>
+      a.localeCompare(b)
+    );
 
     if (supplierTags.length > 0) {
       return supplierTags;
@@ -155,7 +218,7 @@ export function BuyerMarketplaceHome({
   const visibleRecommendedSuppliers =
     recommendedPages[recommendedPage] ?? recommendedSuppliers.slice(0, 3);
 
-  function handleHeroSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
+  function handleHeroSearchSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSearchQuery(heroSearch);
     setVisibleCount(6);
@@ -179,7 +242,7 @@ export function BuyerMarketplaceHome({
   return (
     <div className="space-y-7">
       <section
-        className="relative overflow-hidden rounded-[22px] px-8 pt-7 pb-9 text-white shadow-[0_16px_34px_rgba(15,23,42,0.11)] lg:px-10"
+        className="relative overflow-hidden rounded-[22px] px-8 pb-9 pt-7 text-white shadow-[0_16px_34px_rgba(15,23,42,0.11)] lg:px-10"
         style={{
           background:
             "linear-gradient(135deg, #061b3a 0%, #082652 48%, #0b3471 100%)",
@@ -245,6 +308,8 @@ export function BuyerMarketplaceHome({
           </div>
         </div>
       </section>
+
+      <BuyerPremiumPromo />
 
       <section>
         <div className="mb-4 flex items-end justify-between gap-4">

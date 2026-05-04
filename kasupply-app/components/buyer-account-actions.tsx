@@ -1,15 +1,55 @@
 "use client";
 
 import Image from "next/image";
+import type { ReactNode } from "react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { AccountConfirmModal, TrashCanModalIcon } from "@/components/modals";
 
 type BuyerAccountActionsProps = {
+  premiumLabel?: string;
   logoutLabel?: string;
   deleteLabel?: string;
 };
+
+type ActionTone = "default" | "danger" | "premium";
+
+const toneStyles: Record<
+  ActionTone,
+  {
+    icon: string;
+    label: string;
+  }
+> = {
+  default: {
+    icon: "bg-[#f7f9fc] text-[#9aa6b8]",
+    label: "text-[#223654]",
+  },
+  danger: {
+    icon: "bg-[#fff2f2] text-[#ef6b6b]",
+    label: "text-[#d74747]",
+  },
+  premium: {
+    icon: "bg-[#fff8e8] text-[#d49a19]",
+    label: "text-[#223654]",
+  },
+};
+
+function PremiumRowIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" aria-hidden="true">
+      <path
+        d="M12 4.75 14.15 9.1l4.8.7-3.47 3.38.82 4.77L12 15.7l-4.3 2.25.82-4.77L5.05 9.8l4.8-.7L12 4.75Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 function LogoutRowIcon() {
   return (
@@ -81,69 +121,116 @@ function ChevronIcon() {
 
 function ActionRow({
   label,
+  description,
   tone = "default",
   icon,
   onClick,
+  disabled = false,
 }: {
   label: string;
-  tone?: "default" | "danger";
-  icon: React.ReactNode;
+  description?: string;
+  tone?: ActionTone;
+  icon: ReactNode;
   onClick: () => void;
+  disabled?: boolean;
 }) {
-  const iconClassName =
-    tone === "danger"
-      ? "bg-[#fff2f2] text-[#ef6b6b]"
-      : "bg-[#f7f9fc] text-[#9aa6b8]";
+  const styles = toneStyles[tone];
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center justify-between gap-4 border-b border-[#edf2f7] px-5 py-4 text-left transition hover:bg-[#fafbfd] last:border-b-0"
+      disabled={disabled}
+      className="flex w-full items-center justify-between gap-4 border-b border-[#edf2f7] px-5 py-4 text-left transition last:border-b-0 hover:bg-[#fafbfd] disabled:cursor-not-allowed disabled:opacity-60"
     >
-      <div className="flex items-center gap-3">
-        <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${iconClassName}`}>
+      <div className="flex min-w-0 items-center gap-3">
+        <div
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${styles.icon}`}
+        >
           {icon}
         </div>
-        <p className={`text-[14px] ${tone === "danger" ? "text-[#d74747]" : "text-[#223654]"}`}>
-          {label}
-        </p>
+
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <p className={`truncate text-[14px] font-medium ${styles.label}`}>
+              {label}
+            </p>
+
+            {tone === "premium" && (
+              <span className="rounded-full bg-[#fff3d1] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-[#b77900]">
+                Premium
+              </span>
+            )}
+          </div>
+
+          {description && (
+            <p className="mt-0.5 text-[12px] leading-[1.35] text-[#7b8798]">
+              {description}
+            </p>
+          )}
+        </div>
       </div>
+
       <ChevronIcon />
     </button>
   );
 }
 
 export function BuyerAccountActions({
+  premiumLabel = "Upgrade Account",
   logoutLabel = "Log Out",
   deleteLabel = "Delete Account",
 }: BuyerAccountActionsProps) {
   const router = useRouter();
-  const [isLoggingOutOpen, setIsLoggingOutOpen] = useState(false);
+
+  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const handleLogout = () => {
+    if (isPending) return;
+
+    setErrorMessage(null);
+
     startTransition(async () => {
       const supabase = createClient();
-      await supabase.auth.signOut();
-      router.push("/login");
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        setErrorMessage("We couldn't log you out. Please try again.");
+        return;
+      }
+
+      setIsLogoutOpen(false);
+      router.replace("/login");
       router.refresh();
     });
   };
 
   const handleDeleteAccount = () => {
+    // TODO: call your delete-account API/server action here.
     setIsDeleteOpen(false);
   };
 
   return (
     <>
-      <div>
+      <div className="overflow-hidden border border-[#edf2f7] bg-white">
+        <ActionRow
+          label={premiumLabel}
+          description="Access better deals and exclusive buyer tools."
+          tone="premium"
+          icon={<PremiumRowIcon />}
+          onClick={() => router.push("/buyer/premium-page")}
+        />
+
         <ActionRow
           label={logoutLabel}
           icon={<LogoutRowIcon />}
-          onClick={() => setIsLoggingOutOpen(true)}
+          onClick={() => setIsLogoutOpen(true)}
+          disabled={isPending}
         />
+
         <ActionRow
           label={deleteLabel}
           tone="danger"
@@ -153,7 +240,7 @@ export function BuyerAccountActions({
       </div>
 
       <AccountConfirmModal
-        isOpen={isLoggingOutOpen}
+        isOpen={isLogoutOpen}
         icon={
           <Image
             src="/icons/logout_icon.svg"
@@ -167,11 +254,20 @@ export function BuyerAccountActions({
         description={
           <>
             <p>Are you sure you want to log out of your account?</p>
+
+            {errorMessage && (
+              <p className="mt-2 text-sm text-[#d74747]">{errorMessage}</p>
+            )}
           </>
         }
         cancelLabel="Stay"
         confirmLabel={isPending ? "Logging out..." : "Log Out"}
-        onCancel={() => setIsLoggingOutOpen(false)}
+        onCancel={() => {
+          if (!isPending) {
+            setErrorMessage(null);
+            setIsLogoutOpen(false);
+          }
+        }}
         onConfirm={handleLogout}
         isSubmitting={isPending}
       />

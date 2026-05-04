@@ -300,6 +300,28 @@ export function SupplierSidebar({
               );
             })}
           </ul>
+
+          <a
+            href="/supplier/premium-page"
+            onClick={() => setMobileOpen(false)}
+            className={`mx-3 mt-3 flex items-center rounded-2xl bg-gradient-to-r from-amber-300 to-orange-400 text-left font-semibold text-[#1E3A5F] shadow-lg transition hover:brightness-105 ${
+              collapsed ? "h-12 justify-center px-0" : "gap-3 px-3 py-3"
+            }`}
+            title={collapsed ? "Go Premium" : undefined}
+          >
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/75 text-[16px]">
+              👑
+            </span>
+
+            {!collapsed ? (
+              <span className="min-w-0">
+                <span className="block text-sm leading-tight">Go Premium</span>
+                <span className="block text-xs font-medium leading-tight text-[#1E3A5F]/70">
+                  Upgrade visibility
+                </span>
+              </span>
+            ) : null}
+          </a>
         </nav>
 
         <div
