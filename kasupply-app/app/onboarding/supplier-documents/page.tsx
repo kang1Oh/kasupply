@@ -13,6 +13,23 @@ type DocumentTypeRow = {
 type UploadedDocumentRow = {
   doc_id: number;
   doc_type_id: number;
+  file_url: string | null;
+  status: string | null;
+};
+
+type CertificationTypeRow = {
+  cert_type_id: number;
+  certification_type_name: string;
+};
+
+type SupplierProfileRow = {
+  supplier_id: number;
+};
+
+type UploadedCertificationRow = {
+  certification_id: number;
+  cert_type_id: number;
+  file_url: string | null;
   status: string | null;
 };
 
@@ -75,17 +92,87 @@ async function SupplierDocumentsPageContent() {
 
   const { data: uploadedDocuments, error: uploadedDocumentsError } = await supabase
     .from("business_documents")
-    .select("doc_id, doc_type_id, status")
-    .eq("profile_id", businessProfileId);
+    .select("doc_id, doc_type_id, file_url, status")
+    .eq("profile_id", businessProfileId)
+    .not("file_url", "is", null);
 
   if (uploadedDocumentsError) {
     throw new Error(uploadedDocumentsError.message || "Failed to load uploaded documents.");
   }
 
-  const safeUploadedDocuments = (uploadedDocuments as UploadedDocumentRow[] | null) ?? [];
+  const safeUploadedDocuments = (
+    (uploadedDocuments as UploadedDocumentRow[] | null) ?? []
+  )
+    .filter((document) => Boolean(document.file_url?.trim()))
+    .map(({ doc_id, doc_type_id, file_url, status }) => ({
+      doc_id,
+      doc_type_id,
+      file_url,
+      status,
+    }));
+
+  const { data: supplierProfile, error: supplierProfileError } = await supabase
+    .from("supplier_profiles")
+    .select("supplier_id")
+    .eq("profile_id", businessProfileId)
+    .maybeSingle<SupplierProfileRow>();
+
+  if (supplierProfileError) {
+    throw new Error(supplierProfileError.message || "Failed to load supplier profile.");
+  }
+
+  const { data: certificationTypes, error: certificationTypesError } = await supabase
+    .from("certification_types")
+    .select("cert_type_id, certification_type_name")
+    .order("cert_type_id", { ascending: true });
+
+  if (certificationTypesError) {
+    throw new Error(certificationTypesError.message || "Failed to load certification types.");
+  }
+
+  const safeCertificationTypes = (
+    (certificationTypes as CertificationTypeRow[] | null) ?? []
+  ).map(({ cert_type_id, certification_type_name }) => ({
+    cert_type_id,
+    certification_type_name,
+  }));
+
+  let safeUploadedCertifications: {
+    certification_id: number;
+    cert_type_id: number;
+    file_url: string | null;
+    status: string | null;
+  }[] = [];
+
+  if (supplierProfile?.supplier_id) {
+    const { data: uploadedCertifications, error: uploadedCertificationsError } =
+      await supabase
+        .from("supplier_certifications")
+        .select("certification_id, cert_type_id, file_url, status")
+        .eq("supplier_id", supplierProfile.supplier_id)
+        .not("file_url", "is", null);
+
+    if (uploadedCertificationsError) {
+      throw new Error(
+        uploadedCertificationsError.message || "Failed to load uploaded certifications.",
+      );
+    }
+
+    safeUploadedCertifications = (
+      (uploadedCertifications as UploadedCertificationRow[] | null) ?? []
+    )
+      .filter((certification) => Boolean(certification.file_url?.trim()))
+      .map(({ certification_id, cert_type_id, file_url, status }) => ({
+        certification_id,
+        cert_type_id,
+        file_url,
+        status,
+      }));
+  }
+
   const documentRequirements = await getSupplierDocumentRequirements(supabase);
   const activeDocumentRequirements = documentRequirements.filter(
-    (requirement) => requirement.isActive && requirement.showInOnboarding
+    (requirement) => requirement.isActive && requirement.showInOnboarding,
   );
 
   const requiredDocumentTypes: DocumentTypeRow[] = activeDocumentRequirements
@@ -109,6 +196,8 @@ async function SupplierDocumentsPageContent() {
           requiredDocumentTypes={requiredDocumentTypes}
           optionalDocumentTypes={optionalDocumentTypes}
           uploadedDocuments={safeUploadedDocuments}
+          certificationTypes={safeCertificationTypes}
+          uploadedCertifications={safeUploadedCertifications}
           canProceed={status.hasSubmittedRequiredSupplierDocuments}
         />
       </div>
