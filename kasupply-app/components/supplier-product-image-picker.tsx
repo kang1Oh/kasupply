@@ -184,6 +184,7 @@ export function SupplierProductImagePicker({
                 } bg-[#ECFBE6]`}
                 title={index === 0 ? "Cover image" : existingImageAlt}
               >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={image.url}
                   alt={existingImageAlt}

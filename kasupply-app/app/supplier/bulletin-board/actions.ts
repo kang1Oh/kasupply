@@ -136,7 +136,7 @@ export async function engageWithRfq(formData: FormData) {
 
   revalidatePath("/supplier/bulletin-board");
   revalidatePath("/supplier/rfq");
-  revalidatePath("/dashboard");
+  revalidatePath("/supplier/dashboard");
 
   redirect(`/supplier/rfq/${insertedEngagement.engagement_id}`);
 }

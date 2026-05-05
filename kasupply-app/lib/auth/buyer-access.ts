@@ -2,7 +2,7 @@ type BuyerAccessStatus = {
   authenticated: boolean;
   role: string | null;
   hasBusinessProfile: boolean;
-  hasSubmittedBuyerDocuments: boolean;
+  hasApprovedBuyerDocuments: boolean;
 };
 
 type BuyerAccessRequirement = "authenticated" | "profile" | "documents";
@@ -27,7 +27,7 @@ export function getBuyerAccessRedirect(
   if (!status.authenticated) {
     const params = new URLSearchParams();
     params.set("next", targetPath);
-    return withQuery("/login", params);
+    return withQuery("/auth/login", params);
   }
 
   if (status.role !== "buyer") {
@@ -48,7 +48,7 @@ export function getBuyerAccessRedirect(
     return withQuery("/onboarding/buyer", params);
   }
 
-  if (requirement === "documents" && !status.hasSubmittedBuyerDocuments) {
+  if (requirement === "documents" && !status.hasApprovedBuyerDocuments) {
     const params = new URLSearchParams();
 
     if (reason) {

@@ -6,6 +6,7 @@ import { getCurrentAppUser } from "@/lib/auth/get-current-app-user";
 import { getPastSuppliers } from "@/app/buyer/actions";
 import { BuyerAccountActions } from "@/components/buyer-account-actions";
 import { BuyerSavedSuppliersSection } from "@/components/buyer-saved-suppliers-section";
+import { isBuyerDtiDocumentTypeName } from "@/lib/verification/document-rules";
 
 function BuyerAccountPageFallback() {
   return (
@@ -65,19 +66,27 @@ function formatLocation(parts: Array<string | null | undefined>) {
     .join(", ");
 }
 
-function ChevronIcon() {
-  return (
-    <svg viewBox="0 0 20 20" className="h-4 w-4 text-[#b7c2d3]" aria-hidden="true">
-      <path
-        d="m7 4 6 6-6 6"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+async function getBusinessDocumentUrl(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  filePath: string | null | undefined,
+) {
+  if (!filePath) {
+    return null;
+  }
+
+  if (/^https?:\/\//i.test(filePath)) {
+    return filePath;
+  }
+
+  const { data, error } = await supabase.storage
+    .from("business-documents")
+    .createSignedUrl(filePath, 60 * 60);
+
+  if (error || !data?.signedUrl) {
+    return null;
+  }
+
+  return data.signedUrl;
 }
 
 function BusinessNameIcon() {
@@ -234,21 +243,27 @@ function VerifiedBadge({ label = "Verified Business" }: { label?: string }) {
   );
 }
 
-function ProfileAvatar({ initials }: { initials: string }) {
+function ProfileAvatar({
+  initials,
+  avatarUrl,
+}: {
+  initials: string;
+  avatarUrl?: string | null;
+}) {
+  if (avatarUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={avatarUrl}
+        alt="Buyer profile"
+        className="h-[84px] w-[84px] shrink-0 rounded-full object-cover"
+      />
+    );
+  }
+
   return (
     <div className="flex h-[84px] w-[84px] shrink-0 items-center justify-center rounded-full bg-[#dff5e6] text-[36px] font-semibold text-[#2f7f4d]">
       {initials}
-    </div>
-  );
-}
-
-function StatCard({ value, label }: { value: number; label: string }) {
-  return (
-    <div className="rounded-[22px] border border-[#e4eaf2] bg-white px-5 py-6 text-center shadow-[0_6px_16px_rgba(15,23,42,0.02)]">
-      <p className="text-[42px] font-medium leading-none tracking-[-0.04em] text-[#38445a]">
-        {value}
-      </p>
-      <p className="mt-2.5 text-[14px] font-normal text-[#a0aabc]">{label}</p>
     </div>
   );
 }
@@ -294,7 +309,6 @@ function InfoRow({
       </div>
       <div className="flex shrink-0 items-center gap-3">
         {badge}
-        <ChevronIcon />
       </div>
     </div>
   );
@@ -305,13 +319,13 @@ function BuyerAccountBody({
   businessProfile,
   businessDocument,
   fileName,
-  stats,
   savedSuppliers,
 }: {
   user: {
     name: string;
     email: string;
     updatedAt: string | null;
+    avatarUrl: string | null;
   };
   businessProfile: {
     business_name: string;
@@ -325,14 +339,10 @@ function BuyerAccountBody({
     contact_number: string | null;
   } | null;
   businessDocument: {
+    documentUrl: string | null;
     is_visible_to_others: boolean | null;
   } | null;
   fileName: string;
-  stats: {
-    ordersPlaced: number;
-    rfqsSent: number;
-    activeSuppliers: number;
-  };
   savedSuppliers: {
     supplierId: number;
     avatarUrl: string | null;
@@ -357,7 +367,7 @@ function BuyerAccountBody({
       <section className="rounded-[26px] border border-[#dde6f0] bg-white px-8 py-6 shadow-[0_8px_20px_rgba(15,23,42,0.02)]">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <ProfileAvatar initials={initials} />
+            <ProfileAvatar initials={initials} avatarUrl={user.avatarUrl} />
             <div>
               <h1 className="text-[18px] font-semibold leading-tight tracking-[-0.02em] text-[#667085]">
                 {displayBusinessName}
@@ -378,18 +388,19 @@ function BuyerAccountBody({
           </div>
 
           <Link
-            href="/onboarding/buyer"
+            href="/buyer/account/edit"
             className="inline-flex h-[42px] items-center justify-center rounded-[12px] border border-[#d7dee8] bg-white px-6 text-[14px] font-medium text-[#4a5568] transition hover:border-[#c4d0e0] hover:bg-[#f8fafc]"
           >
             Edit Profile
           </Link>
         </div>
-      </section>
 
-      <section className="grid gap-4 sm:grid-cols-3">
-        <StatCard value={stats.ordersPlaced} label="Orders Placed" />
-        <StatCard value={stats.rfqsSent} label="RFQs sent" />
-        <StatCard value={stats.activeSuppliers} label="Active suppliers" />
+        <div>
+          <p className="mt-6 text-[14px] leading-relaxed text-[#9aa5b7]">
+            {businessProfile?.about ||
+              "No business description provided. Please update your profile to add an about section."}
+          </p>
+        </div>
       </section>
 
       <SectionCard title="Business Information">
@@ -406,7 +417,23 @@ function BuyerAccountBody({
         <InfoRow
           label="DTI Registration"
           value={businessDocument ? fileName : "No DTI document uploaded"}
-          badge={businessDocument ? <VerifiedBadge label="Verified" /> : undefined}
+          badge={
+            businessDocument ? (
+              <>
+                {businessDocument.documentUrl ? (
+                  <a
+                    href={businessDocument.documentUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[13px] font-medium text-[#376ae6] underline-offset-2 transition hover:text-[#223654] hover:underline"
+                  >
+                    View file
+                  </a>
+                ) : null}
+                <VerifiedBadge label="Verified" />
+              </>
+            ) : undefined
+          }
           icon={<RegistrationIcon />}
         />
         <InfoRow
@@ -467,17 +494,13 @@ async function BuyerAccountPageContent({ searchParams }: BuyerAccountPageProps) 
       redirectParams.set("required", requiredFlow);
     }
 
-    redirect(
-      `/onboarding/buyer${
-        redirectParams.toString() ? `?${redirectParams.toString()}` : ""
-      }`,
-    );
+    redirect(`/buyer/account/edit${redirectParams.toString() ? `?${redirectParams.toString()}` : ""}`);
   }
 
   const { user, error } = await getCurrentAppUser();
 
   if (error || !user) {
-    redirect("/login?source=buyer-account");
+    redirect("/auth/login?source=buyer-account");
   }
 
   if (user.roles?.role_name?.toLowerCase() !== "buyer") {
@@ -511,21 +534,7 @@ async function BuyerAccountPageContent({ searchParams }: BuyerAccountPageProps) 
     );
   }
 
-  const { data: buyerProfile, error: buyerProfileError } = businessProfile
-    ? await supabase
-        .from("buyer_profiles")
-        .select("buyer_id")
-        .eq("profile_id", businessProfile.profile_id)
-        .maybeSingle()
-    : { data: null, error: null };
-
-  if (buyerProfileError) {
-    throw new Error(buyerProfileError.message || "Failed to load buyer profile.");
-  }
-
-  const buyerId = buyerProfile?.buyer_id ?? null;
-
-  const [{ data: businessDocument, error: businessDocumentError }, pastSuppliers] =
+  const [{ data: businessDocuments, error: businessDocumentError }, pastSuppliers] =
     await Promise.all([
       businessProfile
         ? supabase
@@ -534,13 +543,14 @@ async function BuyerAccountPageContent({ searchParams }: BuyerAccountPageProps) 
               `
               doc_id,
               file_url,
-              is_visible_to_others
+              is_visible_to_others,
+              document_types!business_documents_doc_type_id_fkey (
+                document_type_name
+              )
             `,
             )
             .eq("profile_id", businessProfile.profile_id)
             .order("uploaded_at", { ascending: false })
-            .limit(1)
-            .maybeSingle()
         : Promise.resolve({ data: null, error: null }),
       getPastSuppliers(),
     ]);
@@ -551,50 +561,23 @@ async function BuyerAccountPageContent({ searchParams }: BuyerAccountPageProps) 
     );
   }
 
-  const [rfqCountResult, purchaseOrderCountResult, engagementRowsResult] =
-    buyerId != null
-      ? await Promise.all([
-          supabase
-            .from("rfqs")
-            .select("rfq_id", { count: "exact", head: true })
-            .eq("buyer_id", buyerId),
-          supabase
-            .from("purchase_orders")
-            .select("po_id", { count: "exact", head: true })
-            .eq("buyer_id", buyerId),
-          supabase
-            .from("rfq_engagements")
-            .select("supplier_id, rfq_id, rfqs!inner(buyer_id)")
-            .eq("rfqs.buyer_id", buyerId),
-        ])
-      : [
-          { count: 0, error: null },
-          { count: 0, error: null },
-          { data: [], error: null },
-        ];
-
-  if (rfqCountResult.error) {
-    throw new Error(rfqCountResult.error.message || "Failed to load RFQ stats.");
-  }
-
-  if (purchaseOrderCountResult.error) {
-    throw new Error(
-      purchaseOrderCountResult.error.message || "Failed to load order stats.",
-    );
-  }
-
-  if (engagementRowsResult.error) {
-    throw new Error(
-      engagementRowsResult.error.message || "Failed to load supplier stats.",
-    );
-  }
-
-  const activeSuppliers = new Set(
-    (engagementRowsResult.data ?? []).map((row) => row.supplier_id),
-  ).size;
-
-  const fileName =
-    businessDocument?.file_url?.split("/").pop() || "Uploaded document";
+  const businessDocument =
+    (((businessDocuments as
+      | Array<{
+          doc_id: number;
+          file_url: string | null;
+          is_visible_to_others: boolean | null;
+          document_types:
+            | {
+                document_type_name: string;
+              }
+            | null;
+        }>
+      | null) ?? []).find((document) =>
+      isBuyerDtiDocumentTypeName(document.document_types?.document_type_name ?? ""),
+    ) ?? null);
+  const documentUrl = await getBusinessDocumentUrl(supabase, businessDocument?.file_url);
+  const fileName = businessDocument?.file_url?.split("/").pop() || "Uploaded document";
 
   return (
     <BuyerAccountBody
@@ -602,6 +585,7 @@ async function BuyerAccountPageContent({ searchParams }: BuyerAccountPageProps) 
         name: user.name,
         email: user.email,
         updatedAt: businessProfile?.updated_at ?? null,
+        avatarUrl: user.avatar_url,
       }}
       businessProfile={
         businessProfile
@@ -618,13 +602,15 @@ async function BuyerAccountPageContent({ searchParams }: BuyerAccountPageProps) 
             }
           : null
       }
-      businessDocument={businessDocument}
+      businessDocument={
+        businessDocument
+          ? {
+              is_visible_to_others: businessDocument.is_visible_to_others,
+              documentUrl,
+            }
+          : null
+      }
       fileName={fileName}
-      stats={{
-        ordersPlaced: purchaseOrderCountResult.count ?? 0,
-        rfqsSent: rfqCountResult.count ?? 0,
-        activeSuppliers,
-      }}
       savedSuppliers={pastSuppliers.slice(0, 3).map((supplier) => ({
         supplierId: supplier.supplierId,
         avatarUrl: supplier.avatarUrl,

@@ -5,11 +5,11 @@ import {
   isBuyerDtiDocumentTypeName,
 } from "@/lib/verification/document-rules";
 import { getVerificationReadiness } from "@/lib/verification/provider-config";
+import { runSupplierDocumentLiveVerification } from "@/lib/verification/supplier-documents";
 import {
   completeVerificationRun,
   failVerificationRun,
   markVerificationRunProcessing,
-  markVerificationRunReviewRequired,
 } from "@/lib/verification/queue";
 import {
   syncBuyerVerificationProfileFromDocuments,
@@ -17,7 +17,6 @@ import {
 } from "@/lib/verification/profile-status";
 import type {
   DocumentVerificationSummary,
-  SiteVerificationSummary,
   VerificationRunKind,
   VerificationRunStatus,
   VerificationTargetType,
@@ -38,6 +37,9 @@ type BusinessDocumentRow = {
   profile_id: number;
   file_url: string;
   status: string | null;
+  ocr_extracted_fields?: Record<string, unknown> | null;
+  verification_analysis?: Record<string, unknown> | null;
+  verified_at?: string | null;
   document_types:
     | {
         document_type_name: string;
@@ -57,12 +59,14 @@ type BusinessProfileRow = {
   region: string;
 };
 
-type SiteImageRow = {
-  image_id: number;
-  image_type: string;
-  image_url: string;
-  status: string;
-};
+function isTerminalVerificationRunStatus(status: VerificationRunStatus) {
+  return (
+    status === "completed" ||
+    status === "cancelled" ||
+    // Legacy-only terminal status kept for historical run rows.
+    status === "review_required"
+  );
+}
 
 function readDocumentTypeName(row: BusinessDocumentRow) {
   if (Array.isArray(row.document_types)) {
@@ -72,48 +76,84 @@ function readDocumentTypeName(row: BusinessDocumentRow) {
   return row.document_types?.document_type_name ?? "";
 }
 
-function buildDocumentMockSummary(
+function buildUnsupportedDocumentSummary(
   documentTypeName: string
 ): DocumentVerificationSummary {
   const blueprint = getDocumentVerificationBlueprint(documentTypeName);
 
   return {
-    status: "review_required",
-    score: blueprint ? 50 : 20,
-    manualReviewRequired: true,
+    status: "rejected",
+    score: blueprint ? 0 : null,
+    manualReviewRequired: false,
     extractedFields: {},
-    failedChecks: blueprint ? [] : ["unsupported_document_type"],
-    passedChecks: blueprint
-      ? ["file_received", "verification_blueprint_loaded"]
-      : ["file_received"],
+    failedChecks: [blueprint ? "unsupported_document_flow" : "unsupported_document_type"],
+    passedChecks: [],
     notes: blueprint
       ? [
-          `Mock verification completed for ${blueprint.label}.`,
-          "No live OCR or AI providers are connected yet, so this document has been flagged for manual review.",
+          `${blueprint.label} was submitted through a document flow that is no longer supported.`,
+          "Automated verification is binary, so this submission was rejected instead of being routed to manual review.",
         ]
       : [
           `No verification blueprint was found for ${documentTypeName}.`,
-          "The document has been routed to manual review.",
+          "Automated verification is binary, so this unsupported document type was rejected.",
+        ],
+  };
+}
+
+function buildSupplierDocumentUnavailableSummary(
+  documentTypeName: string
+): DocumentVerificationSummary {
+  const blueprint = getDocumentVerificationBlueprint(documentTypeName);
+
+  return {
+    status: "rejected",
+    score: blueprint ? 0 : null,
+    manualReviewRequired: false,
+    extractedFields: {},
+    failedChecks: [
+      blueprint ? "live_verification_unavailable" : "unsupported_document_type",
+    ],
+    passedChecks: [],
+    notes: blueprint
+      ? [
+          `Automated verification for ${blueprint.label} is currently unavailable.`,
+          "Supplier document verification is binary, so this upload was rejected instead of being routed to manual review.",
+        ]
+      : [
+          `No verification blueprint was found for ${documentTypeName}.`,
+          "Supplier document verification is binary, so this unsupported document type was rejected.",
+        ],
+  };
+}
+
+function buildBuyerDocumentUnavailableSummary(
+  documentTypeName: string
+): DocumentVerificationSummary {
+  const blueprint = getDocumentVerificationBlueprint(documentTypeName);
+
+  return {
+    status: "rejected",
+    score: blueprint ? 0 : null,
+    manualReviewRequired: false,
+    extractedFields: {},
+    failedChecks: [
+      blueprint ? "live_verification_unavailable" : "unsupported_document_type",
+    ],
+    passedChecks: [],
+    notes: blueprint
+      ? [
+          `Automated verification for ${blueprint.label} is currently unavailable.`,
+          "Buyer DTI verification is binary, so this upload was rejected instead of being routed to manual review.",
+        ]
+      : [
+          `No verification blueprint was found for ${documentTypeName}.`,
+          "Buyer DTI verification is binary, so this unsupported document type was rejected.",
         ],
   };
 }
 
 function isBuyerDtiDocument(documentTypeName: string) {
   return isBuyerDtiDocumentTypeName(documentTypeName);
-}
-
-function buildSiteMockSummary(addressLabel: string): SiteVerificationSummary {
-  return {
-    status: "review_required",
-    similarityScore: null,
-    deliverabilityStatus: "unknown",
-    streetViewStatus: "unknown",
-    manualReviewRequired: true,
-    notes: [
-      `Mock site verification completed for ${addressLabel}.`,
-      "No live Maps or vision providers are connected yet, so the site verification has been routed to manual review.",
-    ],
-  };
 }
 
 async function loadVerificationRun(runId: number) {
@@ -230,7 +270,7 @@ async function processDocumentVerificationRun(run: VerificationRunRow) {
           documentTypeName,
         });
       } else {
-        await markVerificationRunReviewRequired(run.run_id, {
+        await completeVerificationRun(run.run_id, {
           mode: "live",
           target: "business_document",
           summary: liveResult.summary,
@@ -241,9 +281,206 @@ async function processDocumentVerificationRun(run: VerificationRunRow) {
       await syncBuyerVerificationProfileFromDocuments(run.profile_id);
       return;
     }
+
+    const summary = buildBuyerDocumentUnavailableSummary(documentTypeName);
+    const reviewNotes = summary.notes.join(" ");
+
+    const { error: updateError } = await supabase
+      .from("business_documents")
+      .update({
+        status: summary.status,
+        ocr_raw_text: null,
+        ocr_extracted_fields: summary.extractedFields,
+        metadata_analysis: {
+          mode: "live_unavailable",
+          analyzed_at: new Date().toISOString(),
+          provider_snapshot: readiness.snapshot,
+        },
+        verification_analysis: {
+          mode: "live_unavailable",
+          summary,
+          documentTypeName,
+          live_readiness: readiness,
+        },
+        verification_score: summary.score,
+        manual_review_required: false,
+        review_notes: reviewNotes,
+        verified_at: null,
+      })
+      .eq("doc_id", document.doc_id);
+
+    if (updateError) {
+      throw new Error(
+        updateError.message ||
+          "Failed to update unavailable buyer verification result."
+      );
+    }
+
+    await completeVerificationRun(run.run_id, {
+      mode: "live_unavailable",
+      target: "business_document",
+      summary,
+      documentTypeName,
+    });
+
+    await syncBuyerVerificationProfileFromDocuments(run.profile_id);
+    return;
   }
 
-  const summary = buildDocumentMockSummary(documentTypeName);
+  if (run.kind === "supplier_document") {
+    const { data: businessProfile, error: businessProfileError } = await supabase
+      .from("business_profiles")
+      .select("profile_id, business_name, business_location, city, province, region")
+      .eq("profile_id", run.profile_id)
+      .maybeSingle<BusinessProfileRow>();
+
+    if (businessProfileError) {
+      throw new Error(
+        businessProfileError.message ||
+          "Failed to load business profile for supplier document verification."
+      );
+    }
+
+    if (!businessProfile) {
+      throw new Error("Business profile not found for supplier document verification.");
+    }
+
+    if (readiness.canRunSupplierDocumentLive) {
+      const { data: profileDocuments, error: profileDocumentsError } = await supabase
+        .from("business_documents")
+        .select(
+          `
+            doc_id,
+            profile_id,
+            file_url,
+            status,
+            ocr_extracted_fields,
+            verification_analysis,
+            verified_at,
+            document_types!business_documents_doc_type_id_fkey (
+              document_type_name
+            )
+          `
+        )
+        .eq("profile_id", run.profile_id);
+
+      if (profileDocumentsError) {
+        throw new Error(
+          profileDocumentsError.message ||
+            "Failed to load supplier profile documents for verification."
+        );
+      }
+
+      const approvedDtiDocument = ((profileDocuments as BusinessDocumentRow[] | null) ?? [])
+        .filter(
+          (row) =>
+            row.doc_id !== document.doc_id &&
+            row.status === "approved" &&
+            getDocumentVerificationBlueprint(readDocumentTypeName(row))?.code === "dti"
+        )
+        .sort((left, right) =>
+          String(right.verified_at ?? "").localeCompare(String(left.verified_at ?? ""))
+        )[0];
+
+      const liveResult = await runSupplierDocumentLiveVerification({
+        filePath: document.file_url,
+        documentTypeName,
+        businessContext: {
+          businessName: businessProfile.business_name ?? null,
+          businessLocation: businessProfile.business_location ?? null,
+          city: businessProfile.city ?? null,
+          province: businessProfile.province ?? null,
+          region: businessProfile.region ?? null,
+        },
+        dtiAnchor: approvedDtiDocument
+          ? {
+              docId: approvedDtiDocument.doc_id,
+              extractedFields: approvedDtiDocument.ocr_extracted_fields ?? {},
+              verificationAnalysis: approvedDtiDocument.verification_analysis ?? null,
+            }
+          : null,
+      });
+
+      const { error: liveUpdateError } = await supabase
+        .from("business_documents")
+        .update({
+          status: liveResult.summary.status,
+          ocr_extracted_data: liveResult.ocrRawText,
+          ocr_raw_text: liveResult.ocrRawText,
+          ocr_extracted_fields: liveResult.summary.extractedFields,
+          metadata_analysis: liveResult.metadataAnalysis,
+          verification_analysis: liveResult.verificationAnalysis,
+          verification_score: liveResult.summary.score,
+          manual_review_required: false,
+          review_notes: liveResult.reviewNotes,
+          verified_at: liveResult.verifiedAt,
+        })
+        .eq("doc_id", document.doc_id);
+
+      if (liveUpdateError) {
+        throw new Error(
+          liveUpdateError.message ||
+            "Failed to update live supplier verification result."
+        );
+      }
+
+      await completeVerificationRun(run.run_id, {
+        mode: "live",
+        target: "business_document",
+        summary: liveResult.summary,
+        documentTypeName,
+      });
+
+      await syncSupplierVerificationProfileFromArtifacts(run.profile_id);
+      return;
+    }
+
+    const summary = buildSupplierDocumentUnavailableSummary(documentTypeName);
+    const reviewNotes = summary.notes.join(" ");
+
+    const { error: updateError } = await supabase
+      .from("business_documents")
+      .update({
+        status: summary.status,
+        ocr_raw_text: null,
+        ocr_extracted_fields: summary.extractedFields,
+        metadata_analysis: {
+          mode: "live_unavailable",
+          analyzed_at: new Date().toISOString(),
+          provider_snapshot: readiness.snapshot,
+        },
+        verification_analysis: {
+          mode: "live_unavailable",
+          summary,
+          documentTypeName,
+          live_readiness: readiness,
+        },
+        verification_score: summary.score,
+        manual_review_required: false,
+        review_notes: reviewNotes,
+        verified_at: null,
+      })
+      .eq("doc_id", document.doc_id);
+
+    if (updateError) {
+      throw new Error(
+        updateError.message ||
+          "Failed to update unavailable supplier verification result."
+      );
+    }
+
+    await completeVerificationRun(run.run_id, {
+      mode: "live_unavailable",
+      target: "business_document",
+      summary,
+      documentTypeName,
+    });
+
+    await syncSupplierVerificationProfileFromArtifacts(run.profile_id);
+    return;
+  }
+
+  const summary = buildUnsupportedDocumentSummary(documentTypeName);
   const reviewNotes = summary.notes.join(" ");
 
   const { error: updateError } = await supabase
@@ -258,7 +495,7 @@ async function processDocumentVerificationRun(run: VerificationRunRow) {
         provider_snapshot: readiness.snapshot,
       },
       verification_analysis: {
-        mode: "mock",
+        mode: "unsupported_flow",
         summary,
         documentTypeName,
         live_readiness: readiness,
@@ -274,8 +511,8 @@ async function processDocumentVerificationRun(run: VerificationRunRow) {
     throw new Error(updateError.message || "Failed to update document verification result.");
   }
 
-  await markVerificationRunReviewRequired(run.run_id, {
-    mode: "mock",
+  await completeVerificationRun(run.run_id, {
+    mode: "unsupported_flow",
     target: "business_document",
     summary,
     documentTypeName,
@@ -288,121 +525,10 @@ async function processDocumentVerificationRun(run: VerificationRunRow) {
   }
 }
 
-async function processSiteVerificationRun(run: VerificationRunRow) {
-  const supabase = await createClient();
-
-  const [{ data: businessProfile, error: businessProfileError }, { data: siteImages, error: siteImagesError }] =
-    await Promise.all([
-      supabase
-        .from("business_profiles")
-        .select("profile_id, business_location, city, province, region")
-        .eq("profile_id", run.profile_id)
-        .maybeSingle<BusinessProfileRow>(),
-      supabase
-        .from("site_showcase_images")
-        .select("image_id, image_type, image_url, status")
-        .eq("profile_id", run.profile_id),
-    ]);
-
-  if (businessProfileError) {
-    throw new Error(
-      businessProfileError.message || "Failed to load business profile for site verification."
-    );
-  }
-
-  if (siteImagesError) {
-    throw new Error(siteImagesError.message || "Failed to load site verification images.");
-  }
-
-  if (!businessProfile) {
-    throw new Error("Business profile not found for site verification.");
-  }
-
-  const safeSiteImages = (siteImages as SiteImageRow[] | null) ?? [];
-  const addressLabel = [
-    businessProfile.business_location,
-    businessProfile.city,
-    businessProfile.province,
-    businessProfile.region,
-  ]
-    .filter(Boolean)
-    .join(", ");
-
-  const readiness = getVerificationReadiness();
-  const summary = buildSiteMockSummary(addressLabel || `profile #${run.profile_id}`);
-  const reviewNotes = summary.notes.join(" ");
-
-  const { error: siteCheckInsertError } = await supabase
-    .from("site_verification_checks")
-    .insert({
-      profile_id: run.profile_id,
-      submitted_address: addressLabel,
-      normalized_address: null,
-      geocode_payload: {
-        mode: "mock",
-        provider_snapshot: readiness.snapshot,
-      },
-      street_view_metadata: {
-        mode: "mock",
-        provider_snapshot: readiness.snapshot,
-      },
-      street_view_image_url: null,
-      comparison_payload: {
-        mode: "mock",
-        image_count: safeSiteImages.length,
-        image_types: safeSiteImages.map((image) => image.image_type),
-      },
-      similarity_score: summary.similarityScore,
-      deliverability_status: summary.deliverabilityStatus,
-      street_view_status: summary.streetViewStatus,
-      status: summary.status,
-      manual_review_required: summary.manualReviewRequired,
-      review_notes: reviewNotes,
-      verified_at: null,
-      updated_at: new Date().toISOString(),
-    });
-
-  if (siteCheckInsertError) {
-    throw new Error(
-      siteCheckInsertError.message || "Failed to save site verification result."
-    );
-  }
-
-  const { error: siteImagesUpdateError } = await supabase
-    .from("site_showcase_images")
-    .update({
-      status: summary.status,
-      analysis_result: {
-        mode: "mock",
-        summary,
-        live_readiness: readiness,
-      },
-      manual_review_required: summary.manualReviewRequired,
-      review_notes: reviewNotes,
-      verified_at: null,
-    })
-    .eq("profile_id", run.profile_id);
-
-  if (siteImagesUpdateError) {
-    throw new Error(
-      siteImagesUpdateError.message || "Failed to update site image verification status."
-    );
-  }
-
-  await markVerificationRunReviewRequired(run.run_id, {
-    mode: "mock",
-    target: "site_verification",
-    summary,
-    imageTypes: safeSiteImages.map((image) => image.image_type),
-  });
-
-  await syncSupplierVerificationProfileFromArtifacts(run.profile_id);
-}
-
 export async function processVerificationRun(runId: number) {
   const run = await loadVerificationRun(runId);
 
-  if (run.status === "completed" || run.status === "review_required") {
+  if (isTerminalVerificationRunStatus(run.status)) {
     return run;
   }
 
@@ -413,11 +539,6 @@ export async function processVerificationRun(runId: number) {
   try {
     if (run.kind === "buyer_document" || run.kind === "supplier_document") {
       await processDocumentVerificationRun(run);
-      return run;
-    }
-
-    if (run.kind === "site_verification") {
-      await processSiteVerificationRun(run);
       return run;
     }
 

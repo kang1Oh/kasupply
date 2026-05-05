@@ -49,12 +49,10 @@ async function SupplierLayoutContent({
     redirect("/onboarding");
   }
 
-  if (!status.hasSubmittedRequiredSupplierDocuments) {
-    redirect("/onboarding/supplier-documents");
-  }
-
-  if (!status.hasSubmittedSiteImages) {
-    redirect("/onboarding/supplier-site-images");
+  if (!status.isSupplierVerified) {
+    if (!status.hasApprovedRequiredSupplierDocuments) {
+      redirect("/onboarding/supplier-documents");
+    }
   }
 
   return (

@@ -84,26 +84,6 @@ export async function completeVerificationRun(
   }
 }
 
-export async function markVerificationRunReviewRequired(
-  runId: number,
-  resultSummary: Record<string, unknown>
-) {
-  const supabase = await createClient();
-
-  const { error } = await supabase
-    .from("verification_runs")
-    .update({
-      status: "review_required",
-      result_summary: resultSummary,
-      completed_at: new Date().toISOString(),
-    })
-    .eq("run_id", runId);
-
-  if (error) {
-    throw new Error(error.message || "Failed to mark verification run for review.");
-  }
-}
-
 export async function failVerificationRun(runId: number, errorMessage: string) {
   const supabase = await createClient();
 

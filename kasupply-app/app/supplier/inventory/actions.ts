@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { safeAutoSyncSupplierSearchIndexForSupplier } from "@/lib/search";
 import { createClient } from "@/lib/supabase/server";
 
 type SupplierProfileRow = {
@@ -207,7 +208,14 @@ export async function createInventoryItem(formData: FormData) {
       }
     }
 
+  await safeAutoSyncSupplierSearchIndexForSupplier({
+    supplierId: supplier_id,
+    reason: "inventory_create",
+  });
+
   revalidatePath("/supplier/inventory");
+  revalidatePath("/buyer/search");
+  revalidatePath("/admin/search-index");
   redirect(`/supplier/inventory?modal=added&added=${createdProduct.product_id}`);
 }
 
@@ -339,7 +347,14 @@ export async function updateInventoryItem(formData: FormData) {
       .remove(removedExistingImages.map((image) => image.storage_path));
   }
 
+  await safeAutoSyncSupplierSearchIndexForSupplier({
+    supplierId: supplier_id,
+    reason: "inventory_update",
+  });
+
   revalidatePath("/supplier/inventory");
+  revalidatePath("/buyer/search");
+  revalidatePath("/admin/search-index");
   redirect("/supplier/inventory?modal=saved");
 }
 
@@ -393,7 +408,14 @@ export async function deleteInventoryItem(formData: FormData) {
       .remove(Array.from(imagePaths));
   }
 
+  await safeAutoSyncSupplierSearchIndexForSupplier({
+    supplierId: supplier_id,
+    reason: "inventory_delete",
+  });
+
   revalidatePath("/supplier/inventory");
+  revalidatePath("/buyer/search");
+  revalidatePath("/admin/search-index");
   redirect("/supplier/inventory");
 }
 
@@ -421,7 +443,14 @@ export async function togglePublishStatus(formData: FormData) {
     throw new Error(error.message || "Failed to update publish status.");
   }
 
+  await safeAutoSyncSupplierSearchIndexForSupplier({
+    supplierId: supplier_id,
+    reason: "inventory_publish_toggle",
+  });
+
   revalidatePath("/supplier/inventory");
+  revalidatePath("/buyer/search");
+  revalidatePath("/admin/search-index");
 }
 
 export async function quickUpdateStock(formData: FormData) {
@@ -452,5 +481,12 @@ export async function quickUpdateStock(formData: FormData) {
     throw new Error(error.message || "Failed to update stock.");
   }
 
+  await safeAutoSyncSupplierSearchIndexForSupplier({
+    supplierId: supplier_id,
+    reason: "inventory_stock_update",
+  });
+
   revalidatePath("/supplier/inventory");
+  revalidatePath("/buyer/search");
+  revalidatePath("/admin/search-index");
 }

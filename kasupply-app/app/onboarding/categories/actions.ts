@@ -1,6 +1,8 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { safeAutoSyncSupplierSearchIndexForSupplier } from "@/lib/search";
 import { createClient } from "@/lib/supabase/server";
 
 function parseCategoryIds(formData: FormData) {
@@ -31,6 +33,7 @@ export async function saveBusinessProfileCategories(formData: FormData) {
 
   const nextPath = String(formData.get("next_path") ?? "").trim();
   const requiredFlow = String(formData.get("required_flow") ?? "").trim();
+  const returnPath = String(formData.get("return_path") ?? "").trim();
   const categoryIds = parseCategoryIds(formData);
   const customCategoryInput = String(formData.get("other_categories") ?? "").trim();
   const customCategories = parseCustomCategories(customCategoryInput);
@@ -125,7 +128,37 @@ export async function saveBusinessProfileCategories(formData: FormData) {
     }
   }
 
+  if (roleName === "supplier") {
+    const { data: supplierProfile, error: supplierProfileError } = await supabase
+      .from("supplier_profiles")
+      .select("supplier_id")
+      .eq("profile_id", profileId)
+      .maybeSingle();
+
+    if (supplierProfileError) {
+      throw new Error(
+        supplierProfileError.message || "Failed to load supplier profile for search indexing."
+      );
+    }
+
+    if (supplierProfile?.supplier_id) {
+      await safeAutoSyncSupplierSearchIndexForSupplier({
+        supplierId: supplierProfile.supplier_id,
+        reason: "supplier_category_update",
+      });
+    }
+    revalidatePath("/buyer/search");
+    revalidatePath("/admin/search-index");
+    redirect("/onboarding/supplier-documents");
+  }
+
   if (roleName === "buyer") {
+    revalidatePath("/buyer/account/edit");
+
+    if (returnPath) {
+      redirect(returnPath);
+    }
+
     const params = new URLSearchParams();
 
     if (requiredFlow) {

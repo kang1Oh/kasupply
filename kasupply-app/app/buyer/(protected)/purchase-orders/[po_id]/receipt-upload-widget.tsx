@@ -10,7 +10,6 @@ import {
 type ReceiptUploadWidgetProps = {
   poId: number;
   mode: "first_upload" | "resubmit";
-  existingReceiptFilePath: string | null;
   currentFileName?: string | null;
   reviewNotes?: string | null;
   submitAction: (formData: FormData) => Promise<void>;
@@ -21,7 +20,6 @@ const ACCEPTED_TYPES_TEXT = "PNG, JPG, JPEG, or PDF";
 export function ReceiptUploadWidget({
   poId,
   mode,
-  existingReceiptFilePath,
   currentFileName,
   reviewNotes,
   submitAction,

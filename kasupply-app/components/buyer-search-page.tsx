@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import {
   BuyerSupplierCard,
   type BuyerHomepageSupplier,
@@ -9,6 +10,7 @@ import type { SupplierSearchItem } from "@/app/buyer/search/actions";
 
 type BuyerSearchPageProps = {
   suppliers: SupplierSearchItem[];
+  initialSearchQuery?: string;
 };
 
 function SearchIcon() {
@@ -371,19 +373,40 @@ function toHomepageSupplier(supplier: SupplierSearchItem): BuyerHomepageSupplier
       supplier.about?.trim() || "Verified supplier in the Davao Region.",
     location: supplier.city,
     verified: supplier.verifiedBadge,
-    matchLabel: "No match yet",
+    recommendationScore: supplier.searchScore ?? undefined,
+    matchLabel: supplier.matchLabel,
     reviewLabel: "No reviews yet",
   };
 }
 
-export function BuyerSearchPage({ suppliers }: BuyerSearchPageProps) {
-  const [searchQuery, setSearchQuery] = useState("");
+export function BuyerSearchPage({
+  suppliers,
+  initialSearchQuery = "",
+}: BuyerSearchPageProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [isPending, startTransition] = useTransition();
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedType, setSelectedType] = useState("All");
   const [selectedLocation, setSelectedLocation] = useState("All");
   const [selectedCertification, setSelectedCertification] = useState("All");
   const [selectedMoq, setSelectedMoq] = useState("All");
-  const [sortBy, setSortBy] = useState("recent");
+  const [sortBy, setSortBy] = useState(initialSearchQuery ? "best_match" : "recent");
+
+  useEffect(() => {
+    setSearchQuery(initialSearchQuery);
+    setSortBy(initialSearchQuery ? "best_match" : "recent");
+  }, [initialSearchQuery]);
+
+  function submitSearch() {
+    const query = searchQuery.trim();
+    const nextUrl = query ? `${pathname}?q=${encodeURIComponent(query)}` : pathname;
+
+    startTransition(() => {
+      router.push(nextUrl);
+    });
+  }
 
   const categoryOptions = useMemo(() => {
     const values = new Set<string>();
@@ -448,8 +471,6 @@ export function BuyerSearchPage({ suppliers }: BuyerSearchPageProps) {
   }, [suppliers]);
 
   const filteredSuppliers = useMemo(() => {
-    const normalizedSearch = searchQuery.trim().toLowerCase();
-
     const filtered = suppliers.filter((supplier) => {
       const categoryTags = supplier.products.map((product) =>
         product.categoryName.toLowerCase()
@@ -458,20 +479,6 @@ export function BuyerSearchPage({ suppliers }: BuyerSearchPageProps) {
         supplier.products.length > 0
           ? Math.min(...supplier.products.map((product) => product.moq))
           : null;
-
-      const matchesSearch =
-        !normalizedSearch ||
-        supplier.businessName.toLowerCase().includes(normalizedSearch) ||
-        supplier.businessType.toLowerCase().includes(normalizedSearch) ||
-        supplier.city.toLowerCase().includes(normalizedSearch) ||
-        supplier.province.toLowerCase().includes(normalizedSearch) ||
-        supplier.region.toLowerCase().includes(normalizedSearch) ||
-        (supplier.about ?? "").toLowerCase().includes(normalizedSearch) ||
-        supplier.searchableProducts.some(
-          (product) =>
-            product.productName.toLowerCase().includes(normalizedSearch) ||
-            product.categoryName.toLowerCase().includes(normalizedSearch)
-        );
 
       const matchesCategory =
         selectedCategories.length === 0 ||
@@ -502,7 +509,6 @@ export function BuyerSearchPage({ suppliers }: BuyerSearchPageProps) {
         (selectedMoq === "> 500" && lowestMoq !== null && lowestMoq > 500);
 
       return (
-        matchesSearch &&
         matchesCategory &&
         matchesType &&
         matchesLocation &&
@@ -513,6 +519,8 @@ export function BuyerSearchPage({ suppliers }: BuyerSearchPageProps) {
 
     filtered.sort((left, right) => {
       switch (sortBy) {
+        case "best_match":
+          return (right.searchScore ?? 0) - (left.searchScore ?? 0);
         case "name":
           return left.businessName.localeCompare(right.businessName);
         case "certified":
@@ -527,7 +535,6 @@ export function BuyerSearchPage({ suppliers }: BuyerSearchPageProps) {
 
     return filtered;
   }, [
-    searchQuery,
     selectedCategories,
     selectedCertification,
     selectedLocation,
@@ -543,13 +550,22 @@ export function BuyerSearchPage({ suppliers }: BuyerSearchPageProps) {
   );
 
   function clearAllFilters() {
-    setSearchQuery("");
     setSelectedCategories([]);
     setSelectedType("All");
     setSelectedLocation("All");
     setSelectedCertification("All");
     setSelectedMoq("All");
-    setSortBy("recent");
+    setSortBy(initialSearchQuery ? "best_match" : "recent");
+
+    if (initialSearchQuery) {
+      setSearchQuery("");
+      startTransition(() => {
+        router.push(pathname);
+      });
+      return;
+    }
+
+    setSearchQuery("");
   }
 
   return (
@@ -557,7 +573,10 @@ export function BuyerSearchPage({ suppliers }: BuyerSearchPageProps) {
       <section className="overflow-hidden rounded-[16px] border border-[#e7edf5] bg-white shadow-[0_8px_24px_rgba(15,23,42,0.03)]">
         <div className="border-b border-[#edf1f6] px-4 py-3.5 sm:px-5">
           <form
-            onSubmit={(event) => event.preventDefault()}
+            onSubmit={(event) => {
+              event.preventDefault();
+              submitSearch();
+            }}
             className="flex flex-col gap-3 md:flex-row md:items-center"
           >
             <label className="relative flex-1">
@@ -567,16 +586,17 @@ export function BuyerSearchPage({ suppliers }: BuyerSearchPageProps) {
               <input
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search supplier name, product or categories..."
+                placeholder="Search supplier need, product, niche, or category..."
                 className="h-[52px] w-full rounded-[14px] border border-[#dbe3ee] bg-white pl-12 pr-4 text-[13px] text-[#223654] outline-none transition placeholder:text-[#c2cad6] focus:border-[#294773]"
               />
             </label>
 
             <button
               type="submit"
-              className="inline-flex h-[52px] items-center justify-center rounded-[14px] bg-[#223f68] px-8 text-[15px] font-semibold text-white transition hover:bg-[#1d3454]"
+              disabled={isPending}
+              className="inline-flex h-[52px] items-center justify-center rounded-[14px] bg-[#223f68] px-8 text-[15px] font-semibold text-white transition hover:bg-[#1d3454] disabled:cursor-not-allowed disabled:opacity-70"
             >
-              Search
+              {isPending ? "Searching..." : "Search"}
             </button>
           </form>
         </div>
@@ -640,7 +660,9 @@ export function BuyerSearchPage({ suppliers }: BuyerSearchPageProps) {
           <p className="text-[13px] leading-none text-[#99a4b5]">
             Showing {mappedSuppliers.length} supplier
             {mappedSuppliers.length === 1 ? "" : "s"} for{" "}
-            <span className="font-semibold text-[#4b5563]">near you</span>
+            <span className="font-semibold text-[#4b5563]">
+              {initialSearchQuery ? `"${initialSearchQuery}"` : "near you"}
+            </span>
           </p>
 
           <label className="inline-flex h-[40px] items-center gap-2 self-start rounded-[10px] border border-[#cfd8e6] bg-white px-3.5 text-[13px] text-[#516074] shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
@@ -649,6 +671,7 @@ export function BuyerSearchPage({ suppliers }: BuyerSearchPageProps) {
               onChange={(event) => setSortBy(event.target.value)}
               className="appearance-none bg-transparent pr-1 leading-none outline-none"
             >
+              <option value="best_match">Best match</option>
               <option value="recent">Most recent</option>
               <option value="name">Supplier name</option>
               <option value="certified">Most certified</option>
@@ -667,7 +690,10 @@ export function BuyerSearchPage({ suppliers }: BuyerSearchPageProps) {
             <>
               <section className="grid gap-3.5 md:grid-cols-2">
                 {mappedSuppliers.map((supplier) => (
-                  <BuyerSupplierCard key={supplier.supplierId} supplier={supplier} />
+                  <BuyerSupplierCard
+                    key={`${supplier.supplierId}-${supplier.profileId}`}
+                    supplier={supplier}
+                  />
                 ))}
               </section>
 

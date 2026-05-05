@@ -6,6 +6,7 @@ export type CurrentAppUser = {
   role_id: number;
   name: string;
   email: string;
+  avatar_url: string | null;
   roles: {
     role_id: number;
     role_name: string;
@@ -29,9 +30,14 @@ export async function getCurrentAppUser(): Promise<{
 
   const { data: appUserRow, error: appUserError } = await supabase
     .from("users")
-    .select("user_id, auth_user_id, role_id, name, email")
+    .select("user_id, auth_user_id, role_id, name, email, avatar_url")
     .eq("auth_user_id", authUser.id)
-    .single<Pick<CurrentAppUser, "user_id" | "auth_user_id" | "role_id" | "name" | "email">>();
+    .single<
+      Pick<
+        CurrentAppUser,
+        "user_id" | "auth_user_id" | "role_id" | "name" | "email" | "avatar_url"
+      >
+    >();
 
   if (appUserError || !appUserRow) {
     return { user: null, error: "User record not found in public.users" };

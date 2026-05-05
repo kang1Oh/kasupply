@@ -43,7 +43,7 @@ export default async function BuyerMessagesPage({
 
   if ((!conversationId || Number.isNaN(conversationId)) && supplierId && !Number.isNaN(supplierId)) {
     if (!status.appUser) {
-      redirect("/login?source=buyer-messages");
+      redirect("/auth/login?source=buyer-messages");
     }
 
     const { data: businessProfile, error: businessProfileError } = await supabase

@@ -246,13 +246,6 @@ export function BuyerSourcingBoardPage({
               Your sourcing requests and supplier quotations
             </p>
           </div>
-
-          <Link
-            href="/buyer/sourcing-board/new"
-            className="inline-flex h-[40px] items-center justify-center self-start rounded-[8px] bg-[#2F6BFF] px-[18px] text-[15px] font-medium text-white transition hover:bg-[#255ae0]"
-          >
-            + Post Request
-          </Link>
         </div>
 
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -311,6 +304,15 @@ export function BuyerSourcingBoardPage({
       </section>
 
       <section className="mt-[18px] space-y-[18px]">
+        <div className="flex items-center justify-end">
+          <Link
+            href="/buyer/sourcing-board/new"
+            className="inline-flex h-[40px] w-full items-center justify-center self-start rounded-[8px] border border-[#304668] bg-white px-[18px] text-[15px] font-medium text-[#304668] transition hover:bg-[#f0f4ff]"
+          >
+            + Post Request
+          </Link>
+        </div>
+        
         {requests.length === 0 ? (
           <div className="rounded-[18px] border border-[#e4e8ef] bg-white px-8 py-12 text-center shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
             <h2 className="text-[22px] font-semibold text-[#304668]">
@@ -320,12 +322,6 @@ export function BuyerSourcingBoardPage({
               Post a sourcing request to notify matched suppliers and start receiving
               quotations from the marketplace.
             </p>
-            <Link
-              href="/buyer/sourcing-board/new"
-              className="mt-5 inline-flex h-[40px] items-center justify-center rounded-[10px] bg-[#2f6fec] px-[18px] text-[15px] font-medium text-white transition hover:bg-[#275fd0]"
-            >
-              + Post Request
-            </Link>
           </div>
         ) : visibleRequests.length === 0 ? (
           <div className="rounded-[18px] border border-dashed border-[#d5dde8] bg-white px-8 py-10 text-center shadow-[0_8px_24px_rgba(15,23,42,0.03)]">

@@ -70,31 +70,6 @@ type BusinessDocumentRow = {
     | null;
 };
 
-type SiteImageRow = {
-  image_id: number;
-  image_type: string;
-  image_url: string;
-  status: string;
-  analysis_result: Record<string, unknown> | null;
-  manual_review_required: boolean | null;
-  review_notes: string | null;
-  verified_at: string | null;
-};
-
-type SiteVerificationCheckRow = {
-  site_verification_id: number;
-  status: string;
-  similarity_score: number | null;
-  deliverability_status: string;
-  street_view_status: string;
-  manual_review_required: boolean;
-  review_notes: string | null;
-  geocode_payload: Record<string, unknown> | null;
-  street_view_metadata: Record<string, unknown> | null;
-  comparison_payload: Record<string, unknown> | null;
-  created_at: string;
-};
-
 function toTitleCase(value: string | null | undefined) {
   const safeValue = String(value ?? "").trim();
   if (!safeValue) return "Unknown";
@@ -194,8 +169,6 @@ async function getVerificationDetailData(runId: number) {
   const [
     { data: profile, error: profileError },
     { data: profileDocuments, error: profileDocumentsError },
-    { data: siteImages, error: siteImagesError },
-    { data: siteChecks, error: siteChecksError },
     { data: profileRuns, error: profileRunsError },
   ] = await Promise.all([
     supabase
@@ -229,21 +202,6 @@ async function getVerificationDetailData(runId: number) {
       .eq("profile_id", run.profile_id)
       .order("uploaded_at", { ascending: false }),
     supabase
-      .from("site_showcase_images")
-      .select(
-        "image_id, image_type, image_url, status, analysis_result, manual_review_required, review_notes, verified_at"
-      )
-      .eq("profile_id", run.profile_id)
-      .order("uploaded_at", { ascending: false }),
-    supabase
-      .from("site_verification_checks")
-      .select(
-        "site_verification_id, status, similarity_score, deliverability_status, street_view_status, manual_review_required, review_notes, geocode_payload, street_view_metadata, comparison_payload, created_at"
-      )
-      .eq("profile_id", run.profile_id)
-      .order("created_at", { ascending: false })
-      .limit(5),
-    supabase
       .from("verification_runs")
       .select(
         "run_id, profile_id, target_type, target_id, kind, status, triggered_by, input_snapshot, provider_status, result_summary, error_message, created_at, started_at, completed_at"
@@ -259,14 +217,6 @@ async function getVerificationDetailData(runId: number) {
 
   if (profileDocumentsError) {
     throw new Error(profileDocumentsError.message || "Failed to load business documents.");
-  }
-
-  if (siteImagesError) {
-    throw new Error(siteImagesError.message || "Failed to load site images.");
-  }
-
-  if (siteChecksError) {
-    throw new Error(siteChecksError.message || "Failed to load site verification checks.");
   }
 
   if (profileRunsError) {
@@ -300,8 +250,6 @@ async function getVerificationDetailData(runId: number) {
   }
 
   const safeDocuments = (profileDocuments as BusinessDocumentRow[] | null) ?? [];
-  const safeSiteImages = (siteImages as SiteImageRow[] | null) ?? [];
-  const safeSiteChecks = (siteChecks as SiteVerificationCheckRow[] | null) ?? [];
   const safeProfileRuns = (profileRuns as VerificationRunRow[] | null) ?? [];
 
   const targetDocument =
@@ -315,8 +263,6 @@ async function getVerificationDetailData(runId: number) {
     user,
     documents: safeDocuments,
     targetDocument,
-    siteImages: safeSiteImages,
-    siteChecks: safeSiteChecks,
     profileRuns: safeProfileRuns,
   };
 }
@@ -338,8 +284,6 @@ export default async function VerificationDetailPage({
   if (!data) {
     notFound();
   }
-
-  const latestSiteCheck = data.siteChecks[0] ?? null;
 
   return (
     <main className="space-y-6">
@@ -476,12 +420,6 @@ export default async function VerificationDetailPage({
                 {readDocumentTypeName(data.targetDocument)}
               </p>
             ) : null}
-            {latestSiteCheck ? (
-              <p>
-                <span className="font-medium">Latest site check:</span>{" "}
-                {toTitleCase(latestSiteCheck.status)}
-              </p>
-            ) : null}
           </div>
         </section>
       </section>
@@ -522,42 +460,6 @@ export default async function VerificationDetailPage({
         </section>
       ) : null}
 
-      {latestSiteCheck ? (
-        <section className="rounded-[20px] border border-[#e6edf6] bg-white p-5 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
-          <h2 className="text-base font-semibold text-[#223654]">Latest Site Verification Check</h2>
-          <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div>
-              <p className="text-xs uppercase tracking-wide text-[#8b95a5]">Status</p>
-              <span
-                className={`mt-1 inline-flex rounded-full border px-2 py-1 text-xs ${getStatusPillClasses(
-                  latestSiteCheck.status
-                )}`}
-              >
-                {toTitleCase(latestSiteCheck.status)}
-              </span>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wide text-[#8b95a5]">Similarity</p>
-              <p className="mt-1 text-sm text-[#334155]">
-                {latestSiteCheck.similarity_score ?? "Not available"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wide text-[#8b95a5]">Deliverability</p>
-              <p className="mt-1 text-sm text-[#334155]">
-                {toTitleCase(latestSiteCheck.deliverability_status)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wide text-[#8b95a5]">Street View</p>
-              <p className="mt-1 text-sm text-[#334155]">
-                {toTitleCase(latestSiteCheck.street_view_status)}
-              </p>
-            </div>
-          </div>
-        </section>
-      ) : null}
-
       <section className="grid gap-6 xl:grid-cols-2">
         <JsonPanel title="Run Input Snapshot" value={data.run.input_snapshot} />
         <JsonPanel title="Run Result Summary" value={data.run.result_summary} />
@@ -572,12 +474,6 @@ export default async function VerificationDetailPage({
             title="Document Extracted Fields"
             value={data.targetDocument.ocr_extracted_fields}
           />
-        ) : null}
-        {latestSiteCheck ? (
-          <JsonPanel title="Site Check Comparison Payload" value={latestSiteCheck.comparison_payload} />
-        ) : null}
-        {latestSiteCheck ? (
-          <JsonPanel title="Site Check Geocode Payload" value={latestSiteCheck.geocode_payload} />
         ) : null}
       </section>
 

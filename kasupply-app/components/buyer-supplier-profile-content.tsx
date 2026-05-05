@@ -366,6 +366,22 @@ function formatMoney(value: number) {
   return `P${value.toLocaleString()}`;
 }
 
+function formatMonthYear(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed.toLocaleString("en-US", {
+    month: "short",
+    year: "numeric",
+  });
+}
+
 function getStockLabel(stockAvailable: number | null, moq: number) {
   if (stockAvailable == null) return "In stock";
   if (stockAvailable <= moq) return "Low stock";
@@ -856,89 +872,170 @@ export function BuyerSupplierProfileContent({
               </dl>
             </div>
 
-            <div className="rounded-2xl border border-[#e3eaf2] bg-white p-6 shadow-[0_8px_20px_rgba(15,23,42,0.03)]">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-[15px] font-semibold text-[#223654]">
-                  Certifications
-                </h2>
-                {supplier.certifications.length > 0 ? (
-                  <span className="text-[12px] text-[#94a3b8]">
-                    {supplier.certifications.length} verified
-                  </span>
-                ) : null}
+            <div className="space-y-6">
+              <div className="rounded-2xl border border-[#e3eaf2] bg-white p-6 shadow-[0_8px_20px_rgba(15,23,42,0.03)]">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-[15px] font-semibold text-[#223654]">
+                    Verification Documents
+                  </h2>
+                  {supplier.businessDocuments.length > 0 ? (
+                    <span className="text-[12px] text-[#94a3b8]">
+                      {supplier.businessDocuments.length} approved
+                    </span>
+                  ) : null}
+                </div>
+
+                {supplier.businessDocuments.length === 0 ? (
+                  <p className="mt-4 text-[13px] text-[#94a3b8]">
+                    No business verification documents available yet.
+                  </p>
+                ) : (
+                  <div className="mt-4 space-y-3">
+                    {supplier.businessDocuments.map((document) => (
+                      <div
+                        key={document.documentId}
+                        className="flex items-center gap-4 rounded-[18px] border border-[#edf2f7] bg-[#fbfcfe] px-4 py-4"
+                      >
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#e7eefc] text-[#376ae6]">
+                          <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+                            <path
+                              d="M8 3.75h6l4 4v12.5a1 1 0 0 1-1 1H8a2 2 0 0 1-2-2V5.75a2 2 0 0 1 2-2Z"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.7"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                            <path
+                              d="M14 3.75v4h4"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.7"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2.5">
+                            <p className="text-[14px] font-semibold text-[#223654]">
+                              {document.documentTypeName}
+                            </p>
+                            <span className="rounded-full border border-[#84c19b] bg-[#f3fbf5] px-2 py-0.5 text-[10px] font-medium text-[#2f7f4d]">
+                              Approved
+                            </span>
+                          </div>
+                          <p className="mt-1 text-[12px] text-[#94a3b8]">
+                            {formatMonthYear(document.verifiedAt)
+                              ? `Verified ${formatMonthYear(document.verifiedAt)}`
+                              : document.fileName}
+                          </p>
+                        </div>
+
+                        <div className="shrink-0">
+                          {document.documentUrl ? (
+                            <a
+                              href={document.documentUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center rounded-full px-2 py-1 text-[13px] font-medium text-[#376ae6] underline-offset-2 transition hover:text-[#223654] hover:underline"
+                            >
+                              View File
+                            </a>
+                          ) : (
+                            <span className="inline-flex items-center rounded-full px-2 py-1 text-[12px] text-[#94a3b8]">
+                              File unavailable
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {supplier.certifications.length === 0 ? (
-                <p className="mt-4 text-[13px] text-[#94a3b8]">
-                  No certifications uploaded yet.
-                </p>
-              ) : (
-                <div className="mt-4 space-y-3">
-                  {supplier.certifications.map((cert) => (
-                    <div
-                      key={cert.certificationId}
-                      className="flex items-center gap-4 rounded-[18px] border border-[#edf2f7] bg-[#fbfcfe] px-4 py-4"
-                    >
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#dff1e7] text-[#2f7f4d]">
-                        <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
-                          <path
-                            d="M8 3.75h6l4 4v12.5a1 1 0 0 1-1 1H8a2 2 0 0 1-2-2V5.75a2 2 0 0 1 2-2Z"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.7"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                          <path
-                            d="M14 3.75v4h4"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.7"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2.5">
-                          <p className="text-[14px] font-semibold text-[#223654]">
-                            {cert.certificationTypeName}
-                          </p>
-                          <span className="rounded-full border border-[#84c19b] bg-[#f3fbf5] px-2 py-0.5 text-[10px] font-medium text-[#2f7f4d]">
-                            Verified
-                          </span>
-                        </div>
-                        <p className="mt-1 text-[12px] text-[#94a3b8]">
-                          {cert.expiresAt
-                            ? `Expires ${new Date(cert.expiresAt).toLocaleString("en-US", {
-                                month: "short",
-                                year: "numeric",
-                              })}`
-                            : cert.fileName}
-                        </p>
-                      </div>
-
-                      <div className="shrink-0">
-                        {cert.documentUrl ? (
-                          <a
-                            href={cert.documentUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center rounded-full px-2 py-1 text-[13px] font-medium text-[#376ae6] underline-offset-2 transition hover:text-[#223654] hover:underline"
-                          >
-                            View File
-                          </a>
-                        ) : (
-                          <span className="inline-flex items-center rounded-full px-2 py-1 text-[12px] text-[#94a3b8]">
-                            File unavailable
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+              <div className="rounded-2xl border border-[#e3eaf2] bg-white p-6 shadow-[0_8px_20px_rgba(15,23,42,0.03)]">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-[15px] font-semibold text-[#223654]">
+                    Certifications
+                  </h2>
+                  {supplier.certifications.length > 0 ? (
+                    <span className="text-[12px] text-[#94a3b8]">
+                      {supplier.certifications.length} verified
+                    </span>
+                  ) : null}
                 </div>
-              )}
+
+                {supplier.certifications.length === 0 ? (
+                  <p className="mt-4 text-[13px] text-[#94a3b8]">
+                    No certifications uploaded yet.
+                  </p>
+                ) : (
+                  <div className="mt-4 space-y-3">
+                    {supplier.certifications.map((cert) => (
+                      <div
+                        key={cert.certificationId}
+                        className="flex items-center gap-4 rounded-[18px] border border-[#edf2f7] bg-[#fbfcfe] px-4 py-4"
+                      >
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#dff1e7] text-[#2f7f4d]">
+                          <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+                            <path
+                              d="M8 3.75h6l4 4v12.5a1 1 0 0 1-1 1H8a2 2 0 0 1-2-2V5.75a2 2 0 0 1 2-2Z"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.7"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                            <path
+                              d="M14 3.75v4h4"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.7"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2.5">
+                            <p className="text-[14px] font-semibold text-[#223654]">
+                              {cert.certificationTypeName}
+                            </p>
+                            <span className="rounded-full border border-[#84c19b] bg-[#f3fbf5] px-2 py-0.5 text-[10px] font-medium text-[#2f7f4d]">
+                              Verified
+                            </span>
+                          </div>
+                          <p className="mt-1 text-[12px] text-[#94a3b8]">
+                            {formatMonthYear(cert.expiresAt)
+                              ? `Expires ${formatMonthYear(cert.expiresAt)}`
+                              : cert.fileName}
+                          </p>
+                        </div>
+
+                        <div className="shrink-0">
+                          {cert.documentUrl ? (
+                            <a
+                              href={cert.documentUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center rounded-full px-2 py-1 text-[13px] font-medium text-[#376ae6] underline-offset-2 transition hover:text-[#223654] hover:underline"
+                            >
+                              View File
+                            </a>
+                          ) : (
+                            <span className="inline-flex items-center rounded-full px-2 py-1 text-[12px] text-[#94a3b8]">
+                              File unavailable
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </section>
         </>

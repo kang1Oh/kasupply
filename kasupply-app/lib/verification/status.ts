@@ -5,13 +5,10 @@ import type {
 
 type ResolveBuyerVerificationStatusInput = {
   dtiDocumentStatus?: DocumentVerificationStatus | null;
-  manualReviewRequired?: boolean;
 };
 
 type ResolveSupplierVerificationStatusInput = {
   requiredDocumentStatuses: Array<DocumentVerificationStatus | null>;
-  siteVerificationStatus?: DocumentVerificationStatus | null;
-  manualReviewRequired?: boolean;
 };
 
 function hasStatus(
@@ -23,14 +20,9 @@ function hasStatus(
 
 export function resolveBuyerVerificationStatus({
   dtiDocumentStatus,
-  manualReviewRequired = false,
 }: ResolveBuyerVerificationStatusInput): ProfileVerificationStatus {
   if (!dtiDocumentStatus) {
     return "incomplete";
-  }
-
-  if (manualReviewRequired || dtiDocumentStatus === "review_required") {
-    return "review_required";
   }
 
   if (dtiDocumentStatus === "approved") {
@@ -50,33 +42,23 @@ export function resolveBuyerVerificationStatus({
 
 export function resolveSupplierVerificationStatus({
   requiredDocumentStatuses,
-  siteVerificationStatus,
-  manualReviewRequired = false,
 }: ResolveSupplierVerificationStatusInput): ProfileVerificationStatus {
-  const statuses = [...requiredDocumentStatuses, siteVerificationStatus ?? null];
+  const documentStatuses = [...requiredDocumentStatuses];
 
-  if (
-    requiredDocumentStatuses.length === 0 ||
-    requiredDocumentStatuses.some((status) => !status) ||
-    !siteVerificationStatus
-  ) {
+  if (documentStatuses.length === 0 || documentStatuses.some((status) => !status)) {
     return "incomplete";
   }
 
-  if (manualReviewRequired || hasStatus(statuses, "review_required")) {
-    return "review_required";
-  }
-
-  if (hasStatus(statuses, "rejected")) {
+  if (hasStatus(documentStatuses, "rejected")) {
     return "rejected";
   }
 
-  if (statuses.every((status) => status === "approved")) {
-    return "approved";
+  if (hasStatus(documentStatuses, "processing") || hasStatus(documentStatuses, "pending")) {
+    return "under_review";
   }
 
-  if (hasStatus(statuses, "processing") || hasStatus(statuses, "pending")) {
-    return "under_review";
+  if (documentStatuses.every((status) => status === "approved")) {
+    return "approved";
   }
 
   return "submitted";

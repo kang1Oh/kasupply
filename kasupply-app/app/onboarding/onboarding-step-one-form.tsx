@@ -9,6 +9,7 @@ const BUSINESS_TYPE_OPTIONS = [
   { value: "retailer", label: "Retailer" },
   { value: "processor", label: "Processor" },
   { value: "wholesaler", label: "Wholesaler" },
+  { value: "food service", label: "Food Service" },
   { value: "others", label: "Others" },
 ];
 
@@ -100,6 +101,7 @@ const DAVAO_CITY_GROUPS = [
 type OnboardingStepOneFormProps = {
   action: (formData: FormData) => void | Promise<void>;
   regions: string[];
+  initialValues?: Partial<FormValues> | null;
 };
 
 type SelectOption = {
@@ -357,6 +359,7 @@ function InputField({
 export function OnboardingStepOneForm({
   action,
   regions,
+  initialValues = null,
 }: OnboardingStepOneFormProps) {
   const regionOptions = useMemo(() => {
     const normalizedRegions =
@@ -380,17 +383,42 @@ export function OnboardingStepOneForm({
     return regions[0] ?? "Region XI";
   }, [regions]);
 
+  const normalizedInitialBusinessType = initialValues?.business_type?.trim() ?? "";
+  const normalizedInitialContactNumber = (() => {
+    const rawValue = initialValues?.contact_number?.trim() ?? "";
+
+    if (rawValue.startsWith("+63")) {
+      return rawValue.slice(3);
+    }
+
+    if (rawValue.startsWith("63")) {
+      return rawValue.slice(2);
+    }
+
+    return rawValue;
+  })();
+  const initialBusinessTypeIsPreset = BUSINESS_TYPE_OPTIONS.some(
+    (option) => option.value === normalizedInitialBusinessType
+  );
+
   const [values, setValues] = useState<FormValues>({
-    business_name: "",
-    business_type: "",
-    other_business_type: "",
-    business_location: "",
-    city: "",
-    province: "",
-    region: defaultRegion,
-    contact_name: "",
-    contact_number: "",
-    about: "",
+    business_name: initialValues?.business_name ?? "",
+    business_type: normalizedInitialBusinessType
+      ? initialBusinessTypeIsPreset
+        ? normalizedInitialBusinessType
+        : "others"
+      : "",
+    other_business_type:
+      normalizedInitialBusinessType && !initialBusinessTypeIsPreset
+        ? normalizedInitialBusinessType
+        : "",
+    business_location: initialValues?.business_location ?? "",
+    city: initialValues?.city ?? "",
+    province: initialValues?.province ?? "",
+    region: initialValues?.region ?? defaultRegion,
+    contact_name: initialValues?.contact_name ?? "",
+    contact_number: normalizedInitialContactNumber,
+    about: initialValues?.about ?? "",
   });
 
   const [touched, setTouched] = useState<
@@ -680,13 +708,7 @@ export function OnboardingStepOneForm({
         </div>
       </div>
 
-      <div className="flex items-center justify-end gap-4">
-        <button
-          type="button"
-          className="px-2 py-2 text-sm font-medium text-[#6b7280] transition hover:text-[#1f3d67]"
-        >
-          Back
-        </button>
+      <div className="flex items-center justify-end">
         <button
           type="submit"
           disabled={!isFormValid}

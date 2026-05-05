@@ -203,7 +203,7 @@ export function BuyerAccountActions({
       }
 
       setIsLogoutOpen(false);
-      router.replace("/login");
+      router.replace("/auth/login");
       router.refresh();
     });
   };

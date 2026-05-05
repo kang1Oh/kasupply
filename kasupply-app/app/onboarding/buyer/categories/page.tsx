@@ -60,11 +60,19 @@ async function BuyerCategoriesPageContent({
   const params = (await searchParams) ?? {};
 
   if (!status.authenticated) {
-    redirect("/login");
+    redirect("/auth/login");
   }
 
   if (status.role !== "buyer") {
     redirect("/dashboard");
+  }
+
+  if (
+    status.hasBusinessProfile &&
+    status.hasCompletedCategorySelection &&
+    status.hasApprovedBuyerDocuments
+  ) {
+    redirect("/buyer/account/edit");
   }
 
   if (!status.hasBusinessProfile) {

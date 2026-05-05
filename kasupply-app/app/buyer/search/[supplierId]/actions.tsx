@@ -1,5 +1,6 @@
 "use server";
 
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export type SupplierProfileDetails = {
@@ -197,16 +198,72 @@ function withCacheKey(url: string, key: string) {
   return `${url}${separator}v=${encodeURIComponent(key)}`;
 }
 
-function getBusinessDocumentTypeName(docTypeId: number) {
-  const documentTypeNames: Record<number, string> = {
-    1: "DTI",
-    2: "SEC",
-    3: "Mayor's Permit",
-    4: "BIR",
-    5: "FDA Permit",
-  };
+const DOCUMENT_SIGNED_URL_TTL_SECONDS = 60 * 60;
+const SUPPLIER_CERTIFICATION_BUCKET_NAMES = [
+  "supplier_certifications",
+  "supplier-certifications",
+  "business-documents",
+];
+const BUSINESS_DOCUMENT_BUCKET_NAMES = ["business-documents"];
 
-  return documentTypeNames[docTypeId] ?? "Business Document";
+function getDocumentTypeName(
+  relation:
+    | {
+        document_type_name?: string | null;
+      }
+    | {
+        document_type_name?: string | null;
+      }[]
+    | null
+) {
+  const item = Array.isArray(relation) ? relation[0] : relation;
+  return item?.document_type_name?.trim() || "Business Document";
+}
+
+async function resolveSignedStorageUrl(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  filePath: string,
+  bucketNames: string[],
+  assetLabel: string
+) {
+  const resolutionErrors: string[] = [];
+
+  for (const bucketName of bucketNames) {
+    const { data, error } = await supabase.storage
+      .from(bucketName)
+      .createSignedUrl(filePath, DOCUMENT_SIGNED_URL_TTL_SECONDS);
+
+    if (!error && data?.signedUrl) {
+      return data.signedUrl;
+    }
+
+    if (error) {
+      resolutionErrors.push(`session:${bucketName}:${error.message}`);
+    }
+  }
+
+  const adminClient = createAdminClient();
+
+  if (adminClient) {
+    for (const bucketName of bucketNames) {
+      const { data, error } = await adminClient.storage
+        .from(bucketName)
+        .createSignedUrl(filePath, DOCUMENT_SIGNED_URL_TTL_SECONDS);
+
+      if (!error && data?.signedUrl) {
+        return data.signedUrl;
+      }
+
+      if (error) {
+        resolutionErrors.push(`admin:${bucketName}:${error.message}`);
+      }
+    }
+  } else {
+    resolutionErrors.push("admin-client-unavailable");
+  }
+
+  console.error(`Unable to resolve ${assetLabel} URL:`, filePath, resolutionErrors);
+  return null;
 }
 
 function isMissingSupplierReviewsTableError(message: string | null | undefined) {
@@ -223,6 +280,13 @@ function isMissingSupplierReviewsTableError(message: string | null | undefined) 
   );
 }
 
+function isApprovedDocumentStatus(
+  status: string | null | undefined,
+  verifiedAt: string | null | undefined
+) {
+  return Boolean(verifiedAt) || String(status ?? "").trim().toLowerCase() === "approved";
+}
+
 async function getCertificationDocumentUrl(
   supabase: Awaited<ReturnType<typeof createClient>>,
   filePath: string | null | undefined
@@ -235,23 +299,12 @@ async function getCertificationDocumentUrl(
     return filePath;
   }
 
-  const bucketNames = [
-    "supplier_certifications",
-    "supplier-certifications",
-    "business-documents",
-  ];
-
-  for (const bucketName of bucketNames) {
-    const { data, error } = await supabase.storage
-      .from(bucketName)
-      .createSignedUrl(filePath, 60 * 60);
-
-    if (!error && data?.signedUrl) {
-      return data.signedUrl;
-    }
-  }
-
-  return null;
+  return resolveSignedStorageUrl(
+    supabase,
+    filePath,
+    SUPPLIER_CERTIFICATION_BUCKET_NAMES,
+    "supplier certification document"
+  );
 }
 
 async function getBusinessDocumentUrl(
@@ -266,16 +319,12 @@ async function getBusinessDocumentUrl(
     return filePath;
   }
 
-  const { data, error } = await supabase.storage
-    .from("business-documents")
-    .createSignedUrl(filePath, 60 * 60);
-
-  if (error) {
-    console.error("Unable to resolve business document URL:", filePath, error);
-    return null;
-  }
-
-  return data?.signedUrl ?? null;
+  return resolveSignedStorageUrl(
+    supabase,
+    filePath,
+    BUSINESS_DOCUMENT_BUCKET_NAMES,
+    "business document"
+  );
 }
 
 async function getProductImageUrl(
@@ -473,12 +522,13 @@ export async function getSupplierProfileDetails(
         file_url,
         status,
         verified_at,
-        is_visible_to_others
+        is_visible_to_others,
+        document_types!business_documents_doc_type_id_fkey (
+          document_type_name
+        )
       `
       )
       .eq("profile_id", profile.profile_id)
-      .eq("is_visible_to_others", true)
-      .eq("status", "approved")
       .order("uploaded_at", { ascending: false });
 
   if (businessDocumentError) {
@@ -490,7 +540,9 @@ export async function getSupplierProfileDetails(
   }
 
   const businessDocuments = await Promise.all(
-    (businessDocumentRows ?? []).map(async (row) => {
+    (businessDocumentRows ?? [])
+      .filter((row) => isApprovedDocumentStatus(row.status, row.verified_at))
+      .map(async (row) => {
       const filePath = row.file_url ?? null;
       const fileName = getFileNameFromPath(filePath);
       const isImageFile = isImagePath(filePath);
@@ -498,7 +550,7 @@ export async function getSupplierProfileDetails(
 
       return {
         documentId: row.doc_id,
-        documentTypeName: getBusinessDocumentTypeName(row.doc_type_id),
+        documentTypeName: getDocumentTypeName(row.document_types),
         fileUrl: filePath ?? "",
         documentUrl: await getBusinessDocumentUrl(supabase, filePath),
         fileName,
@@ -520,13 +572,6 @@ export async function getSupplierProfileDetails(
         supabase,
         filePath
       );
-
-      if (!documentUrl) {
-        console.error(
-          "Unable to resolve supplier certification document URL:",
-          filePath
-        );
-      }
 
       return {
         certificationId: row.certification_id,

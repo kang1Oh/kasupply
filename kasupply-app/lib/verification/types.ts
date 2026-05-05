@@ -3,7 +3,6 @@ export const DOCUMENT_VERIFICATION_STATUSES = [
   "processing",
   "approved",
   "rejected",
-  "review_required",
 ] as const;
 
 export const PROFILE_VERIFICATION_STATUSES = [
@@ -12,7 +11,6 @@ export const PROFILE_VERIFICATION_STATUSES = [
   "under_review",
   "approved",
   "rejected",
-  "review_required",
 ] as const;
 
 export const VERIFICATION_RUN_STATUSES = [
@@ -27,14 +25,12 @@ export const VERIFICATION_RUN_STATUSES = [
 export const VERIFICATION_RUN_KINDS = [
   "buyer_document",
   "supplier_document",
-  "site_verification",
   "buyer_onboarding",
   "supplier_onboarding",
 ] as const;
 
 export const VERIFICATION_TARGET_TYPES = [
   "business_document",
-  "site_verification",
   "buyer_profile",
   "supplier_profile",
 ] as const;
@@ -51,7 +47,6 @@ export type VerificationTargetType = (typeof VERIFICATION_TARGET_TYPES)[number];
 
 export type VerificationProviderSnapshot = {
   gemini: boolean;
-  maps: boolean;
   vision: boolean;
 };
 
@@ -68,7 +63,7 @@ export type DocumentCheckDefinition = {
 };
 
 export type DocumentVerificationBlueprint = {
-  code: "dti" | "mayors_permit" | "bir_certificate";
+  code: "dti" | "mayors_permit" | "bir_certificate" | "fda_lto";
   label: string;
   requiredFields: DocumentFieldRequirement[];
   checks: DocumentCheckDefinition[];
@@ -81,15 +76,6 @@ export type DocumentVerificationSummary = {
   extractedFields: Record<string, unknown>;
   failedChecks: string[];
   passedChecks: string[];
-  notes: string[];
-};
-
-export type SiteVerificationSummary = {
-  status: DocumentVerificationStatus;
-  similarityScore: number | null;
-  deliverabilityStatus: "pending" | "deliverable" | "undeliverable" | "unknown";
-  streetViewStatus: "pending" | "available" | "unavailable" | "unknown";
-  manualReviewRequired: boolean;
   notes: string[];
 };
 

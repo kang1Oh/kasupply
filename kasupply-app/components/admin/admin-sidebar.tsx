@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   BadgeCheck,
+  Search,
   FileCog,
   Flag,
   LayoutDashboard,
@@ -92,6 +93,11 @@ export function AdminSidebar({ name, email, role }: AdminSidebarProps) {
       href: "/admin/requirements",
       label: "Requirements",
       icon: <FileCog className="h-[18px] w-[18px]" strokeWidth={1.9} />,
+    },
+    {
+      href: "/admin/search-index",
+      label: "Search Index",
+      icon: <Search className="h-[18px] w-[18px]" strokeWidth={1.9} />,
     },
   ];
 

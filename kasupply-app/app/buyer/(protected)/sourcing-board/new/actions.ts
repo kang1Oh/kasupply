@@ -122,5 +122,8 @@ export async function createSourcingRequest(formData: FormData) {
 
   revalidatePath("/buyer/sourcing-board");
   revalidatePath("/buyer/rfqs");
+  revalidatePath("/supplier/dashboard");
+  revalidatePath("/supplier/bulletin-board");
+  revalidatePath("/supplier/rfq");
   redirect(`/buyer/sourcing-board/${result.rfqId}`);
 }

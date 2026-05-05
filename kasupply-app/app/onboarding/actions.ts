@@ -8,6 +8,10 @@ type RoleRow = {
   role_name: string;
 };
 
+type ExistingBusinessProfileRow = {
+  profile_id: number;
+};
+
 export async function completeOnboarding(formData: FormData) {
   const supabase = await createClient();
 
@@ -36,23 +40,7 @@ export async function completeOnboarding(formData: FormData) {
     .from("business_profiles")
     .select("profile_id")
     .eq("user_id", appUser.user_id)
-    .maybeSingle();
-
-  if (existingBusinessProfile) {
-    if (appUser.role_id) {
-      const { data: role } = await supabase
-        .from("roles")
-        .select("role_name")
-        .eq("role_id", appUser.role_id)
-        .maybeSingle<RoleRow>();
-
-      if (role?.role_name?.toLowerCase() === "supplier") {
-        redirect("/supplier/dashboard");
-      }
-    }
-
-    redirect("/buyer");
-  }
+    .maybeSingle<ExistingBusinessProfileRow>();
 
   // 3. Get form values
   const business_name = String(formData.get("business_name") || "").trim();
@@ -77,31 +65,7 @@ export async function completeOnboarding(formData: FormData) {
     throw new Error("Please fill in all required fields.");
   }
 
-  // 4. Create business profile
-  const { data: newBusinessProfile, error: businessProfileError } = await supabase
-    .from("business_profiles")
-    .insert({
-      user_id: appUser.user_id,
-      business_name,
-      business_type,
-      business_location,
-      city,
-      province,
-      region,
-      about: about || null,
-      contact_number: contact_number || null,
-      contact_name,
-    })
-    .select("profile_id")
-    .single();
-
-  if (businessProfileError || !newBusinessProfile) {
-    throw new Error(
-      businessProfileError?.message || "Failed to create business profile."
-    );
-  }
-
-  // 5. Get role from roles table
+  // 4. Get role from roles table
   const { data: role, error: roleError } = await supabase
     .from("roles")
     .select("role_id, role_name")
@@ -112,25 +76,71 @@ export async function completeOnboarding(formData: FormData) {
     throw new Error("Unable to determine user role.");
   }
 
-  // 6. Create buyer or supplier profile
+  const businessProfilePayload = {
+    user_id: appUser.user_id,
+    business_name,
+    business_type,
+    business_location,
+    city,
+    province,
+    region,
+    about: about || null,
+    contact_number: contact_number || null,
+    contact_name,
+  };
+
+  let businessProfileId: number;
+
+  if (existingBusinessProfile) {
+    const { error: businessProfileUpdateError } = await supabase
+      .from("business_profiles")
+      .update(businessProfilePayload)
+      .eq("profile_id", existingBusinessProfile.profile_id);
+
+    if (businessProfileUpdateError) {
+      throw new Error(
+        businessProfileUpdateError.message || "Failed to update business profile."
+      );
+    }
+
+    businessProfileId = existingBusinessProfile.profile_id;
+  } else {
+    const { data: newBusinessProfile, error: businessProfileError } = await supabase
+      .from("business_profiles")
+      .insert(businessProfilePayload)
+      .select("profile_id")
+      .single<ExistingBusinessProfileRow>();
+
+    if (businessProfileError || !newBusinessProfile) {
+      throw new Error(
+        businessProfileError?.message || "Failed to create business profile."
+      );
+    }
+
+    businessProfileId = newBusinessProfile.profile_id;
+  }
+
+  // 5. Create buyer or supplier profile
   if (role.role_name.toLowerCase() === "buyer") {
     redirect("/onboarding/buyer/categories");
   }
 
   if (role.role_name.toLowerCase() === "supplier") {
-    const { error: supplierProfileError } = await supabase
-      .from("supplier_profiles")
-      .insert({
-        profile_id: newBusinessProfile.profile_id,
-        verified: false,
-        verified_at: null,
-        verified_badge: false,
-      });
+    if (!existingBusinessProfile) {
+      const { error: supplierProfileError } = await supabase
+        .from("supplier_profiles")
+        .insert({
+          profile_id: businessProfileId,
+          verified: false,
+          verified_at: null,
+          verified_badge: false,
+        });
 
-    if (supplierProfileError) {
-      throw new Error(
-        supplierProfileError.message || "Failed to create supplier profile."
-      );
+      if (supplierProfileError) {
+        throw new Error(
+          supplierProfileError.message || "Failed to create supplier profile."
+        );
+      }
     }
 
     redirect("/onboarding/categories");

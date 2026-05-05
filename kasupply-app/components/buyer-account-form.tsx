@@ -123,6 +123,7 @@ const BUSINESS_TYPE_OPTIONS = [
   { value: "retailer", label: "Retailer" },
   { value: "processor", label: "Processor" },
   { value: "wholesaler", label: "Wholesaler" },
+  { value: "food service", label: "Food Service" },
   { value: "others", label: "Others" },
 ];
 
@@ -132,6 +133,7 @@ type BuyerAccountFormProps = {
   user: {
     name: string;
     email: string;
+    avatarUrl?: string | null;
   };
   businessProfile: {
     business_name: string;
@@ -148,6 +150,11 @@ type BuyerAccountFormProps = {
   documentVisibility: boolean;
   nextPath?: string | null;
   requiredFlow?: string | null;
+  mode?: "onboarding" | "edit";
+  returnPath?: string | null;
+  backHref?: string | null;
+  backLabel?: string;
+  submitLabel?: string;
 };
 
 type FormValues = {
@@ -251,11 +258,6 @@ function getActiveRequiredFields(values: FormValues) {
   return REQUIRED_FIELDS;
 }
 
-function formatContactNumberInput(value: string) {
-  // Only allow digits, limit to 10
-  return value.replace(/\D/g, "").slice(0, 10);
-}
-
 function validateContactNumber(value: string): string | null {
   // Extract all digits
   const digitsOnly = value.replace(/\D/g, "");
@@ -310,6 +312,15 @@ function buildContactNumberError(value: string): string | null {
   
   // Then check for 11-digit validation
   return validateContactNumber(value);
+}
+
+function getInitials(value: string) {
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
 }
 
 function ChevronDownIcon() {
@@ -561,6 +572,11 @@ export function BuyerAccountForm({
   documentVisibility,
   nextPath,
   requiredFlow,
+  mode = "onboarding",
+  returnPath = null,
+  backHref,
+  backLabel,
+  submitLabel,
 }: BuyerAccountFormProps) {
   const initialCity = flattenOptions(DAVAO_CITY_GROUPS).some(
     (option) => option.value === businessProfile.city,
@@ -610,7 +626,19 @@ export function BuyerAccountForm({
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [submitError, setSubmitError] = useState("");
-  const backHref = "/buyer";
+  const [selectedAvatarFileName, setSelectedAvatarFileName] = useState("");
+  const isEditMode = mode === "edit";
+  const resolvedBackHref =
+    backHref === undefined ? (isEditMode ? "/buyer/account" : "/buyer") : backHref;
+  const resolvedBackLabel = backLabel ?? (isEditMode ? "Back to Account" : "Back");
+  const resolvedSubmitLabel = submitLabel ?? (isEditMode ? "Save Profile" : "Proceed");
+  const headingTitle = isEditMode ? "" : "Basic Profile Information";
+  const headingDescription = isEditMode
+    ? ""
+    : "Share a few details so we can tailor KaSupply to your needs";
+  const avatarInitials = getInitials(
+    values.business_name || values.contact_name || user.name || "BU",
+  ) || "BU";
 
   const isFormComplete = getActiveRequiredFields(values).every((fieldName) =>
     values[fieldName].trim(),
@@ -759,32 +787,78 @@ export function BuyerAccountForm({
       />
       <input type="hidden" name="next_path" value={nextPath ?? ""} />
       <input type="hidden" name="required_flow" value={requiredFlow ?? ""} />
+      <input type="hidden" name="return_path" value={returnPath ?? ""} />
       <input
         type="hidden"
         name="contact_number"
         value={"+63" + values.contact_number}
       />
 
+      <section className="rounded-[12px] border border-[#e4e9f1] bg-white p-4 sm:p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-4">
+            {user.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={user.avatarUrl}
+                alt={`${values.business_name || user.name} profile`}
+                className="h-[60px] w-[60px] shrink-0 rounded-full object-cover"
+              />
+            ) : (
+              <div className="flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-full bg-[#DDF7E8] text-[17px] font-medium text-[#2E7D5B]">
+                {avatarInitials}
+              </div>
+            )}
+
+            <div className="min-w-0">
+              <p className="truncate text-[17px] font-medium text-[#4A5B73]">
+                {values.business_name || user.name}
+              </p>
+              <p className="mt-[5px] text-[14px] text-[#A7B0BE]">
+                {selectedAvatarFileName || "JPG or PNG. Max 5MB."}
+              </p>
+            </div>
+          </div>
+
+          <label className="inline-flex h-[40px] cursor-pointer items-center justify-center rounded-[10px] border border-[#D8E1ED] bg-white px-[18px] text-[15px] font-medium text-[#42536B] transition hover:bg-[#F8FAFC]">
+            Change photo
+            <input
+              name="avatar_file"
+              type="file"
+              accept="image/png,image/jpeg,image/jpg"
+              className="sr-only"
+              onChange={(event) =>
+                setSelectedAvatarFileName(event.target.files?.[0]?.name ?? "")
+              }
+            />
+          </label>
+        </div>
+      </section>
+
       <section>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-[26px] font-bold leading-tight text-[#223654]">
-              Basic Profile Information
+              {headingTitle}
             </h1>
             <p className="mt-0.4 text-[18px] leading-6 text-[#8b95a5]">
-              Share a few details so we can tailor KaSupply to your needs
+              {headingDescription}
             </p>
           </div>
-          <p className="text-[16px] font-semibold text-[#223654]">Step 1 of 3</p>
+          {isEditMode ? null : (
+            <p className="text-[16px] font-semibold text-[#223654]">Step 1 of 3</p>
+          )}
         </div>
 
-        <div className="mb-5 mt-5 flex items-center gap-3">
-          <StepIndicator number={1} label="Profile Setup" active />
-          <div className="h-px flex-1 bg-[#d7dee8]" />
-          <StepIndicator number={2} label="Verification" />
-          <div className="h-px flex-1 bg-[#d7dee8]" />
-          <StepIndicator number={3} label="User Verified" />
-        </div>
+        {isEditMode ? null : (
+          <div className="mb-5 mt-5 flex items-center gap-3">
+            <StepIndicator number={1} label="Profile Setup" active />
+            <div className="h-px flex-1 bg-[#d7dee8]" />
+            <StepIndicator number={2} label="Verification" />
+            <div className="h-px flex-1 bg-[#d7dee8]" />
+            <StepIndicator number={3} label="User Verified" />
+          </div>
+        )}
 
         <div className="rounded-[12px] border border-[#e4e9f1] bg-white p-4 sm:p-5">
           <div className="grid gap-3 md:grid-cols-6">
@@ -941,12 +1015,14 @@ export function BuyerAccountForm({
       {submitError ? <p className="text-sm text-red-600">{submitError}</p> : null}
 
       <div className="flex items-center justify-end gap-4">
-        <Link
-          href={backHref}
-          className="px-2 py-2 text-sm font-medium text-[#6b7280] transition hover:text-[#1f3d67]"
-        >
-          Back
-        </Link>
+        {resolvedBackHref ? (
+          <Link
+            href={resolvedBackHref}
+            className="px-2 py-2 text-sm font-medium text-[#6b7280] transition hover:text-[#1f3d67]"
+          >
+            {resolvedBackLabel}
+          </Link>
+        ) : null}
         <span
           onPointerDown={() => {
             if (!isFormComplete && !isPending) {
@@ -963,7 +1039,7 @@ export function BuyerAccountForm({
                 : "bg-[#c3ccd9]"
             }`}
           >
-            {isPending ? "Saving..." : "Proceed"}
+            {isPending ? "Saving..." : resolvedSubmitLabel}
           </button>
         </span>
       </div>

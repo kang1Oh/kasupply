@@ -1,0 +1,51 @@
+
+> dev
+> next dev
+
+▲ Next.js 16.1.6 (Turbopack, Cache Components)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.12:3000
+- Environments: .env.local
+- Experiments (use with caution):
+  · serverActions
+
+✓ Starting...
+Creating turbopack project {
+  dir: 'C:\\Users\\Janey\\Documents\\GitHub\\kasupply\\kasupply-app',
+  testMode: true
+}
+✓ Ready in 4.1s
+○ Compiling /buyer ...
+ GET /auth/login 200 in 9.5s (compile: 6.7s, proxy.ts: 153ms, render: 2.6s)
+ GET /auth/login 200 in 224ms (compile: 16ms, proxy.ts: 23ms, render: 185ms)
+ GET /buyer/search 200 in 12.0s (compile: 7.8s, proxy.ts: 103ms, render: 4.1s)
+ GET /buyer 200 in 12.9s (compile: 7.6s, proxy.ts: 478ms, render: 4.7s)
+ GET /buyer/search 200 in 1533ms (compile: 143ms, proxy.ts: 173ms, render: 1217ms)
+ GET /buyer 200 in 1286ms (compile: 8ms, proxy.ts: 39ms, render: 1239ms)
+✓ Compiled in 33ms
+✓ Compiled in 1239ms
+✓ Compiled in 1105ms
+ GET /auth/login 200 in 1357ms (compile: 91ms, proxy.ts: 92ms, render: 1173ms)
+ GET /auth/login 200 in 221ms (compile: 13ms, proxy.ts: 18ms, render: 190ms)
+ GET /auth/login 200 in 157ms (compile: 12ms, proxy.ts: 12ms, render: 133ms)
+ GET /buyer/search 200 in 3.1s (compile: 369ms, proxy.ts: 24ms, render: 2.7s)
+ GET /buyer 200 in 3.5s (compile: 575ms, proxy.ts: 27ms, render: 2.9s)
+ GET /buyer/search 200 in 1240ms (compile: 10ms, proxy.ts: 10ms, render: 1220ms)
+ GET /buyer 200 in 1326ms (compile: 28ms, proxy.ts: 45ms, render: 1253ms)
+ GET /buyer/search 200 in 1205ms (compile: 8ms, proxy.ts: 32ms, render: 1165ms)
+ GET /buyer 200 in 1211ms (compile: 10ms, proxy.ts: 12ms, render: 1189ms)
+✓ Compiled in 1177ms
+ GET /buyer/search 200 in 1560ms (compile: 152ms, proxy.ts: 38ms, render: 1369ms)
+ GET /buyer 200 in 2.5s (compile: 224ms, proxy.ts: 13ms, render: 2.3s)
+ GET /buyer/search 200 in 1703ms (compile: 168ms, proxy.ts: 195ms, render: 1340ms)
+ GET /buyer 200 in 1514ms (compile: 11ms, proxy.ts: 35ms, render: 1468ms)
+✓ Compiled in 1236ms
+✓ Compiled in 1069ms
+ GET /buyer/search 200 in 2.1s (compile: 574ms, proxy.ts: 16ms, render: 1532ms)
+ GET /buyer 200 in 2.5s (compile: 197ms, proxy.ts: 21ms, render: 2.3s)
+ GET /buyer/search 200 in 1312ms (compile: 178ms, proxy.ts: 170ms, render: 964ms)
+ GET /buyer 200 in 1209ms (compile: 68ms, proxy.ts: 102ms, render: 1039ms)
+ GET /buyer/search 200 in 1453ms (compile: 178ms, proxy.ts: 172ms, render: 1103ms)
+ GET /buyer 200 in 1338ms (compile: 81ms, proxy.ts: 111ms, render: 1146ms)
+ GET /auth/login 200 in 173ms (compile: 11ms, proxy.ts: 12ms, render: 150ms)
+ GET /buyer 200 in 1957ms (compile: 57ms, proxy.ts: 70ms, render: 1831ms)

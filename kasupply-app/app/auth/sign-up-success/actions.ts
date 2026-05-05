@@ -64,5 +64,5 @@ export async function chooseAccountRole(roleName: "buyer" | "supplier") {
     redirect("/onboarding");
   }
 
-  redirect("/buyer");
+  redirect("/onboarding/buyer");
 }

@@ -1709,7 +1709,6 @@ export default async function BuyerPurchaseOrderDetailPage({
               <ReceiptUploadWidget
                 poId={order.poId}
                 mode="first_upload"
-                existingReceiptFilePath={order.receiptFilePath}
                 submitAction={uploadPurchaseOrderReceipt}
               />
           </>
@@ -1744,7 +1743,6 @@ export default async function BuyerPurchaseOrderDetailPage({
                 mode="resubmit"
                 reviewNotes={order.receiptReviewNotes}
                 currentFileName={getFileName(order.receiptFilePath)}
-                existingReceiptFilePath={order.receiptFilePath}
                 submitAction={uploadPurchaseOrderReceipt}
             />
           </>

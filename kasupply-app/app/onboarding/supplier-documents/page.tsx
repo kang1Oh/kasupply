@@ -31,6 +31,8 @@ type UploadedCertificationRow = {
   cert_type_id: number;
   file_url: string | null;
   status: string | null;
+  review_notes: string | null;
+  file_url: string | null;
 };
 
 function SupplierDocumentsPageFallback() {
@@ -70,6 +72,10 @@ async function SupplierDocumentsPageContent() {
     redirect("/onboarding");
   }
 
+  if (status.isSupplierVerified) {
+    redirect("/supplier/dashboard");
+  }
+
   if (!status.hasCompletedCategorySelection) {
     redirect("/onboarding/categories");
   }
@@ -78,8 +84,8 @@ async function SupplierDocumentsPageContent() {
     redirect("/dashboard");
   }
 
-  if (status.hasSubmittedRequiredSupplierDocuments && status.hasSubmittedSiteImages) {
-    redirect("/dashboard");
+  if (status.hasApprovedRequiredSupplierDocuments) {
+    redirect("/supplier/dashboard");
   }
 
   const supabase = await createClient();
@@ -92,7 +98,7 @@ async function SupplierDocumentsPageContent() {
 
   const { data: uploadedDocuments, error: uploadedDocumentsError } = await supabase
     .from("business_documents")
-    .select("doc_id, doc_type_id, file_url, status")
+    .select("doc_id, doc_type_id, file_url, status, review_notes, file_url")
     .eq("profile_id", businessProfileId)
     .not("file_url", "is", null);
 
@@ -196,9 +202,7 @@ async function SupplierDocumentsPageContent() {
           requiredDocumentTypes={requiredDocumentTypes}
           optionalDocumentTypes={optionalDocumentTypes}
           uploadedDocuments={safeUploadedDocuments}
-          certificationTypes={safeCertificationTypes}
-          uploadedCertifications={safeUploadedCertifications}
-          canProceed={status.hasSubmittedRequiredSupplierDocuments}
+          canProceed={status.hasApprovedRequiredSupplierDocuments}
         />
       </div>
     </div>

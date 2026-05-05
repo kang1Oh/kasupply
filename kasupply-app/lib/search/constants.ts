@@ -1,0 +1,4 @@
+export const SEARCH_EMBEDDING_MODEL = "gemini-embedding-001";
+export const SEARCH_EMBEDDING_DIMENSION = 1536;
+export const SEARCH_DEFAULT_MATCH_COUNT = 20;
+export const SEARCH_BACKFILL_DEFAULT_BATCH_SIZE = 5;

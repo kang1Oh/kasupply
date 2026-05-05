@@ -1,5 +1,6 @@
 "use server";
 
+import { findSupplierSearchDocuments } from "@/lib/search";
 import { createClient } from "@/lib/supabase/server";
 
 export type SupplierSearchItem = {
@@ -30,6 +31,11 @@ export type SupplierSearchItem = {
     description: string | null;
   }[];
   certificationsCount: number;
+  searchScore: number | null;
+  semanticSimilarity: number | null;
+  keywordScore: number | null;
+  matchLabel: string | null;
+  matchReason: string | null;
 };
 
 type GetSuppliersParams = {
@@ -38,6 +44,408 @@ type GetSuppliersParams = {
   category?: string;
   verifiedOnly?: boolean;
 };
+
+type SupplierRow = {
+  supplier_id: number;
+  profile_id: number;
+  verified: boolean;
+  verified_badge: boolean;
+  business_profiles:
+    | {
+        profile_id: number;
+        user_id: string | null;
+        business_name: string;
+        business_type: string;
+        business_location: string;
+        city: string;
+        province: string;
+        region: string;
+        about: string | null;
+      }
+    | {
+        profile_id: number;
+        user_id: string | null;
+        business_name: string;
+        business_type: string;
+        business_location: string;
+        city: string;
+        province: string;
+        region: string;
+        about: string | null;
+      }[]
+    | null;
+};
+
+type ProductRow = {
+  product_id: number;
+  supplier_id: number;
+  product_name: string;
+  description: string | null;
+  price_per_unit: number;
+  unit: string;
+  moq: number;
+  is_published: boolean;
+  product_categories:
+    | {
+        category_name?: string | null;
+      }
+    | {
+        category_name?: string | null;
+      }[]
+    | null;
+};
+
+type SearchIntent = {
+  detectedCity: string | null;
+  detectedProvince: string | null;
+  detectedRegion: string | null;
+  locationTokens: string[];
+  softLocationPhrase: string | null;
+  intentTokens: string[];
+  intentQuery: string;
+  hasSpecificIntent: boolean;
+};
+
+const GENERIC_QUERY_TOKENS = new Set([
+  "a",
+  "an",
+  "and",
+  "are",
+  "at",
+  "by",
+  "city",
+  "companies",
+  "company",
+  "distributor",
+  "distributors",
+  "for",
+  "from",
+  "in",
+  "located",
+  "manufacturer",
+  "manufacturers",
+  "near",
+  "nearby",
+  "of",
+  "or",
+  "provider",
+  "providers",
+  "region",
+  "seller",
+  "sellers",
+  "supplier",
+  "suppliers",
+  "the",
+  "to",
+  "trader",
+  "traders",
+  "vendor",
+  "vendors",
+  "wholesaler",
+  "wholesalers",
+  "with",
+]);
+
+function normalizeText(value: string | null | undefined) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function tokenize(value: string | null | undefined) {
+  return Array.from(
+    new Set(
+      normalizeText(value)
+        .replace(/[^a-z0-9\s]/g, " ")
+        .split(/\s+/)
+        .filter((token) => token.length >= 2)
+    )
+  );
+}
+
+function getOverlapRatio(source: string[], target: string[]) {
+  if (source.length === 0 || target.length === 0) {
+    return 0;
+  }
+
+  const targetSet = new Set(target);
+  const overlap = source.filter((token) => targetSet.has(token)).length;
+  return overlap / source.length;
+}
+
+function clampScore(value: number) {
+  return Math.max(0, Math.min(100, Number(value.toFixed(2))));
+}
+
+function getSemanticSimilarityScore(similarity: number | null | undefined) {
+  if (similarity == null || !Number.isFinite(similarity)) {
+    return 0;
+  }
+
+  const normalized = Math.max(0, Math.min(1, (similarity - 0.58) / 0.28));
+  return clampScore(normalized * 100);
+}
+
+function getSemanticMatchLabel(score: number) {
+  if (score >= 88) return "Excellent match";
+  if (score >= 76) return "Strong match";
+  if (score >= 64) return "Relevant match";
+  return "Possible match";
+}
+
+function findLocationPhraseMatch(query: string, candidates: string[]) {
+  const normalizedQuery = normalizeText(query);
+  const normalizedCandidates = Array.from(
+    new Set(
+      candidates
+        .map((candidate) => candidate.trim())
+        .filter(Boolean)
+        .sort((left, right) => right.length - left.length)
+    )
+  );
+
+  for (const candidate of normalizedCandidates) {
+    const normalizedCandidate = normalizeText(candidate);
+
+    if (normalizedCandidate && normalizedQuery.includes(normalizedCandidate)) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+function extractSoftLocationPhrase(query: string) {
+  const normalizedQuery = normalizeText(query);
+  const pattern =
+    /\b(?:in|near|around|within|from)\s+([a-z0-9\s-]{3,})$/i;
+  const match = normalizedQuery.match(pattern);
+
+  if (!match) {
+    return null;
+  }
+
+  const phrase = match[1]
+    .replace(/\b(area|location|place)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return phrase.length >= 3 ? phrase : null;
+}
+
+function buildSearchIntent(params: {
+  query: string;
+  cities: string[];
+  provinces: string[];
+  regions: string[];
+}): SearchIntent {
+  const detectedCity = findLocationPhraseMatch(params.query, params.cities);
+  const detectedProvince =
+    detectedCity == null ? findLocationPhraseMatch(params.query, params.provinces) : null;
+  const detectedRegion =
+    detectedCity == null && detectedProvince == null
+      ? findLocationPhraseMatch(params.query, params.regions)
+      : null;
+  const softLocationPhrase =
+    detectedCity == null && detectedProvince == null && detectedRegion == null
+      ? extractSoftLocationPhrase(params.query)
+      : null;
+
+  const locationTokens = tokenize(
+    [detectedCity, detectedProvince, detectedRegion, softLocationPhrase]
+      .filter(Boolean)
+      .join(" ")
+  );
+  const intentTokens = tokenize(params.query).filter(
+    (token) => !GENERIC_QUERY_TOKENS.has(token) && !locationTokens.includes(token)
+  );
+
+  return {
+    detectedCity,
+    detectedProvince,
+    detectedRegion,
+    locationTokens,
+    softLocationPhrase,
+    intentTokens,
+    intentQuery: intentTokens.join(" "),
+    hasSpecificIntent: intentTokens.length > 0,
+  };
+}
+
+function getIntentAwareKeywordScore(params: {
+  query: string;
+  intentTokens: string[];
+  supplier: Pick<
+    SupplierSearchItem,
+    | "businessName"
+    | "about"
+    | "searchableProducts"
+  >;
+}) {
+  const normalizedQuery = normalizeText(params.query);
+  const queryTokens = params.intentTokens.length > 0 ? params.intentTokens : tokenize(params.query);
+
+  if (!normalizedQuery || queryTokens.length === 0) {
+    return 0;
+  }
+
+  const profileText = [
+    params.supplier.businessName,
+    params.supplier.about ?? "",
+  ].join(" ");
+
+  const productText = params.supplier.searchableProducts
+    .map((product) =>
+      [product.productName, product.categoryName, product.description ?? ""].join(" ")
+    )
+    .join(" ");
+
+  const fullText = `${profileText} ${productText}`.trim();
+  const fullTokens = tokenize(fullText);
+  const productTokens = tokenize(productText);
+  const profileTokens = tokenize(profileText);
+
+  const exactPhraseBoost =
+    params.intentTokens.length > 0 && normalizeText(fullText).includes(params.intentTokens.join(" "))
+      ? 28
+      : normalizeText(fullText).includes(normalizedQuery)
+        ? 10
+        : 0;
+  const productOverlapScore = getOverlapRatio(queryTokens, productTokens) * 55;
+  const profileOverlapScore = getOverlapRatio(queryTokens, profileTokens) * 18;
+  const fullOverlapScore = getOverlapRatio(queryTokens, fullTokens) * 12;
+
+  return clampScore(
+    exactPhraseBoost + productOverlapScore + profileOverlapScore + fullOverlapScore
+  );
+}
+
+function getStructuredBoost(params: {
+  supplier: Pick<
+    SupplierSearchItem,
+    "verifiedBadge" | "products" | "city" | "province" | "businessLocation" | "about"
+  >;
+  locationCity: string;
+  locationProvince: string;
+  softLocationPhrase: string | null;
+  normalizedCategory: string;
+}) {
+  let boost = 0;
+
+  if (params.supplier.verifiedBadge) {
+    boost += 4;
+  }
+
+  if (
+    params.locationCity &&
+    normalizeText(params.supplier.city) === params.locationCity
+  ) {
+    boost += 8;
+  } else if (
+    params.locationProvince &&
+    normalizeText(params.supplier.province) === params.locationProvince
+  ) {
+    boost += 5;
+  }
+
+  if (
+    params.normalizedCategory &&
+    params.supplier.products.some(
+      (product) => normalizeText(product.categoryName) === params.normalizedCategory
+    )
+  ) {
+    boost += 4;
+  }
+
+  if (params.softLocationPhrase) {
+    const normalizedSoftLocation = normalizeText(params.softLocationPhrase);
+    const searchableLocationText = normalizeText(
+      `${params.supplier.businessLocation} ${params.supplier.about ?? ""}`
+    );
+
+    if (searchableLocationText.includes(normalizedSoftLocation)) {
+      boost += 7;
+    } else {
+      const softLocationTokens = tokenize(normalizedSoftLocation);
+      const searchableLocationTokens = tokenize(searchableLocationText);
+      const overlapRatio = getOverlapRatio(softLocationTokens, searchableLocationTokens);
+
+      if (overlapRatio >= 0.7) {
+        boost += 5;
+      } else if (overlapRatio >= 0.45) {
+        boost += 3;
+      }
+    }
+  }
+
+  return boost;
+}
+
+function getIntentMatchEvidence(params: {
+  intentTokens: string[];
+  supplier: Pick<SupplierSearchItem, "businessName" | "about" | "searchableProducts">;
+}) {
+  if (params.intentTokens.length === 0) {
+    return {
+      productOverlap: 0,
+      profileOverlap: 0,
+      exactProductPhrase: false,
+      exactProfilePhrase: false,
+    };
+  }
+
+  const intentPhrase = params.intentTokens.join(" ");
+  const productText = params.supplier.searchableProducts
+    .map((product) =>
+      [product.productName, product.categoryName, product.description ?? ""].join(" ")
+    )
+    .join(" ");
+  const profileText = [params.supplier.businessName, params.supplier.about ?? ""].join(" ");
+
+  return {
+    productOverlap: getOverlapRatio(params.intentTokens, tokenize(productText)),
+    profileOverlap: getOverlapRatio(params.intentTokens, tokenize(profileText)),
+    exactProductPhrase: normalizeText(productText).includes(intentPhrase),
+    exactProfilePhrase: normalizeText(profileText).includes(intentPhrase),
+  };
+}
+
+function passesIntentRelevanceGate(params: {
+  intent: SearchIntent;
+  supplier: Pick<SupplierSearchItem, "businessName" | "about" | "searchableProducts">;
+  keywordScore: number;
+  productSemanticScore: number;
+  profileSemanticScore: number;
+}) {
+  if (!params.intent.hasSpecificIntent) {
+    return params.keywordScore > 0 || params.productSemanticScore >= 28 || params.profileSemanticScore >= 34;
+  }
+
+  const evidence = getIntentMatchEvidence({
+    intentTokens: params.intent.intentTokens,
+    supplier: params.supplier,
+  });
+
+  if (evidence.exactProductPhrase) {
+    return true;
+  }
+
+  if (evidence.productOverlap >= 0.34) {
+    return true;
+  }
+
+  if (params.productSemanticScore >= 56) {
+    return true;
+  }
+
+  if (params.profileSemanticScore >= 68 && evidence.profileOverlap >= 0.34) {
+    return true;
+  }
+
+  if (params.keywordScore >= 42) {
+    return true;
+  }
+
+  return false;
+}
 
 export async function getSupplierSearchResults(
   params: GetSuppliersParams = {}
@@ -50,7 +458,7 @@ export async function getSupplierSearchResults(
   const normalizedCity = city.trim().toLowerCase();
   const normalizedCategory = category.trim().toLowerCase();
 
-  const { data: supplierRows, error: supplierError } = await supabase
+  const supplierRowsPromise = supabase
     .from("supplier_profiles")
     .select(
       `
@@ -72,15 +480,85 @@ export async function getSupplierSearchResults(
     `
     )
     .order("supplier_id", { ascending: false });
+  const productRowsPromise = supabase
+    .from("products")
+    .select(
+      `
+      product_id,
+      supplier_id,
+      product_name,
+      description,
+      price_per_unit,
+      unit,
+      moq,
+      is_published,
+      product_categories (
+        category_name
+      )
+    `
+    )
+    .eq("is_published", true)
+    .order("updated_at", { ascending: false });
+  const certificationRowsPromise = supabase
+    .from("supplier_certifications")
+    .select("supplier_id, status")
+    .eq("status", "approved");
+
+  const [
+    { data: supplierRows, error: supplierError },
+    { data: productRows, error: productError },
+    { data: certificationRows, error: certificationError },
+  ] = await Promise.all([
+    supplierRowsPromise,
+    productRowsPromise,
+    certificationRowsPromise,
+  ]);
 
   if (supplierError) {
     console.error("Error fetching supplier profiles:", supplierError);
     throw new Error("Failed to fetch suppliers.");
   }
 
+  const safeSupplierRows = (supplierRows as SupplierRow[] | null) ?? [];
+  const supplierLocations = {
+    cities: safeSupplierRows
+      .map((row) => {
+        const profile = Array.isArray(row.business_profiles)
+          ? row.business_profiles[0]
+          : row.business_profiles;
+        return profile?.city ?? "";
+      })
+      .filter(Boolean),
+    provinces: safeSupplierRows
+      .map((row) => {
+        const profile = Array.isArray(row.business_profiles)
+          ? row.business_profiles[0]
+          : row.business_profiles;
+        return profile?.province ?? "";
+      })
+      .filter(Boolean),
+    regions: safeSupplierRows
+      .map((row) => {
+        const profile = Array.isArray(row.business_profiles)
+          ? row.business_profiles[0]
+          : row.business_profiles;
+        return profile?.region ?? "";
+      })
+      .filter(Boolean),
+  };
+  const searchIntent = buildSearchIntent({
+    query,
+    cities: supplierLocations.cities,
+    provinces: supplierLocations.provinces,
+    regions: supplierLocations.regions,
+  });
+  const effectiveCityFilter = normalizedCity || normalizeText(searchIntent.detectedCity);
+  const effectiveProvinceFilter = normalizeText(searchIntent.detectedProvince);
+  const effectiveRegionFilter = normalizeText(searchIntent.detectedRegion);
+
   const userIds = Array.from(
     new Set(
-      (supplierRows ?? [])
+      safeSupplierRows
         .map((row) => {
           const profile = Array.isArray(row.business_profiles)
             ? row.business_profiles[0]
@@ -110,35 +588,10 @@ export async function getSupplierSearchResults(
     }
   }
 
-  const { data: productRows, error: productError } = await supabase
-    .from("products")
-    .select(
-      `
-      product_id,
-      supplier_id,
-      product_name,
-      description,
-      price_per_unit,
-      unit,
-      moq,
-      is_published,
-      product_categories (
-        category_name
-      )
-    `
-    )
-    .eq("is_published", true)
-    .order("updated_at", { ascending: false });
-
   if (productError) {
     console.error("Error fetching products:", productError);
     throw new Error("Failed to fetch products.");
   }
-
-  const { data: certificationRows, error: certificationError } = await supabase
-    .from("supplier_certifications")
-    .select("supplier_id, status")
-    .eq("status", "approved");
 
   if (certificationError) {
     console.error("Error fetching certifications:", certificationError);
@@ -147,7 +600,7 @@ export async function getSupplierSearchResults(
 
   const productsBySupplier = new Map<number, SupplierSearchItem["products"]>();
 
-  for (const row of productRows ?? []) {
+  for (const row of ((productRows as ProductRow[] | null) ?? [])) {
     const supplierId = row.supplier_id;
 
     if (!productsBySupplier.has(supplierId)) {
@@ -180,7 +633,7 @@ export async function getSupplierSearchResults(
 
   const results: SupplierSearchItem[] = [];
 
-  for (const row of supplierRows ?? []) {
+  for (const row of safeSupplierRows) {
     const profile = Array.isArray(row.business_profiles)
       ? row.business_profiles[0]
       : row.business_profiles;
@@ -188,41 +641,6 @@ export async function getSupplierSearchResults(
     if (!profile) continue;
 
     const supplierProducts = productsBySupplier.get(row.supplier_id) ?? [];
-
-    const searchableText = [
-      profile.business_name,
-      profile.business_type,
-      profile.business_location,
-      profile.city,
-      profile.province,
-      profile.region,
-      profile.about ?? "",
-      ...supplierProducts.map((product) => product.productName),
-      ...supplierProducts.map((product) => product.categoryName),
-    ]
-      .join(" ")
-      .toLowerCase();
-
-    if (verifiedOnly && !row.verified_badge) {
-      continue;
-    }
-
-    if (normalizedCity && !profile.city.toLowerCase().includes(normalizedCity)) {
-      continue;
-    }
-
-    if (
-      normalizedCategory &&
-      !supplierProducts.some((product) =>
-        product.categoryName.toLowerCase().includes(normalizedCategory)
-      )
-    ) {
-      continue;
-    }
-
-    if (normalizedQuery && !searchableText.includes(normalizedQuery)) {
-      continue;
-    }
 
     results.push({
       supplierId: row.supplier_id,
@@ -244,8 +662,173 @@ export async function getSupplierSearchResults(
         description: product.description,
       })),
       certificationsCount: certificationCountBySupplier.get(row.supplier_id) ?? 0,
+      searchScore: null,
+      semanticSimilarity: null,
+      keywordScore: null,
+      matchLabel: null,
+      matchReason: null,
     });
   }
 
-  return results;
+  let filteredResults = results.filter((supplier) => {
+    if (verifiedOnly && !supplier.verifiedBadge) {
+      return false;
+    }
+
+    if (effectiveCityFilter || effectiveProvinceFilter || effectiveRegionFilter) {
+      const cityMatches = effectiveCityFilter
+        ? normalizeText(supplier.city).includes(effectiveCityFilter)
+        : false;
+      const provinceMatches = effectiveProvinceFilter
+        ? normalizeText(supplier.province).includes(effectiveProvinceFilter)
+        : false;
+      const regionMatches = effectiveRegionFilter
+        ? normalizeText(supplier.region).includes(effectiveRegionFilter)
+        : false;
+
+      if (!cityMatches && !provinceMatches && !regionMatches) {
+        return false;
+      }
+    }
+
+    if (normalizedCategory) {
+      const categoryMatches = supplier.products.some((product) =>
+        normalizeText(product.categoryName).includes(normalizedCategory)
+      );
+
+      if (!categoryMatches) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  if (!normalizedQuery) {
+    return filteredResults.sort((left, right) => right.supplierId - left.supplierId);
+  }
+
+  const semanticMatchesBySupplier = new Map<
+    number,
+    {
+      productSimilarity: number | null;
+      profileSimilarity: number | null;
+      bestSourceType: "profile" | "product" | null;
+      bestSimilarity: number;
+      matchCount: number;
+    }
+  >();
+
+  try {
+    const semanticMatches = await findSupplierSearchDocuments({
+      query: searchIntent.intentQuery || query,
+      matchCount: 60,
+      sourceTypes: ["profile", "product"],
+      city: searchIntent.detectedCity,
+      province: searchIntent.detectedCity ? null : searchIntent.detectedProvince,
+      region:
+        searchIntent.detectedCity || searchIntent.detectedProvince
+          ? null
+          : searchIntent.detectedRegion,
+    });
+
+    for (const match of semanticMatches) {
+      const similarity = getSemanticSimilarityScore(match.similarity);
+      const existing = semanticMatchesBySupplier.get(match.supplier_id) ?? {
+        productSimilarity: null,
+        profileSimilarity: null,
+        bestSourceType: null,
+        bestSimilarity: 0,
+        matchCount: 0,
+      };
+
+      if (match.source_type === "product") {
+        existing.productSimilarity = Math.max(existing.productSimilarity ?? 0, similarity);
+      } else {
+        existing.profileSimilarity = Math.max(existing.profileSimilarity ?? 0, similarity);
+      }
+
+      if (similarity > existing.bestSimilarity) {
+        existing.bestSimilarity = similarity;
+        existing.bestSourceType = match.source_type;
+      }
+
+      existing.matchCount += 1;
+      semanticMatchesBySupplier.set(match.supplier_id, existing);
+    }
+  } catch (error) {
+    console.error("Semantic supplier search failed. Falling back to keyword ranking.", error);
+  }
+
+  const scoredResults: Array<SupplierSearchItem | null> = filteredResults.map((supplier) => {
+      const semanticMatch = semanticMatchesBySupplier.get(supplier.supplierId);
+      const keywordScore = getIntentAwareKeywordScore({
+        query: searchIntent.intentQuery || query,
+        intentTokens: searchIntent.intentTokens,
+        supplier,
+      });
+      const structuredBoost = getStructuredBoost({
+        supplier,
+        locationCity: effectiveCityFilter,
+        locationProvince: effectiveProvinceFilter,
+        softLocationPhrase: searchIntent.softLocationPhrase,
+        normalizedCategory,
+      });
+      const productSemanticScore = semanticMatch?.productSimilarity ?? 0;
+      const profileSemanticScore = semanticMatch?.profileSimilarity ?? 0;
+      const semanticScore = searchIntent.hasSpecificIntent
+        ? productSemanticScore * 0.75 + profileSemanticScore * 0.25
+        : Math.max(productSemanticScore, profileSemanticScore);
+      const hybridScore =
+        semanticScore > 0
+          ? semanticScore * 0.55 + keywordScore * 0.35 + structuredBoost
+          : keywordScore * 0.8 + structuredBoost;
+      const finalScore = clampScore(hybridScore);
+
+      if (
+        !passesIntentRelevanceGate({
+          intent: searchIntent,
+          supplier,
+          keywordScore,
+          productSemanticScore,
+          profileSemanticScore,
+        })
+      ) {
+        return null;
+      }
+
+      const minimumScore = searchIntent.hasSpecificIntent ? 32 : 18;
+      if (finalScore < minimumScore) {
+        return null;
+      }
+
+      return {
+        ...supplier,
+        searchScore: finalScore,
+        semanticSimilarity: semanticMatch?.bestSimilarity ?? null,
+        keywordScore: keywordScore > 0 ? keywordScore : null,
+        matchLabel: getSemanticMatchLabel(finalScore),
+        matchReason:
+          semanticMatch != null
+            ? semanticMatch.bestSourceType === "product"
+              ? "Matched using product relevance with location-aware filtering."
+              : "Matched using business niche relevance with location-aware filtering."
+            : "Matched using keyword relevance.",
+      } satisfies SupplierSearchItem;
+    });
+
+  filteredResults = scoredResults
+    .filter((supplier): supplier is SupplierSearchItem => supplier !== null)
+    .sort((left, right) => {
+      const leftScore = left.searchScore ?? 0;
+      const rightScore = right.searchScore ?? 0;
+
+      if (rightScore !== leftScore) {
+        return rightScore - leftScore;
+      }
+
+      return right.supplierId - left.supplierId;
+    });
+
+  return filteredResults;
 }

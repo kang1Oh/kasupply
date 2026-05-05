@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { safeAutoSyncSupplierSearchIndexForSupplier } from "@/lib/search";
 import { createClient } from "@/lib/supabase/server";
 import {
   safeQueueDocumentVerification,
@@ -119,7 +120,7 @@ function parseCategoryIds(formData: FormData) {
 }
 
 export async function updateSupplierAccountSettings(formData: FormData) {
-  const { supabase, authUser, appUser, businessProfile } =
+  const { supabase, authUser, appUser, businessProfile, supplierProfile } =
     await getCurrentSupplierContext();
 
   const contact_name = String(formData.get("contact_name") || "").trim();
@@ -285,7 +286,14 @@ export async function updateSupplierAccountSettings(formData: FormData) {
     }
   }
 
+  await safeAutoSyncSupplierSearchIndexForSupplier({
+    supplierId: supplierProfile.supplier_id,
+    reason: "supplier_account_settings_update",
+  });
+
   revalidatePath("/supplier/account-settings");
+  revalidatePath("/buyer/search");
+  revalidatePath("/admin/search-index");
   redirect("/supplier/account-settings");
 }
 

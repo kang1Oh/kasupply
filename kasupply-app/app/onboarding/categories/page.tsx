@@ -44,7 +44,7 @@ async function CategoriesPageContent() {
   const status = await getUserOnboardingStatus();
 
   if (!status.authenticated) {
-    redirect("/login");
+    redirect("/auth/login");
   }
 
   if (status.role !== "supplier") {
@@ -53,10 +53,6 @@ async function CategoriesPageContent() {
 
   if (!status.hasBusinessProfile) {
     redirect("/onboarding");
-  }
-
-  if (status.hasCompletedCategorySelection) {
-    redirect("/onboarding/supplier-documents");
   }
 
   const supabase = await createClient();
@@ -96,7 +92,7 @@ async function CategoriesPageContent() {
           initialOtherCategories={(
             (customCategories as BusinessProfileCustomCategoryRow[] | null) ?? []
           ).map((item) => item.category_name)}
-          backHref="/onboarding"
+          backHref="/onboarding?step=profile"
           action={saveBusinessProfileCategories}
         />
       </div>

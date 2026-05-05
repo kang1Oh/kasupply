@@ -12,7 +12,22 @@ const ALLOWED_BUSINESS_TYPES = new Set([
   "retailer",
   "processor",
   "wholesaler",
+  "food service",
 ]);
+
+function isAvatarFromBucket(avatarUrl: string | null) {
+  return Boolean(avatarUrl && avatarUrl.includes("/storage/v1/object/public/avatars/"));
+}
+
+function extractAvatarPath(avatarUrl: string | null) {
+  if (!avatarUrl) return null;
+
+  const marker = "/storage/v1/object/public/avatars/";
+  const index = avatarUrl.indexOf(marker);
+  if (index === -1) return null;
+
+  return avatarUrl.slice(index + marker.length);
+}
 
 function normalizeBusinessType(value: string) {
   const normalized = value.trim().toLowerCase();
@@ -35,6 +50,7 @@ export async function updateBuyerAccount(formData: FormData) {
   const name = String(formData.get("name") || "").trim();
   const nextPath = String(formData.get("next_path") || "").trim();
   const requiredFlow = String(formData.get("required_flow") || "").trim();
+  const returnPath = String(formData.get("return_path") || "").trim();
 
   const business_name = String(formData.get("business_name") || "").trim();
   const business_type = normalizeBusinessType(
@@ -51,6 +67,7 @@ export async function updateBuyerAccount(formData: FormData) {
   const isVisibleToOthers = formData.get("is_visible_to_others") === "on";
   const documentIdValue = String(formData.get("document_id") || "").trim();
   const documentId = documentIdValue ? Number(documentIdValue) : null;
+  const avatarFile = formData.get("avatar_file") as File | null;
 
   if (
     !name ||
@@ -79,15 +96,53 @@ export async function updateBuyerAccount(formData: FormData) {
     throw new Error("Failed to load business profile.");
   }
 
+  let nextAvatarUrl = user.avatar_url ?? null;
+  let uploadedAvatarPath: string | null = null;
+
+  if (avatarFile && avatarFile.size > 0) {
+    if (!avatarFile.type.startsWith("image/")) {
+      throw new Error("Profile picture must be a JPG or PNG image.");
+    }
+
+    const maxSizeInBytes = 5 * 1024 * 1024;
+    if (avatarFile.size > maxSizeInBytes) {
+      throw new Error("Profile picture is too large. Maximum size is 5 MB.");
+    }
+
+    const fileExtension = avatarFile.name.split(".").pop() || "png";
+    const avatarPath = `${user.auth_user_id}/avatar-${Date.now()}.${fileExtension}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(avatarPath, avatarFile, {
+        upsert: true,
+      });
+
+    if (uploadError) {
+      throw new Error(uploadError.message || "Failed to upload profile picture.");
+    }
+
+    uploadedAvatarPath = avatarPath;
+    const { data: publicUrlData } = supabase.storage
+      .from("avatars")
+      .getPublicUrl(avatarPath);
+
+    nextAvatarUrl = publicUrlData.publicUrl;
+  }
+
   const { error: userUpdateError } = await supabase
     .from("users")
     .update({
       name,
+      avatar_url: nextAvatarUrl,
       updated_at: new Date().toISOString(),
     })
     .eq("user_id", user.user_id);
 
   if (userUpdateError) {
+    if (uploadedAvatarPath) {
+      await supabase.storage.from("avatars").remove([uploadedAvatarPath]);
+    }
     throw new Error(userUpdateError.message || "Failed to update user.");
   }
 
@@ -195,7 +250,15 @@ export async function updateBuyerAccount(formData: FormData) {
     }
   }
 
+  if (uploadedAvatarPath && isAvatarFromBucket(user.avatar_url)) {
+    const oldAvatarPath = extractAvatarPath(user.avatar_url);
+    if (oldAvatarPath && oldAvatarPath !== uploadedAvatarPath) {
+      await supabase.storage.from("avatars").remove([oldAvatarPath]);
+    }
+  }
+
   revalidatePath("/buyer/account");
+  revalidatePath("/buyer/account/edit");
 
   const redirectParams = new URLSearchParams();
 
@@ -205,6 +268,10 @@ export async function updateBuyerAccount(formData: FormData) {
 
   if (requiredFlow) {
     redirectParams.set("required", requiredFlow);
+  }
+
+  if (returnPath) {
+    redirect(returnPath);
   }
 
   redirect(

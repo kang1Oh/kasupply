@@ -49,7 +49,7 @@ async function loadVerificationRunForRetry(runId: number) {
 async function updateLatestRunReference(
   targetType: VerificationTargetType,
   targetId: number | null,
-  profileId: number,
+  _profileId: number,
   runId: number
 ) {
   const supabase = await createClient();
@@ -61,15 +61,6 @@ async function updateLatestRunReference(
         last_verification_run_id: runId,
       })
       .eq("doc_id", targetId);
-  }
-
-  if (targetType === "site_verification") {
-    await supabase
-      .from("site_showcase_images")
-      .update({
-        last_verification_run_id: runId,
-      })
-      .eq("profile_id", profileId);
   }
 }
 

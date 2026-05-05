@@ -211,6 +211,7 @@ function ProductFormFields({
 
       {imageSrc ? (
         <div className="flex items-center gap-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={imageSrc ?? ""}
             alt={product?.product_name ?? "Current product image"}
@@ -355,7 +356,7 @@ export default async function SupplierInventoryPage({ searchParams }: { searchPa
 
   const supabase = await createClient();
   const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-  if (authError || !authUser) redirect("/login");
+  if (authError || !authUser) redirect("/auth/login");
 
   const { data: appUser, error: appUserError } = await supabase.from("users").select("user_id, name").eq("auth_user_id", authUser.id).single();
   if (appUserError || !appUser) throw new Error("User record not found.");
@@ -632,6 +633,7 @@ export default async function SupplierInventoryPage({ searchParams }: { searchPa
                             <td className="px-3 py-3.5 align-middle">
                               <div className="flex items-center gap-2.5">
                                 {imageSrcMap.get(product.product_id) ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
                                   <img src={imageSrcMap.get(product.product_id) ?? ""} alt={product.product_name} className="h-10 w-10 rounded-[10px] border border-[#EDF2F7] object-cover" />
                                 ) : (
                                   <div className={`flex h-10 w-10 items-center justify-center rounded-[10px] text-[16px] ${status === "out-of-stock" ? "bg-[#C28A35]" : "bg-[#E9F7EA]"}`}>

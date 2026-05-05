@@ -355,11 +355,8 @@ export default async function SupplierDashboardPage() {
                       const tone = notificationToneStyles[notification.tone];
                       const Icon = tone.icon;
 
-                      return (
-                        <article
-                          key={`${notification.title}-${index}`}
-                          className={`flex gap-[12px] px-[16px] py-[16px] ${index > 0 ? "border-t border-[#EDF2F7]" : ""}`}
-                        >
+                      const content = (
+                        <>
                           <div
                             className={`mt-[2px] flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-[8px] ${tone.iconContainerClassName}`}
                           >
@@ -385,6 +382,25 @@ export default async function SupplierDashboardPage() {
                               {notification.description}
                             </p>
                           </div>
+                        </>
+                      );
+
+                      const className = `flex gap-[12px] px-[16px] py-[16px] ${index > 0 ? "border-t border-[#EDF2F7]" : ""} ${notification.targetHref ? "transition hover:bg-[#F8FAFC]" : ""}`;
+
+                      return notification.targetHref ? (
+                        <Link
+                          key={`${notification.title}-${index}`}
+                          href={notification.targetHref}
+                          className={className}
+                        >
+                          {content}
+                        </Link>
+                      ) : (
+                        <article
+                          key={`${notification.title}-${index}`}
+                          className={className}
+                        >
+                          {content}
                         </article>
                       );
                     })

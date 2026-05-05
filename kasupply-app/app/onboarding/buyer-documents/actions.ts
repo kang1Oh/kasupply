@@ -1,16 +1,35 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import {
-  getBuyerDtiDocumentTypeMatchScore,
-} from "@/lib/verification/document-rules";
+import { getBuyerDtiDocumentTypeMatchScore } from "@/lib/verification/document-rules";
 import {
   safeQueueDocumentVerification,
   safeSyncBuyerVerificationProfile,
 } from "@/lib/verification/onboarding";
 
-export async function uploadBuyerDocument(formData: FormData) {
+const ALLOWED_BUYER_DOCUMENT_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+]);
+
+type SavedDocumentRow = {
+  doc_id: number;
+  file_url: string;
+  status: string | null;
+  review_notes: string | null;
+};
+
+type BuyerDocumentActionResult = {
+  ok: boolean;
+  fileUrl: string | null;
+  status: string | null;
+  reviewNotes: string | null;
+  message: string;
+};
+
+async function loadAuthenticatedBuyerContext() {
   const supabase = await createClient();
 
   const {
@@ -22,30 +41,6 @@ export async function uploadBuyerDocument(formData: FormData) {
     throw new Error("You must be logged in.");
   }
 
-  const file = formData.get("document") as File | null;
-
-  if (!file) {
-    throw new Error("DTI document is required.");
-  }
-
-  const allowedTypes = new Set([
-    "application/pdf",
-    "image/jpeg",
-    "image/jpg",
-    "image/png",
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  ]);
-
-  if (!allowedTypes.has(file.type)) {
-    throw new Error("Please upload a PDF, JPG, JPEG, PNG, DOC, or DOCX file.");
-  }
-
-  if (file.size > 10 * 1024 * 1024) {
-    throw new Error("The file must be 10MB or smaller.");
-  }
-
-  // 1. Get app user
   const { data: appUser, error: appUserError } = await supabase
     .from("users")
     .select("user_id")
@@ -56,7 +51,6 @@ export async function uploadBuyerDocument(formData: FormData) {
     throw new Error("User record not found.");
   }
 
-  // 2. Get business profile
   const { data: businessProfile, error: businessProfileError } = await supabase
     .from("business_profiles")
     .select("profile_id")
@@ -75,13 +69,10 @@ export async function uploadBuyerDocument(formData: FormData) {
   const dtiDocumentType =
     ((documentTypes as
       | Array<{ doc_type_id: number; document_type_name: string }>
-      | null)
-      ?? [])
+      | null) ?? [])
       .map((documentType) => ({
         ...documentType,
-        matchScore: getBuyerDtiDocumentTypeMatchScore(
-          documentType.document_type_name,
-        ),
+        matchScore: getBuyerDtiDocumentTypeMatchScore(documentType.document_type_name),
       }))
       .filter((documentType) => documentType.matchScore > 0)
       .sort((left, right) => right.matchScore - left.matchScore)[0] ?? null;
@@ -93,8 +84,42 @@ export async function uploadBuyerDocument(formData: FormData) {
     );
   }
 
-  // 4. Upload file to storage
-  const fileExt = file.name.split(".").pop();
+  return {
+    supabase,
+    businessProfile,
+    dtiDocumentType,
+  };
+}
+
+function revalidateBuyerDocumentPaths() {
+  revalidatePath("/onboarding/buyer-documents");
+  revalidatePath("/buyer");
+  revalidatePath("/dashboard");
+  revalidatePath("/buyer/account/edit");
+  revalidatePath("/buyer/account");
+}
+
+export async function uploadBuyerDocument(
+  formData: FormData
+): Promise<BuyerDocumentActionResult> {
+  const { supabase, businessProfile, dtiDocumentType } =
+    await loadAuthenticatedBuyerContext();
+
+  const file = formData.get("document") as File | null;
+
+  if (!file) {
+    throw new Error("DTI document is required.");
+  }
+
+  if (!ALLOWED_BUYER_DOCUMENT_MIME_TYPES.has(file.type)) {
+    throw new Error("Please upload the DTI certificate as JPG, JPEG, or PNG.");
+  }
+
+  if (file.size > 10 * 1024 * 1024) {
+    throw new Error("The file must be 10MB or smaller.");
+  }
+
+  const fileExt = file.name.split(".").pop() || "pdf";
   const fileName = `buyer-dti-${Date.now()}.${fileExt}`;
   const filePath = `${businessProfile.profile_id}/${fileName}`;
 
@@ -115,36 +140,74 @@ export async function uploadBuyerDocument(formData: FormData) {
     throw new Error(uploadError.message);
   }
 
-  // 5. Save metadata to business_documents
   const documentPayload = {
     profile_id: businessProfile.profile_id,
     doc_type_id: dtiDocumentType.doc_type_id,
     file_url: filePath,
     ocr_extracted_data: null,
+    ocr_raw_text: null,
+    ocr_extracted_fields: {},
+    metadata_analysis: {},
+    verification_analysis: {},
+    verification_score: null,
+    manual_review_required: false,
+    review_notes: null,
     status: "pending",
     uploaded_at: new Date().toISOString(),
     verified_at: null,
+    last_verification_run_id: null,
   };
 
   const { data: savedDocument, error: documentSaveError } = existingDocument?.doc_id
     ? await supabase
-        .from("business_documents")
-        .update(documentPayload)
-        .eq("doc_id", existingDocument.doc_id)
-        .select("doc_id")
-        .single()
+      .from("business_documents")
+      .update(documentPayload)
+      .eq("doc_id", existingDocument.doc_id)
+      .select("doc_id, file_url, status, review_notes")
+      .single<SavedDocumentRow>()
     : await supabase
         .from("business_documents")
         .insert(documentPayload)
-        .select("doc_id")
-        .single();
+        .select("doc_id, file_url, status, review_notes")
+        .single<SavedDocumentRow>();
 
   if (documentSaveError || !savedDocument) {
-    throw new Error(documentSaveError.message);
+    throw new Error(documentSaveError?.message || "Failed to save document.");
   }
 
   if (existingDocument?.file_url && existingDocument.file_url !== filePath) {
     await supabase.storage.from("business-documents").remove([existingDocument.file_url]);
+  }
+
+  await safeSyncBuyerVerificationProfile(businessProfile.profile_id);
+  revalidateBuyerDocumentPaths();
+
+  return {
+    ok: true,
+    fileUrl: savedDocument.file_url,
+    status: savedDocument.status,
+    reviewNotes: savedDocument.review_notes,
+    message: "Document uploaded. Click Verify Document when you are ready to process it.",
+  };
+}
+
+export async function processBuyerDocumentVerification(): Promise<BuyerDocumentActionResult> {
+  const { supabase, businessProfile, dtiDocumentType } =
+    await loadAuthenticatedBuyerContext();
+
+  const { data: savedDocument, error: savedDocumentError } = await supabase
+    .from("business_documents")
+    .select("doc_id, file_url, status, review_notes")
+    .eq("profile_id", businessProfile.profile_id)
+    .eq("doc_type_id", dtiDocumentType.doc_type_id)
+    .maybeSingle<SavedDocumentRow>();
+
+  if (savedDocumentError) {
+    throw new Error(savedDocumentError.message || "Failed to load uploaded document.");
+  }
+
+  if (!savedDocument) {
+    throw new Error("Upload a DTI document first before starting verification.");
   }
 
   await safeQueueDocumentVerification({
@@ -156,20 +219,28 @@ export async function uploadBuyerDocument(formData: FormData) {
 
   await safeSyncBuyerVerificationProfile(businessProfile.profile_id);
 
-  const redirectParams = new URLSearchParams({
-    activated: "1",
-    result: "approved",
-  });
-  const nextPath = String(formData.get("next_path") ?? "");
-  const requiredFlow = String(formData.get("required_flow") ?? "");
+  const { data: verifiedDocument, error: verifiedDocumentError } = await supabase
+    .from("business_documents")
+    .select("doc_id, file_url, status, review_notes")
+    .eq("doc_id", savedDocument.doc_id)
+    .maybeSingle<SavedDocumentRow>();
 
-  if (nextPath) {
-    redirectParams.set("next", nextPath);
+  if (verifiedDocumentError) {
+    throw new Error(
+      verifiedDocumentError.message || "Failed to load the verification result."
+    );
   }
 
-  if (requiredFlow) {
-    redirectParams.set("required", requiredFlow);
-  }
+  revalidateBuyerDocumentPaths();
 
-  redirect(`/onboarding/buyer-documents?${redirectParams.toString()}`);
+  return {
+    ok: true,
+    fileUrl: verifiedDocument?.file_url ?? savedDocument.file_url,
+    status: verifiedDocument?.status ?? null,
+    reviewNotes: verifiedDocument?.review_notes ?? null,
+    message:
+      verifiedDocument?.status === "approved"
+        ? "Your DTI document was approved."
+        : "Your DTI document was rejected. Review the feedback and upload a corrected file.",
+  };
 }

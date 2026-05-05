@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import type { ReactNode } from "react";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { BuyerFooter } from "@/components/buyer-footer";
 import { BuyerHeader } from "@/components/buyer-header";
@@ -45,60 +46,108 @@ function BuyerLayoutFallback() {
 
 async function BuyerLayoutContent({ children }: { children: ReactNode }) {
   const supabase = await createClient();
-  const status = await getUserOnboardingStatus();
+  let status: Awaited<ReturnType<typeof getUserOnboardingStatus>> | null = null;
 
-  const user = status.appUser;
-  const unreadNotificationCount = user
-    ? await getBuyerUnreadNotificationCount(user.user_id)
-    : 0;
+  try {
+    const { data: claimsData } = await supabase.auth.getClaims();
+    status = claimsData?.claims ? await getUserOnboardingStatus() : null;
+  } catch (error) {
+    console.error("Unable to load buyer auth claims for layout.", error);
+  }
+
+  const user = status?.appUser ?? null;
+
+  if (status?.authenticated && status.role && status.role !== "buyer") {
+    redirect("/dashboard");
+  }
+
+  if (status?.authenticated && status.role === "buyer") {
+    if (!status.hasBusinessProfile) {
+      redirect("/onboarding/buyer");
+    }
+
+    if (!status.hasCompletedCategorySelection) {
+      redirect("/onboarding/buyer/categories");
+    }
+
+    if (!status.hasApprovedBuyerDocuments) {
+      redirect("/onboarding/buyer-documents");
+    }
+  }
+
+  let unreadNotificationCount = 0;
+
+  if (user) {
+    try {
+      unreadNotificationCount = await getBuyerUnreadNotificationCount(user.user_id);
+    } catch (error) {
+      console.error("Unable to load buyer unread notifications.", error);
+    }
+  }
 
   // Fetch business profile for the header avatar initials
   let businessName: string | null = null;
   if (user) {
-    const { data: businessProfile } = await supabase
-      .from("business_profiles")
-      .select("business_name")
-      .eq("user_id", user.user_id)
-      .maybeSingle();
-    businessName = businessProfile?.business_name ?? null;
+    try {
+      const { data: businessProfile } = await supabase
+        .from("business_profiles")
+        .select("business_name")
+        .eq("user_id", user.user_id)
+        .maybeSingle();
+      businessName = businessProfile?.business_name ?? null;
+    } catch (error) {
+      console.error("Unable to load buyer business name for header.", error);
+    }
   }
 
   const accessLinks = {
     rfqs:
-      getBuyerAccessRedirect(status, {
-        requirement: "profile",
-        targetPath: "/buyer/rfqs",
-        reason: "rfq",
-      }) ?? "/buyer/rfqs",
+      (status
+        ? getBuyerAccessRedirect(status, {
+            requirement: "profile",
+            targetPath: "/buyer/rfqs",
+            reason: "rfq",
+          })
+        : null) ?? "/buyer/rfqs",
     sourcingBoard:
-      getBuyerAccessRedirect(status, {
-        requirement: "profile",
-        targetPath: "/buyer/sourcing-board",
-        reason: "sourcing-board",
-      }) ?? "/buyer/sourcing-board",
+      (status
+        ? getBuyerAccessRedirect(status, {
+            requirement: "profile",
+            targetPath: "/buyer/sourcing-board",
+            reason: "sourcing-board",
+          })
+        : null) ?? "/buyer/sourcing-board",
     purchaseOrders:
-      getBuyerAccessRedirect(status, {
-        requirement: "documents",
-        targetPath: "/buyer/purchase-orders",
-        reason: "purchase-orders",
-      }) ?? "/buyer/purchase-orders",
+      (status
+        ? getBuyerAccessRedirect(status, {
+            requirement: "documents",
+            targetPath: "/buyer/purchase-orders",
+            reason: "purchase-orders",
+          })
+        : null) ?? "/buyer/purchase-orders",
     messages:
-      getBuyerAccessRedirect(status, {
-        requirement: "profile",
-        targetPath: "/buyer/messages",
-        reason: "messages",
-      }) ?? "/buyer/messages",
+      (status
+        ? getBuyerAccessRedirect(status, {
+            requirement: "profile",
+            targetPath: "/buyer/messages",
+            reason: "messages",
+          })
+        : null) ?? "/buyer/messages",
     notifications:
-      getBuyerAccessRedirect(status, {
-        requirement: "authenticated",
-        targetPath: "/buyer/notifications",
-        reason: "notifications",
-      }) ?? "/buyer/notifications",
+      (status
+        ? getBuyerAccessRedirect(status, {
+            requirement: "authenticated",
+            targetPath: "/buyer/notifications",
+            reason: "notifications",
+          })
+        : null) ?? "/buyer/notifications",
     account:
-      getBuyerAccessRedirect(status, {
-        requirement: "authenticated",
-        targetPath: "/buyer/account",
-      }) ?? "/buyer/account",
+      (status
+        ? getBuyerAccessRedirect(status, {
+            requirement: "authenticated",
+            targetPath: "/buyer/account",
+          })
+        : null) ?? "/buyer/account",
   };
 
   return (
@@ -107,6 +156,7 @@ async function BuyerLayoutContent({ children }: { children: ReactNode }) {
         isLoggedIn={!!user}
         userName={user?.name ?? null}
         businessName={businessName}
+        avatarUrl={user?.avatar_url ?? null}
         accessLinks={accessLinks}
         unreadNotificationCount={unreadNotificationCount}
       />

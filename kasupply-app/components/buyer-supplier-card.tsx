@@ -120,7 +120,7 @@ export function BuyerSupplierCard({
 
   return (
     <article
-      className={`flex h-full transform-gpu flex-col rounded-[20px] border border-[#e2e8f0] bg-white shadow-none transition duration-[220ms] ease-out hover:-translate-y-0.5 hover:border-[#294773] hover:shadow-[0_4px_16px_rgba(0,0,0,0.12)] ${
+      className={`flex h-full transform-gpu flex-col rounded-[20px] border border-[#e2e8f0] bg-white shadow-none transition [transition-duration:220ms] ease-out hover:-translate-y-0.5 hover:border-[#294773] hover:shadow-[0_4px_16px_rgba(0,0,0,0.12)] ${
         compact ? "px-4 pt-3.5 pb-3.5" : "px-4 pt-3.5 pb-3.5"
       }`}
     >

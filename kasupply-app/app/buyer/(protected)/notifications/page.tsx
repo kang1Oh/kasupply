@@ -47,9 +47,6 @@ export default async function BuyerNotificationsPage() {
     <main className="space-y-6 p-6">
       <div className="flex flex-col gap-4 rounded-[28px] border border-[#d9e2ef] bg-[linear-gradient(135deg,#f7fbff_0%,#eef4ff_100%)] p-6 shadow-[0_18px_45px_rgba(36,63,104,0.08)] md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#6781a8]">
-            Buyer notifications
-          </p>
           <h1 className="mt-2 text-2xl font-bold text-[#223654]">Notifications</h1>
           <p className="mt-2 max-w-2xl text-sm text-[#61738f]">
             Track RFQ activity, sourcing updates, and order progress in one place.

@@ -2,7 +2,6 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentAppUser } from "@/lib/auth/get-current-app-user";
 import { getSupplierDocumentRequirements } from "@/lib/supplier-requirements";
 import { isBuyerDtiDocumentTypeName } from "@/lib/verification/document-rules";
-import { REQUIRED_SITE_IMAGE_TYPES } from "@/lib/verification/site-image-types";
 
 type BuyerProfileRow = {
   buyer_id: number;
@@ -48,14 +47,6 @@ type BusinessDocumentRow = {
   document_types: {
     document_type_name: string;
   } | null;
-};
-
-type SiteShowcaseImageRow = {
-  image_id: number;
-  profile_id: number;
-  image_type: string;
-  image_url: string;
-  status: string;
 };
 
 function normalizeDocumentName(value: string) {
@@ -122,9 +113,10 @@ export async function getUserOnboardingStatus() {
       hasSupplierProfile: false,
       hasCompletedCategorySelection: false,
       hasSubmittedBuyerDocuments: false,
+      hasApprovedBuyerDocuments: false,
       hasSubmittedSupplierDocuments: false,
       hasSubmittedRequiredSupplierDocuments: false,
-      hasSubmittedSiteImages: false,
+      hasApprovedRequiredSupplierDocuments: false,
       isSupplierVerified: false,
       supplierVerificationStatus: "not_started" as
         | "not_started"
@@ -132,7 +124,6 @@ export async function getUserOnboardingStatus() {
         | "pending"
         | "verified",
       requiredDocumentsChecklist: [],
-      siteImages: [],
       debug: null,
     };
   }
@@ -161,14 +152,14 @@ export async function getUserOnboardingStatus() {
   let hasSupplierProfile = false;
   let hasCompletedCategorySelection = false;
   let hasSubmittedBuyerDocuments = false;
+  let hasApprovedBuyerDocuments = false;
   let hasSubmittedSupplierDocuments = false;
   let hasSubmittedRequiredSupplierDocuments = false;
-  let hasSubmittedSiteImages = false;
+  let hasApprovedRequiredSupplierDocuments = false;
   let isSupplierVerified = false;
 
   let buyerProfile: BuyerProfileRow | null = null;
   let supplierProfile: SupplierProfileRow | null = null;
-  let siteImages: SiteShowcaseImageRow[] = [];
   let supplierDocumentsErrorMessage: string | null = null;
   let buyerVerificationStatus: string | null = null;
   let supplierVerificationState: string | null = null;
@@ -236,9 +227,13 @@ export async function getUserOnboardingStatus() {
       .eq("profile_id", businessProfile.profile_id);
 
     const safeBuyerDocuments = (buyerDocuments as BusinessDocumentRow[] | null) ?? [];
-    hasSubmittedBuyerDocuments = safeBuyerDocuments.some((doc) =>
+    const buyerDtiDocument = safeBuyerDocuments.find((doc) =>
       isBuyerDtiDocumentTypeName(doc.document_types?.document_type_name ?? "")
     );
+
+    hasSubmittedBuyerDocuments = Boolean(buyerDtiDocument);
+    hasApprovedBuyerDocuments =
+      buyerVerificationStatus === "approved" || buyerDtiDocument?.status === "approved";
   }
 
   if (role === "supplier" && businessProfile) {
@@ -250,9 +245,7 @@ export async function getUserOnboardingStatus() {
     supplierProfile = supplierProfileData ?? null;
     hasSupplierProfile = !!supplierProfile;
     supplierVerificationState = supplierProfile?.verification_status ?? null;
-    isSupplierVerified =
-      (supplierProfile?.verified ?? false) ||
-      supplierVerificationState === "approved";
+    isSupplierVerified = false;
 
     const { data: supplierDocuments, error: supplierDocumentsError } =
       await supabase
@@ -301,18 +294,15 @@ export async function getUserOnboardingStatus() {
     hasSubmittedRequiredSupplierDocuments =
       requiredDocumentsChecklist.length === 0 ||
       requiredDocumentsChecklist.every((doc) => doc.uploaded);
-
-    const { data: siteImageData } = await supabase
-      .from("site_showcase_images")
-      .select("image_id, profile_id, image_type, image_url, status")
-      .eq("profile_id", businessProfile.profile_id)
-      .in("image_type", REQUIRED_SITE_IMAGE_TYPES);
-
-    siteImages = (siteImageData as SiteShowcaseImageRow[] | null) ?? [];
-    const uploadedTypes = new Set(siteImages.map((image) => image.image_type));
-    hasSubmittedSiteImages = REQUIRED_SITE_IMAGE_TYPES.every((type) =>
-      uploadedTypes.has(type)
-    );
+    hasApprovedRequiredSupplierDocuments =
+      requiredDocumentsChecklist.length === 0 ||
+      requiredDocumentsChecklist.every(
+        (doc) => doc.uploaded && doc.status === "approved"
+      );
+    isSupplierVerified =
+      (supplierProfile?.verified ?? false) ||
+      supplierVerificationState === "approved" ||
+      hasApprovedRequiredSupplierDocuments;
   }
 
   let supplierVerificationStatus: "not_started" | "incomplete" | "pending" | "verified" =
@@ -323,13 +313,7 @@ export async function getUserOnboardingStatus() {
       supplierVerificationStatus = "verified";
     } else if (
       supplierVerificationState === "submitted" ||
-      supplierVerificationState === "under_review" ||
-      supplierVerificationState === "review_required"
-    ) {
-      supplierVerificationStatus = "pending";
-    } else if (
-      hasSubmittedRequiredSupplierDocuments &&
-      hasSubmittedSiteImages
+      supplierVerificationState === "under_review"
     ) {
       supplierVerificationStatus = "pending";
     } else {
@@ -347,13 +331,13 @@ export async function getUserOnboardingStatus() {
     hasSupplierProfile,
     hasCompletedCategorySelection,
     hasSubmittedBuyerDocuments,
+    hasApprovedBuyerDocuments,
     hasSubmittedSupplierDocuments,
     hasSubmittedRequiredSupplierDocuments,
-    hasSubmittedSiteImages,
+    hasApprovedRequiredSupplierDocuments,
     isSupplierVerified,
     supplierVerificationStatus,
     requiredDocumentsChecklist,
-    siteImages,
     debug: {
       user_id: user.user_id,
       role,

@@ -525,7 +525,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     supabase
       .from("verification_runs")
       .select("run_id", { count: "exact", head: true })
-      .in("status", ["queued", "processing", "failed", "review_required"]),
+      .in("status", ["queued", "processing", "failed"]),
     supabase
       .from("products")
       .select(

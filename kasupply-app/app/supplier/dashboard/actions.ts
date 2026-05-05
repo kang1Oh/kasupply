@@ -208,6 +208,7 @@ export type SupplierDashboardData = {
     time: string;
     tone: "green" | "orange" | "blue" | "pink";
     sortTime: number;
+    targetHref: string | null;
   }>;
   incomingRfqs: Array<{
     matchId: number;
@@ -865,6 +866,7 @@ export async function getSupplierDashboardData(): Promise<SupplierDashboardData>
             sortTime: new Date(
               requestMatchesResult[0].notified_at ?? rfq?.created_at ?? 0,
             ).getTime(),
+            targetHref: `/supplier/bulletin-board?view=${requestMatchesResult[0].rfq_id}`,
           };
         })()
       : null,
@@ -881,6 +883,7 @@ export async function getSupplierDashboardData(): Promise<SupplierDashboardData>
             time: formatRelativeTime(po.created_at),
             tone: "orange" as const,
             sortTime: new Date(po.created_at ?? 0).getTime(),
+            targetHref: "/supplier/rfq",
           };
         })()
       : null,
@@ -902,6 +905,7 @@ export async function getSupplierDashboardData(): Promise<SupplierDashboardData>
             time: formatRelativeTime(latestUnreadBuyerMessage.created_at),
             tone: "blue" as const,
             sortTime: new Date(latestUnreadBuyerMessage.created_at ?? 0).getTime(),
+            targetHref: "/supplier/messages",
           };
         })()
       : null,
@@ -926,6 +930,7 @@ export async function getSupplierDashboardData(): Promise<SupplierDashboardData>
             sortTime: new Date(
               completedPo.completed_at ?? completedPo.created_at ?? 0,
             ).getTime(),
+            targetHref: "/supplier/rfq",
           };
         })()
       : null,

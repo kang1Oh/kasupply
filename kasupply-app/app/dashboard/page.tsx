@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { getUserOnboardingStatus } from "@/lib/auth/get-user-onboarding-status";
 
@@ -6,6 +7,8 @@ function DashboardPageFallback() {
 }
 
 export default async function DashboardPage() {
+  await connection();
+
   const status = await getUserOnboardingStatus();
 
   if (!status.authenticated) {

@@ -30,6 +30,7 @@ type BuyerHeaderProps = {
   isLoggedIn: boolean;
   userName?: string | null;
   businessName?: string | null;
+  avatarUrl?: string | null;
   accessLinks?: BuyerAccessLinks;
   unreadNotificationCount?: number;
 };
@@ -81,6 +82,7 @@ export function BuyerHeader({
   isLoggedIn,
   userName,
   businessName,
+  avatarUrl,
   accessLinks,
   unreadNotificationCount = 0,
 }: BuyerHeaderProps) {
@@ -102,7 +104,6 @@ export function BuyerHeader({
   const notificationsHref = accessLinks?.notifications ?? "/buyer/notifications";
   const accountHref = accessLinks?.account ?? "/buyer/account";
 
-  const isNotificationsActive = pathname === "/buyer/notifications";
   const showUnreadDot = unreadNotificationCount > 0;
 
   return (
@@ -176,21 +177,55 @@ export function BuyerHeader({
             {/* PROFILE */}
             <Link
               href={accountHref}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-[#dcf8e7] text-[15px] font-medium text-[#18854f]"
+              className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[#dcf8e7] text-[15px] font-medium text-[#18854f]"
             >
-              {initials}
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={avatarUrl}
+                  alt={`${businessName ?? userName ?? "Buyer"} avatar`}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                initials
+              )}
             </Link>
           </div>
         </div>
       </header>
 
-      {/* MODAL */}
       {!isLoggedIn && showModal && (
-        <ModalShell title="Login required">
-          <div className="mt-6 flex justify-end gap-3">
-            <button onClick={() => setShowModal(false)}>Close</button>
-            <button onClick={() => router.push("/sign-up")}>Sign Up</button>
-            <button onClick={() => router.push("/login")}>Log In</button>
+        <ModalShell
+          title="Login required"
+          description="Please log in or create a buyer account to access RFQs, purchase orders, messaging, and account features."
+          maxWidthClassName="max-w-md"
+          panelClassName="rounded-2xl border border-[#d7dee8] bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.18)]"
+          overlayClassName="bg-[#0f172a]/45 px-4"
+        >
+          <div className="mt-6 flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              className="rounded-md border border-[#d7dee8] px-4 py-2 text-sm text-[#223654] transition hover:bg-[#f8fafc]"
+            >
+              Close
+            </button>
+
+            <button
+              type="button"
+              onClick={() => router.push("/auth/sign-up")}
+              className="rounded-md border border-[#d7dee8] px-4 py-2 text-sm text-[#223654] transition hover:bg-[#f8fafc]"
+            >
+              Sign Up
+            </button>
+
+            <button
+              type="button"
+              onClick={() => router.push("/auth/login")}
+              className="rounded-md bg-[#243f68] px-4 py-2 text-sm text-white transition hover:bg-[#1f3658]"
+            >
+              Log In
+            </button>
           </div>
         </ModalShell>
       )}

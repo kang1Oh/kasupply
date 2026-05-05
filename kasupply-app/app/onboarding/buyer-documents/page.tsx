@@ -1,16 +1,26 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { BuyerDocumentsForm } from "@/components/buyer-documents-form";
-import { AccountActivatedModal } from "@/components/modals/account-activated-modal";
 import { getUserOnboardingStatus } from "@/lib/auth/get-user-onboarding-status";
+import { createClient } from "@/lib/supabase/server";
+import { isBuyerDtiDocumentTypeName } from "@/lib/verification/document-rules";
 
 type BuyerDocumentsPageProps = {
   searchParams?: Promise<{
-    activated?: string;
     next?: string;
-    result?: string;
     required?: string;
   }>;
+};
+
+type BuyerDocumentRow = {
+  file_url: string | null;
+  status: string | null;
+  review_notes: string | null;
+  document_types:
+    | {
+        document_type_name: string;
+      }
+    | null;
 };
 
 function BuyerDocumentsPageFallback() {
@@ -46,7 +56,7 @@ async function BuyerDocumentsPageContent({
   const params = (await searchParams) ?? {};
 
   if (!status.authenticated) {
-    redirect("/login");
+    redirect("/auth/login");
   }
 
   if (!status.hasBusinessProfile) {
@@ -75,8 +85,42 @@ async function BuyerDocumentsPageContent({
     redirect("/dashboard");
   }
 
-  const isActivatedModalOpen =
-    params.activated === "1" && params.result === "approved";
+  const supabase = await createClient();
+  const businessProfileId = status.businessProfile?.profile_id;
+
+  let currentDocument: {
+    fileUrl: string | null;
+    status: string | null;
+    reviewNotes: string | null;
+  } | null = null;
+
+  if (businessProfileId) {
+    const { data: buyerDocuments } = await supabase
+      .from("business_documents")
+      .select(
+        `
+          status,
+          file_url,
+          review_notes,
+          document_types!business_documents_doc_type_id_fkey (
+            document_type_name
+          )
+        `
+      )
+      .eq("profile_id", businessProfileId);
+
+    const matchedDocument = ((buyerDocuments as BuyerDocumentRow[] | null) ?? []).find((doc) =>
+      isBuyerDtiDocumentTypeName(doc.document_types?.document_type_name ?? "")
+    );
+
+    if (matchedDocument) {
+      currentDocument = {
+        fileUrl: matchedDocument.file_url,
+        status: matchedDocument.status,
+        reviewNotes: matchedDocument.review_notes,
+      };
+    }
+  }
 
   return (
     <div className="min-h-svh bg-[#fafbfd] p-6 md:p-10">
@@ -84,9 +128,9 @@ async function BuyerDocumentsPageContent({
         <BuyerDocumentsForm
           nextPath={params.next ?? null}
           requiredFlow={params.required ?? null}
+          currentDocument={currentDocument}
         />
       </div>
-      <AccountActivatedModal isOpen={isActivatedModalOpen} />
     </div>
   );
 }

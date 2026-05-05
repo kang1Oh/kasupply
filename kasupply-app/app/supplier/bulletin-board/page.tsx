@@ -181,11 +181,11 @@ export default async function SupplierBulletinBoardPage({
 
   const totalMatches = safeMatchedRfqs.length;
   const highMatches = safeMatchedRfqs.filter(
-    (row) => Number(row.match_score ?? 0) >= 0.8,
+    (row) => Number(row.match_score ?? 0) >= 80,
   ).length;
   const mediumMatches = safeMatchedRfqs.filter((row) => {
     const score = Number(row.match_score ?? 0);
-    return score >= 0.5 && score < 0.8;
+    return score >= 50 && score < 80;
   }).length;
 
   return (
@@ -266,7 +266,7 @@ export default async function SupplierBulletinBoardPage({
 
                       <td className="px-3 py-3">
                         {match.match_score != null
-                          ? Number(match.match_score).toFixed(2)
+                          ? `${Math.round(Number(match.match_score))}%`
                           : "-"}
                       </td>
 
@@ -360,7 +360,7 @@ export default async function SupplierBulletinBoardPage({
                     <div>
                       <span className="font-medium">Match score:</span>{" "}
                       {selectedMatch.match_score != null
-                        ? Number(selectedMatch.match_score).toFixed(2)
+                        ? `${Math.round(Number(selectedMatch.match_score))}%`
                         : "-"}
                     </div>
                     <div>

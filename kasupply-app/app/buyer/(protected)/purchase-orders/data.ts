@@ -88,6 +88,7 @@ export type BuyerPurchaseOrderView = {
   poId: number;
   poNumber: string;
   supplierId: number | null;
+  productId: number | null;
   productName: string;
   quantityLabel: string;
   quantityValue: number | null;
@@ -584,6 +585,7 @@ async function buildBuyerPurchaseOrderViews(
         poId,
         poNumber: formatPurchaseOrderNumber(poId),
         supplierId,
+        productId,
         productName:
           getRfqProductName(rfq) ??
           (productId !== null ? productNameMap.get(productId) ?? `Product #${productId}` : "Unknown product"),

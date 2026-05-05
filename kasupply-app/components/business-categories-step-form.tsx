@@ -12,11 +12,17 @@ type BusinessCategoriesStepFormProps = {
   categories: ProductCategory[];
   initialSelectedCategoryIds?: number[];
   initialOtherCategories?: string[];
-  backHref: string;
+  backHref?: string | null;
   sectionTitle?: string;
   sectionDescription?: string;
   nextPath?: string | null;
   requiredFlow?: string | null;
+  returnPath?: string | null;
+  mode?: "onboarding" | "edit";
+  pageTitle?: string;
+  pageDescription?: string;
+  submitLabel?: string;
+  backLabel?: string;
   action: (formData: FormData) => Promise<void>;
 };
 
@@ -58,6 +64,12 @@ export function BusinessCategoriesStepForm({
   sectionDescription = "Select the product categories that best match your business.",
   nextPath,
   requiredFlow,
+  returnPath = null,
+  mode = "onboarding",
+  pageTitle,
+  pageDescription,
+  submitLabel,
+  backLabel,
   action,
 }: BusinessCategoriesStepFormProps) {
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>(
@@ -68,6 +80,15 @@ export function BusinessCategoriesStepForm({
   );
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
+  const isEditMode = mode === "edit";
+  const resolvedPageTitle = pageTitle ?? (isEditMode ? "" : "Basic Profile Information");
+  const resolvedPageDescription =
+    pageDescription ??
+    (isEditMode
+      ? ""
+      : "Share a few details so we can tailor KaSupply to your needs");
+  const resolvedSubmitLabel = submitLabel ?? (isEditMode ? "Save Categories" : "Proceed");
+  const resolvedBackLabel = backLabel ?? (isEditMode ? "Back to Account" : "Back");
 
   function toggleCategory(categoryId: number) {
     setSelectedCategoryIds((current) =>
@@ -87,11 +108,13 @@ export function BusinessCategoriesStepForm({
           try {
             await action(formData);
           } catch (err) {
+            const redirectDigest =
+              err && typeof err === "object" && "digest" in err
+                ? String((err as { digest?: unknown }).digest ?? "")
+                : "";
             const isRedirect =
               err instanceof Error &&
-              (err.message === "NEXT_REDIRECT" ||
-                ("digest" in err &&
-                  String((err as any).digest).startsWith("NEXT_REDIRECT")));
+              (err.message === "NEXT_REDIRECT" || redirectDigest.startsWith("NEXT_REDIRECT"));
 
             if (isRedirect) throw err;
 
@@ -111,26 +134,31 @@ export function BusinessCategoriesStepForm({
 
       <input type="hidden" name="next_path" value={nextPath ?? ""} />
       <input type="hidden" name="required_flow" value={requiredFlow ?? ""} />
+      <input type="hidden" name="return_path" value={returnPath ?? ""} />
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-[26px] font-bold leading-tight text-[#223654]">
-            Basic Profile Information
+            {resolvedPageTitle}
           </h1>
           <p className="mt-0.5 text-[18px] leading-6 text-[#8b95a5]">
-            Share a few details so we can tailor KaSupply to your needs
+            {resolvedPageDescription}
           </p>
         </div>
-        <p className="text-[16px] font-semibold text-[#223654]">Step 1 of 3</p>
+        {isEditMode ? null : (
+          <p className="text-[16px] font-semibold text-[#223654]">Step 1 of 3</p>
+        )}
       </div>
 
-      <div className="mb-5 mt-5 flex items-center gap-3">
-        <StepIndicator number={1} label="Profile Setup" active />
-        <div className="h-px flex-1 bg-[#d7dee8]" />
-        <StepIndicator number={2} label="Verification" />
-        <div className="h-px flex-1 bg-[#d7dee8]" />
-        <StepIndicator number={3} label="User Verified" />
-      </div>
+      {isEditMode ? null : (
+        <div className="mb-5 mt-5 flex items-center gap-3">
+          <StepIndicator number={1} label="Profile Setup" active />
+          <div className="h-px flex-1 bg-[#d7dee8]" />
+          <StepIndicator number={2} label="Verification" />
+          <div className="h-px flex-1 bg-[#d7dee8]" />
+          <StepIndicator number={3} label="User Verified" />
+        </div>
+      )}
 
       <div className="rounded-[12px] border border-[#e4e9f1] bg-white p-4 sm:p-5">
         <div>
@@ -183,18 +211,21 @@ export function BusinessCategoriesStepForm({
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
       <div className="flex items-center justify-end gap-4">
-        <Link
-          href={backHref}
-          className="px-2 py-2 text-sm font-medium text-[#6b7280] transition hover:text-[#1f3d67]"
-        >
-          Back
-        </Link>
+        {backHref ? (
+          <Link
+            href={backHref}
+            prefetch={false}
+            className="px-2 py-2 text-sm font-medium text-[#6b7280] transition hover:text-[#1f3d67]"
+          >
+            {resolvedBackLabel}
+          </Link>
+        ) : null}
         <button
           type="submit"
           disabled={isPending}
           className="rounded-md bg-[#1f3d67] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#193354] disabled:cursor-not-allowed disabled:opacity-70"
         >
-          {isPending ? "Saving..." : "Proceed"}
+          {isPending ? "Saving..." : resolvedSubmitLabel}
         </button>
       </div>
     </form>

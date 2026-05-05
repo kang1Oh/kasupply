@@ -7,7 +7,6 @@ export type BuyerDtiAuthorityFields = {
   business_name: string | null;
   owner_name: string | null;
   scope_or_location: string | null;
-  validity_date: string | null;
   business_name_no: string | null;
   registration_date: string | null;
   status: string | null;
@@ -70,19 +69,35 @@ export function parseLegacyBuyerDtiQrText(payloadText: string) {
   const businessName = readCapture(
     normalizedText.match(/business\s+name\s*:\s*(.+)/i)
   );
-  const scope = readCapture(normalizedText.match(/scope\s*:\s*(.+)/i));
+  const businessTerritory = readCapture(
+    normalizedText.match(/business\s+territory\s*:\s*(.+)/i)
+  );
+  const scope = readCapture(
+    normalizedText.match(/(?:business\s+scope|scope)\s*:\s*(.+)/i)
+  );
   const ownerName = readCapture(
-    normalizedText.match(/business\s+owner\s*:\s*(.+)/i)
+    normalizedText.match(/(?:business\s+owner|owner'?s?\s+name)\s*:\s*(.+)/i)
   );
-  const validityDate = readCapture(
-    normalizedText.match(/validity\s+date\s*:\s*(.+)/i)
+  const registrationDate = readCapture(
+    normalizedText.match(
+      /(?:transaction\/registration\s+date|registration\s+date|transaction\s+date)\s*:\s*(.+)/i
+    )
   );
+  const status = readCapture(normalizedText.match(/status\s*:\s*(.+)/i));
   const businessNameNo = readCapture(
-    normalizedText.match(/business\s+name\s+no\.?\s*:?\s*(.+)/i)
+    normalizedText.match(
+      /(?:business\s+name\s+no\.?|certificate\s+no\.?\/?bnn|bnn)\s*:?\s*(.+)/i
+    )
   );
 
   const hasAnyStructuredField = Boolean(
-    businessName || scope || ownerName || validityDate || businessNameNo
+    businessName ||
+      businessTerritory ||
+      scope ||
+      ownerName ||
+      registrationDate ||
+      status ||
+      businessNameNo
   );
 
   if (!hasAnyStructuredField) {
@@ -95,13 +110,12 @@ export function parseLegacyBuyerDtiQrText(payloadText: string) {
     resolvedUrl: null,
     fields: {
       business_name: businessName,
+      business_territory: businessTerritory,
       owner_name: ownerName,
       scope_or_location: scope,
-      validity_date: validityDate,
       business_name_no: businessNameNo,
-      registration_date: null,
-      status: null,
-      business_territory: null,
+      registration_date: registrationDate,
+      status,
     },
     notes: ["Legacy DTI QR payload text was parsed directly from the QR code."],
   };
@@ -160,7 +174,6 @@ function parseBnrsSearchResultHtml(html: string) {
     registration_date: cells[4] || null,
     status: normalizeWhitespace((cells[5] || "").replace(/[↕]/g, "")) || null,
     scope_or_location: cells[6] || null,
-    validity_date: null,
   };
 }
 

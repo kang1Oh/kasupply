@@ -357,7 +357,7 @@ export async function uploadPurchaseOrderReceipt(formData: FormData) {
   } = await supabase.auth.getUser();
 
   if (authError || !authUser) {
-    redirect("/login");
+    redirect("/auth/login");
   }
 
   const poId = Number(formData.get("poId")?.toString() ?? "");

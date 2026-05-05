@@ -62,36 +62,30 @@ async function OnboardingPageContent() {
     redirect("/buyer");
   }
 
-  if (status.hasBusinessProfile && !status.hasCompletedCategorySelection) {
-    redirect("/onboarding/categories");
-  }
-
-  if (
-    status.hasBusinessProfile &&
-    status.hasCompletedCategorySelection &&
-    !status.hasSubmittedRequiredSupplierDocuments
-  ) {
-    redirect("/onboarding/supplier-documents");
-  }
-
-  if (
-    status.hasBusinessProfile &&
-    status.hasCompletedCategorySelection &&
-    status.hasSubmittedRequiredSupplierDocuments &&
-    !status.hasSubmittedSiteImages
-  ) {
-    redirect("/onboarding/supplier-site-images");
-  }
-
-  if (status.hasBusinessProfile) {
+  if (status.isSupplierVerified && status.hasBusinessProfile) {
     redirect("/supplier/dashboard");
   }
+
+  const existingBusinessProfile = status.businessProfile
+    ? {
+        business_name: status.businessProfile.business_name ?? "",
+        business_type: status.businessProfile.business_type ?? "",
+        business_location: status.businessProfile.business_location ?? "",
+        city: status.businessProfile.city ?? "",
+        province: status.businessProfile.province ?? "",
+        region: status.businessProfile.region ?? "",
+        contact_name: status.businessProfile.contact_name ?? "",
+        contact_number: status.businessProfile.contact_number ?? "",
+        about: status.businessProfile.about ?? "",
+      }
+    : null;
 
   return (
     <main className="min-h-screen bg-[#fafbfd] px-4 py-8 sm:px-6 lg:px-10">
       <div className="mx-auto max-w-5xl">
         <OnboardingStepOneForm
           action={completeOnboarding}
+          initialValues={existingBusinessProfile}
           regions={PHILIPPINE_REGIONS}
         />
       </div>
