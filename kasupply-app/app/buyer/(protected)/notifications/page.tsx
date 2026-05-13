@@ -2,7 +2,9 @@ import { redirect } from "next/navigation";
 import {
   ClipboardCheck,
   MessageSquare,
+  PackageCheck,
 } from "lucide-react";
+import type { BuyerNotificationItem } from "@/lib/buyer/notifications";
 import { getBuyerAccessRedirect } from "@/lib/auth/buyer-access";
 import { getUserOnboardingStatus } from "@/lib/auth/get-user-onboarding-status";
 import { getBuyerNotifications } from "@/lib/buyer/notifications";
@@ -12,12 +14,21 @@ import {
   openBuyerNotification,
 } from "./actions";
 
-const categoryIconMap = {
+const categoryIconMap: Record<BuyerNotificationItem["category"], typeof MessageSquare> = {
   message: MessageSquare,
   quotation_reply: ClipboardCheck,
+  purchase_order_update: PackageCheck,
 } as const;
 
-const categoryColorMap = {
+const categoryColorMap: Record<
+  BuyerNotificationItem["category"],
+  {
+    iconWrap: string;
+    icon: string;
+    pill: string;
+    label: string;
+  }
+> = {
   message: {
     iconWrap: "bg-[#EEF4FF]",
     icon: "text-[#2E68F4]",
@@ -29,6 +40,12 @@ const categoryColorMap = {
     icon: "text-[#E15A4F]",
     pill: "bg-[#FFF0ED] text-[#D14A3F]",
     label: "Quotation Reply",
+  },
+  purchase_order_update: {
+    iconWrap: "bg-[#EEF8F1]",
+    icon: "text-[#2F8C57]",
+    pill: "bg-[#E8F7ED] text-[#2F8C57]",
+    label: "Purchase Order Update",
   },
 } as const;
 
@@ -61,6 +78,9 @@ export default async function BuyerNotificationsPage() {
   const quotationReplyCount = notifications.items.filter(
     (item) => item.category === "quotation_reply",
   ).length;
+  const purchaseOrderUpdateCount = notifications.items.filter(
+    (item) => item.category === "purchase_order_update",
+  ).length;
 
   return (
     <main className="space-y-6 p-6">
@@ -68,7 +88,7 @@ export default async function BuyerNotificationsPage() {
         <div>
           <h1 className="mt-2 text-2xl font-bold text-[#223654]">Notifications</h1>
           <p className="mt-2 max-w-2xl text-sm text-[#61738f]">
-            Track new messages and quotation replies from your sourcing board requests.
+            Track new messages, quotation replies, and purchase order status changes.
           </p>
         </div>
 
@@ -80,6 +100,10 @@ export default async function BuyerNotificationsPage() {
           <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-3 text-sm text-[#4a5b75] shadow-[0_10px_30px_rgba(36,63,104,0.08)]">
             <span className="font-semibold text-[#223654]">{quotationReplyCount}</span>{" "}
             quotation repl{quotationReplyCount === 1 ? "y" : "ies"}
+          </div>
+          <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-3 text-sm text-[#4a5b75] shadow-[0_10px_30px_rgba(36,63,104,0.08)]">
+            <span className="font-semibold text-[#223654]">{purchaseOrderUpdateCount}</span>{" "}
+            purchase order update{purchaseOrderUpdateCount === 1 ? "" : "s"}
           </div>
 
           {notifications.unreadCount > 0 ? (

@@ -28,7 +28,7 @@ export type BuyerNotificationItem = {
   isRead: boolean;
   createdAt: string;
   targetPath: string | null;
-  category: "message" | "quotation_reply";
+  category: "message" | "quotation_reply" | "purchase_order_update";
 };
 
 export type BuyerNotificationsData = {
@@ -53,12 +53,17 @@ function getBuyerRfqPath(rfq: RfqRouteRow) {
 
 function classifyBuyerNotification(params: {
   type: string;
+  title: string;
+  body: string;
   referenceTable: string | null;
   targetPath: string | null;
 }) {
   const type = String(params.type ?? "").trim().toLowerCase();
+  const title = String(params.title ?? "").trim().toLowerCase();
+  const body = String(params.body ?? "").trim().toLowerCase();
   const referenceTable = normalizeReferenceTable(params.referenceTable);
   const targetPath = String(params.targetPath ?? "").trim().toLowerCase();
+  const combinedText = `${type} ${title} ${body}`;
 
   if (
     type.includes("message") ||
@@ -70,10 +75,11 @@ function classifyBuyerNotification(params: {
   }
 
   if (
-    targetPath.startsWith("/buyer/sourcing-board/") &&
-    (type.includes("quotation") ||
-      type.includes("quote") ||
-      type.includes("offer") ||
+    (targetPath.startsWith("/buyer/sourcing-board/") ||
+      targetPath.startsWith("/buyer/rfqs/")) &&
+    (combinedText.includes("quotation") ||
+      combinedText.includes("quote") ||
+      combinedText.includes("offer") ||
       referenceTable === "quotation" ||
       referenceTable === "quotations" ||
       referenceTable === "negotiation_offer" ||
@@ -82,6 +88,22 @@ function classifyBuyerNotification(params: {
       referenceTable === "rfq_engagements")
   ) {
     return "quotation_reply" as const;
+  }
+
+  if (
+    referenceTable === "purchase_order" ||
+    referenceTable === "purchase_orders" ||
+    targetPath.startsWith("/buyer/purchase-orders/") ||
+    (combinedText.includes("purchase order") &&
+      (combinedText.includes("status") ||
+        combinedText.includes("confirmed") ||
+        combinedText.includes("processing") ||
+        combinedText.includes("shipped") ||
+        combinedText.includes("delivered") ||
+        combinedText.includes("completed") ||
+        combinedText.includes("cancelled")))
+  ) {
+    return "purchase_order_update" as const;
   }
 
   return null;
@@ -389,6 +411,8 @@ export async function getBuyerNotifications(limit = 50): Promise<BuyerNotificati
         targetMap.get(getNotificationKey(row.reference_table, row.reference_id)) ?? null;
       const category = classifyBuyerNotification({
         type: row.type,
+        title: row.title,
+        body: row.body,
         referenceTable: row.reference_table,
         targetPath,
       });
