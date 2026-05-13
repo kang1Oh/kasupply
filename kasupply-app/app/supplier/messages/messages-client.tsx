@@ -544,7 +544,7 @@ export function SupplierMessagesClient({ initialData }: MessagesClientProps) {
   }
 
   return (
-    <div className="-m-6 h-[calc(100dvh-3rem)] bg-white">
+    <div className="-m-6 h-dvh bg-white">
       <div className="h-full overflow-hidden border-y border-[#E3E8F0] bg-white">
         <div className="grid h-full min-h-[560px] grid-cols-1 lg:grid-cols-[30.2%_69.8%]">
           <aside className="flex min-h-0 flex-col border-r border-[#E6ECF3] bg-white">
