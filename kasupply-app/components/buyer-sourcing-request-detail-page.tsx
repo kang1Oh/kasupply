@@ -175,6 +175,10 @@ export function BuyerSourcingRequestDetailPage({
   buyerAvatarUrl,
   data,
 }: BuyerSourcingRequestDetailPageProps) {
+  const purchaseOrderHref =
+    data.purchaseOrder != null
+      ? `/buyer/purchase-orders/${data.purchaseOrder.poId}`
+      : "/buyer/purchase-orders";
   const matchScoreBySupplierId = new Map(
     data.requestMatches.suppliers.map((supplier) => [
       supplier.supplierId,
@@ -340,6 +344,9 @@ export function BuyerSourcingRequestDetailPage({
               card.quotation.status !== "accepted" &&
               card.quotation.status !== "rejected" &&
               requestIsClosable;
+            const showPurchaseOrderAction =
+              card.quotation.status === "accepted" &&
+              (!data.purchaseOrder || data.purchaseOrder.quoteId === card.quotation.quoteId);
 
             return (
               <article
@@ -476,6 +483,25 @@ export function BuyerSourcingRequestDetailPage({
                       </div>
                     )}
                   </div>
+
+                  {showPurchaseOrderAction ? (
+                    <Link
+                      href={
+                        data.purchaseOrder != null
+                          ? purchaseOrderHref
+                          : `/buyer/purchase-orders?rfqId=${data.rfq.rfqId}&quoteId=${card.quotation.quoteId}`
+                      }
+                      className={`inline-flex h-[44px] w-full items-center justify-center rounded-[10px] text-[15px] font-[500] text-white transition ${
+                        data.purchaseOrder != null
+                          ? "bg-[#4e5c70] hover:bg-[#3f4b5d]"
+                          : "bg-[#227546] hover:bg-[#1b633b]"
+                      }`}
+                    >
+                      {data.purchaseOrder != null
+                        ? "View Purchase Order"
+                        : "Send Purchase Order"}
+                    </Link>
+                  ) : null}
                 </div>
               </article>
             );
