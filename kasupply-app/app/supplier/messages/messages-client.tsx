@@ -86,6 +86,40 @@ function formatSidebarTimestamp(value: string | null) {
   }).format(parsed);
 }
 
+function getMessageDateKey(value: string | null) {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+
+  return `${parsed.getFullYear()}-${parsed.getMonth()}-${parsed.getDate()}`;
+}
+
+function formatMessageDateLabel(value: string | null) {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfMessageDay = new Date(
+    parsed.getFullYear(),
+    parsed.getMonth(),
+    parsed.getDate(),
+  );
+  const diffDays = Math.round(
+    (startOfToday.getTime() - startOfMessageDay.getTime()) / (1000 * 60 * 60 * 24),
+  );
+
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+
+  return new Intl.DateTimeFormat("en-PH", {
+    month: "long",
+    day: "numeric",
+    year: startOfToday.getFullYear() === parsed.getFullYear() ? undefined : "numeric",
+  }).format(parsed);
+}
+
 function cleanText(value: string | null | undefined) {
   if (!value) return "";
   return value
@@ -317,6 +351,23 @@ export function SupplierMessagesClient({ initialData }: MessagesClientProps) {
     );
   }, [conversations, query]);
 
+  const messageGroups = useMemo(() => {
+    let previousDateKey = "";
+
+    return messages.map((message) => {
+      const dateKey = getMessageDateKey(message.sentAt);
+      const showDateSeparator = dateKey !== previousDateKey;
+      previousDateKey = dateKey;
+
+      return {
+        message,
+        dateKey,
+        showDateSeparator,
+        dateLabel: showDateSeparator ? formatMessageDateLabel(message.sentAt) : "",
+      };
+    });
+  }, [messages]);
+
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages]);
@@ -495,8 +546,8 @@ export function SupplierMessagesClient({ initialData }: MessagesClientProps) {
   return (
     <div className="-m-6 bg-white">
       <div className="overflow-hidden border-y border-[#E3E8F0] bg-white">
-        <div className="grid h-screen grid-cols-1 lg:grid-cols-[30.2%_69.8%]">
-          <aside className="border-r border-[#E6ECF3] bg-white">
+        <div className="grid h-[calc(100dvh-3rem)] min-h-[560px] grid-cols-1 lg:grid-cols-[30.2%_69.8%]">
+          <aside className="flex min-h-0 flex-col border-r border-[#E6ECF3] bg-white">
             <div className="flex items-center justify-between border-b border-[#E6ECF3] px-5 py-4">
               <h1 className="text-[18px] font-semibold tracking-[-0.02em] text-[#233B63]">
                 Messages
@@ -519,7 +570,7 @@ export function SupplierMessagesClient({ initialData }: MessagesClientProps) {
               </div>
             </div>
 
-            <div className="overflow-y-auto">
+            <div className="min-h-0 flex-1 overflow-y-auto">
               {filteredConversations.length === 0 ? (
                 <div className="px-4 py-8 text-[13px] text-[#98A2B3]">No conversations found.</div>
               ) : (
@@ -575,7 +626,7 @@ export function SupplierMessagesClient({ initialData }: MessagesClientProps) {
             </div>
           </aside>
 
-          <section className="flex min-w-0 flex-col bg-white">
+          <section className="flex min-h-0 min-w-0 flex-col bg-white">
             {selectedConversation ? (
               <>
                 <div className="flex items-center justify-between border-b border-[#E6ECF3] px-4 py-3 md:px-5">
@@ -653,7 +704,7 @@ export function SupplierMessagesClient({ initialData }: MessagesClientProps) {
                   <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-[#C0C7D4]" />
                 </div>
 
-                <div className="flex-1 bg-[#FCFCFD] px-4 py-6 md:px-5">
+                <div className="flex min-h-0 flex-1 flex-col bg-[#FCFCFD] px-4 py-6 md:px-5">
                   {isLoadingMessages ? (
                     <div className="pt-24 text-center text-[13px] text-[#98A2B3]">
                       Loading messages...
@@ -663,23 +714,33 @@ export function SupplierMessagesClient({ initialData }: MessagesClientProps) {
                       No messages in this conversation yet.
                     </div>
                   ) : (
-                    <div className="flex min-h-full flex-col justify-end">
-                      <div className="mb-9 text-center text-[12px] font-medium text-[#B3BCC8]">
-                        Today
+                    <div className="flex min-h-0 flex-1 flex-col">
+                      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+                        <div className="flex min-h-full flex-col justify-end">
+                          <div className="space-y-9">
+                            {messageGroups.map(({ message, dateKey, showDateSeparator, dateLabel }) => (
+                              <div key={message.id}>
+                                {showDateSeparator && dateLabel ? (
+                                  <div
+                                    key={`${dateKey}-${message.id}`}
+                                    className="mb-9 text-center text-[12px] font-medium text-[#B3BCC8]"
+                                  >
+                                    {dateLabel}
+                                  </div>
+                                ) : null}
+                                <MessageBubble
+                                  message={message}
+                                  otherPartyInitials={selectedConversation.initials}
+                                  otherPartyAvatarUrl={selectedConversation.avatarUrl}
+                                  ownInitials={initialData.supplierInitials}
+                                  ownAvatarUrl={initialData.supplierAvatarUrl}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                          <div ref={endRef} />
+                        </div>
                       </div>
-                      <div className="space-y-9">
-                        {messages.map((message) => (
-                          <MessageBubble
-                            key={message.id}
-                            message={message}
-                            otherPartyInitials={selectedConversation.initials}
-                            otherPartyAvatarUrl={selectedConversation.avatarUrl}
-                            ownInitials={initialData.supplierInitials}
-                            ownAvatarUrl={initialData.supplierAvatarUrl}
-                          />
-                        ))}
-                      </div>
-                      <div ref={endRef} />
                     </div>
                   )}
                 </div>
