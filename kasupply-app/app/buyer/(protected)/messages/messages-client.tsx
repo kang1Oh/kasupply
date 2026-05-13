@@ -592,7 +592,7 @@ export function BuyerMessagesClient({ initialData }: BuyerMessagesClientProps) {
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="scrollbar-light min-h-0 flex-1 overflow-y-auto">
               {filteredConversations.length === 0 ? (
                 <div className="px-4 py-8 text-[13px] text-[#98A2B3]">No conversations found.</div>
               ) : (
@@ -729,7 +729,7 @@ export function BuyerMessagesClient({ initialData }: BuyerMessagesClientProps) {
                     </div>
                   ) : (
                     <div className="flex min-h-0 flex-1 flex-col">
-                      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+                      <div className="scrollbar-light min-h-0 flex-1 overflow-y-auto pr-1">
                         <div className="flex min-h-full flex-col justify-end">
                           <div className="space-y-9">
                             {messageGroups.map(({ message, dateKey, showDateSeparator, dateLabel }) => (

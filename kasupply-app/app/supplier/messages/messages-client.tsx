@@ -544,9 +544,9 @@ export function SupplierMessagesClient({ initialData }: MessagesClientProps) {
   }
 
   return (
-    <div className="-m-6 bg-white">
-      <div className="overflow-hidden border-y border-[#E3E8F0] bg-white">
-        <div className="grid h-[calc(100dvh-3rem)] min-h-[560px] grid-cols-1 lg:grid-cols-[30.2%_69.8%]">
+    <div className="-m-6 h-[calc(100dvh-3rem)] bg-white">
+      <div className="h-full overflow-hidden border-y border-[#E3E8F0] bg-white">
+        <div className="grid h-full min-h-[560px] grid-cols-1 lg:grid-cols-[30.2%_69.8%]">
           <aside className="flex min-h-0 flex-col border-r border-[#E6ECF3] bg-white">
             <div className="flex items-center justify-between border-b border-[#E6ECF3] px-5 py-4">
               <h1 className="text-[18px] font-semibold tracking-[-0.02em] text-[#233B63]">
@@ -570,7 +570,7 @@ export function SupplierMessagesClient({ initialData }: MessagesClientProps) {
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="scrollbar-light min-h-0 flex-1 overflow-y-auto">
               {filteredConversations.length === 0 ? (
                 <div className="px-4 py-8 text-[13px] text-[#98A2B3]">No conversations found.</div>
               ) : (
@@ -715,7 +715,7 @@ export function SupplierMessagesClient({ initialData }: MessagesClientProps) {
                     </div>
                   ) : (
                     <div className="flex min-h-0 flex-1 flex-col">
-                      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+                      <div className="scrollbar-light min-h-0 flex-1 overflow-y-auto pr-1">
                         <div className="flex min-h-full flex-col justify-end">
                           <div className="space-y-9">
                             {messageGroups.map(({ message, dateKey, showDateSeparator, dateLabel }) => (
