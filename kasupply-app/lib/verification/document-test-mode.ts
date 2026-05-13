@@ -35,17 +35,6 @@ export function detectDocumentTestMode(ocrText: string): DocumentTestModeResult 
     };
   }
 
-  const explicitlyEnabled = process.env.ENABLE_DOCUMENT_VERIFICATION_TEST_MODE === "true";
-
-  if (process.env.NODE_ENV === "production" && !explicitlyEnabled) {
-    return {
-      enabled: false,
-      notes: [
-        "A mock-document marker was detected, but document test mode is disabled in production unless ENABLE_DOCUMENT_VERIFICATION_TEST_MODE is true.",
-      ],
-    };
-  }
-
   if (!contentOnlyInstruction && !skipTamperInstruction) {
     return {
       enabled: false,
