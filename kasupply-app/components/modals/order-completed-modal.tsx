@@ -68,7 +68,7 @@ export function OrderCompletedModal({
         <div className="flex flex-col items-center text-center">
           <div className="flex h-[68px] w-[68px] items-center justify-center rounded-full bg-[#EEF2F6] pt-[4px]">
             <Image
-              src="/icons/confetti.svg"
+              src="/icons/Confetti.svg"
               alt=""
               width={34}
               height={34}
