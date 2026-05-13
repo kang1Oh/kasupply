@@ -171,11 +171,11 @@ export function LoginForm() {
       const roleName = appUser.roles?.role_name?.toLowerCase();
 
       if (roleName === "supplier") {
-        router.push("/supplier/dashboard");
+        router.push("/supplier/notifications");
       } else if (roleName === "buyer") {
         router.push("/buyer");
       } else if (roleName === "admin") {
-        router.push("/admin/dashboard");
+        router.push("/admin/accounts");
       } else {
         router.push("/");
       }

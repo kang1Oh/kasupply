@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentAppUser } from "@/lib/auth/get-current-app-user";
+import { BuyerAccountAvatarSection } from "@/components/buyer-account-avatar-section";
 import { BuyerAccountForm } from "@/components/buyer-account-form";
 import { BusinessCategoriesStepForm } from "@/components/business-categories-step-form";
 import { BuyerDocumentsForm } from "@/components/buyer-documents-form";
@@ -165,7 +166,6 @@ export default async function BuyerAccountEditPage({
         user={{
           name: user.name,
           email: user.email,
-          avatarUrl: user.avatar_url,
         }}
         businessProfile={{
           business_name: businessProfile.business_name,
@@ -183,6 +183,12 @@ export default async function BuyerAccountEditPage({
         mode="edit"
         backHref={null}
         returnPath="/buyer/account/edit?saved=profile"
+        formLead={
+          <BuyerAccountAvatarSection
+            displayName={businessProfile.business_name || user.name}
+            avatarUrl={user.avatar_url}
+          />
+        }
       />
 
       <BusinessCategoriesStepForm

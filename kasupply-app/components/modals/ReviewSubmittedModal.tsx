@@ -95,18 +95,18 @@ export function ReviewSubmittedModal({
           <div className="mt-[28px] flex w-full max-w-[360px] items-center justify-center gap-3">
             <button
               type="button"
-              onClick={onViewSupplierProfile}
-              className="inline-flex h-[44px] min-w-[186px] items-center justify-center rounded-[12px] bg-[#233F68] px-[24px] text-[14px] font-medium whitespace-nowrap text-white transition hover:bg-[#1D3557]"
-            >
-              View supplier profile
-            </button>
-
-            <button
-              type="button"
               onClick={onBackToOrders}
               className="inline-flex h-[44px] min-w-[154px] items-center justify-center rounded-[12px] bg-[#9EABC0] px-[24px] text-[14px] font-medium whitespace-nowrap text-white transition hover:bg-[#8d9ab0]"
             >
               Back to orders
+            </button>
+            
+            <button
+              type="button"
+              onClick={onViewSupplierProfile}
+              className="inline-flex h-[44px] min-w-[186px] items-center justify-center rounded-[12px] bg-[#233F68] px-[24px] text-[14px] font-medium whitespace-nowrap text-white transition hover:bg-[#1D3557]"
+            >
+              View supplier profile
             </button>
           </div>
         </div>

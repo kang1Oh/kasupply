@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronRight, Paperclip, Search, Send, X } from "lucide-react";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import {
   ALLOWED_MESSAGE_IMAGE_TYPES,
   MAX_MESSAGE_IMAGE_BYTES,
@@ -201,11 +202,15 @@ function AttachmentPreview({
 function MessageBubble({
   message,
   otherPartyInitials,
+  otherPartyAvatarUrl,
   ownInitials,
+  ownAvatarUrl,
 }: {
   message: MessageItem;
   otherPartyInitials: string;
+  otherPartyAvatarUrl: string | null;
   ownInitials: string;
+  ownAvatarUrl: string | null;
 }) {
   const own = message.isOwnMessage;
   const otherTheme = getAvatarTheme(otherPartyInitials);
@@ -217,13 +222,15 @@ function MessageBubble({
           own ? "flex-row-reverse" : "flex-row"
         }`}
       >
-        <div
+        <ProfileAvatar
+          name={own ? null : otherPartyInitials}
+          avatarUrl={own ? ownAvatarUrl : otherPartyAvatarUrl}
+          fallbackInitials={own ? ownInitials : otherPartyInitials}
+          sizes="40px"
           className={`flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full text-[15px] font-semibold ${
             own ? "bg-[#4D7BF6] text-white" : otherTheme
           }`}
-        >
-          {own ? ownInitials : otherPartyInitials}
-        </div>
+        />
 
         <div className={own ? "text-right" : "text-left"}>
           <div
@@ -508,12 +515,12 @@ export function BuyerMessagesClient({ initialData }: BuyerMessagesClientProps) {
   }
 
   return (
-    <div className="relative left-1/2 right-1/2 -mt-5 w-screen -translate-x-1/2 bg-white">
+    <div className="relative left-1/2 right-1/2 -mt-1 w-screen -translate-x-1/2 bg-white">
       <div className="overflow-hidden border-y border-[#E3E8F0] bg-white">
         <div className="grid min-h-[560px] grid-cols-1 lg:grid-cols-[30.2%_69.8%]">
           <aside className="border-r border-[#E6ECF3] bg-white">
-            <div className="flex items-center justify-between border-b border-[#E6ECF3] px-5 py-4">
-              <h1 className="text-[18px] font-semibold tracking-[-0.02em] text-[#233B63]">
+            <div className="flex items-center justify-between border-b border-[#E6ECF3] px-5 py-5">
+              <h1 className="text-[18px] font-semibold tracking-[-0.02em] text-[#233B63]" >
                 Messages
               </h1>
               <span className="rounded-full bg-[#FF4D3D] px-2.5 py-1 text-[10px] font-semibold leading-none text-white">
@@ -556,11 +563,13 @@ export function BuyerMessagesClient({ initialData }: BuyerMessagesClientProps) {
                       ) : null}
 
                       <div className="relative shrink-0">
-                        <div
+                        <ProfileAvatar
+                          name={conversation.name}
+                          avatarUrl={conversation.avatarUrl}
+                          fallbackInitials={conversation.initials}
+                          sizes="34px"
                           className={`flex h-[34px] w-[34px] items-center justify-center rounded-[8px] text-[13px] font-semibold ${theme}`}
-                        >
-                          {conversation.initials}
-                        </div>
+                        />
                         {conversation.isOnline ? (
                           <span className="absolute -right-0.5 top-0.5 h-[8px] w-[8px] rounded-full border border-white bg-[#2DBB5F]" />
                         ) : null}
@@ -591,13 +600,15 @@ export function BuyerMessagesClient({ initialData }: BuyerMessagesClientProps) {
               <>
                 <div className="flex items-center justify-between border-b border-[#E6ECF3] px-4 py-3 md:px-5">
                   <div className="flex min-w-0 items-center gap-4">
-                    <div
+                    <ProfileAvatar
+                      name={activeConversation.name}
+                      avatarUrl={activeConversation.avatarUrl}
+                      fallbackInitials={activeConversation.initials}
+                      sizes="42px"
                       className={`flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-[12px] text-[15px] font-semibold ${
                         getAvatarTheme(activeConversation.name)
                       }`}
-                    >
-                      {activeConversation.initials}
-                    </div>
+                    />
 
                     <div className="min-w-0">
                       <h2 className="truncate text-[16px] font-semibold leading-5 text-[#233B63]">
@@ -676,7 +687,9 @@ export function BuyerMessagesClient({ initialData }: BuyerMessagesClientProps) {
                             key={message.id}
                             message={message}
                             otherPartyInitials={activeConversation.initials}
+                            otherPartyAvatarUrl={activeConversation.avatarUrl}
                             ownInitials={initialData.buyerInitials}
+                            ownAvatarUrl={initialData.buyerAvatarUrl}
                           />
                         ))}
                       </div>

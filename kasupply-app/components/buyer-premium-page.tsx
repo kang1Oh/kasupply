@@ -94,63 +94,71 @@ type PlanCardProps = {
 
 const premiumHighlights = [
   {
-    icon: "search",
-    title: "Smarter supplier matching",
-    copy: "Get better supplier recommendations based on your sourcing needs, product categories, and location.",
-  },
-  {
     icon: "rfq",
-    title: "Expanded RFQ access",
-    copy: "Send more RFQs and reach more suppliers when your team needs faster quotation options.",
+    title: "Bigger sourcing reach",
+    copy: "Send sourcing board RFQs to more suppliers at once so you can gather options faster on active buying cycles.",
   },
   {
     icon: "compare",
-    title: "Faster quote comparison",
-    copy: "Compare supplier responses more easily so your team can choose with confidence.",
+    title: "Less friction per request",
+    copy: "Pro removes monthly caps and unlocks multi-item RFQs, which makes larger or repeat sourcing tasks easier to manage.",
+  },
+  {
+    icon: "search",
+    title: "Better buyer momentum",
+    copy: "Keep verification, smart search, and purchasing workflows moving without worrying about hitting basic plan limits.",
   },
 ];
 
 const comparisonRows = [
   {
-    feature: "Supplier matching",
-    free: "Standard matches",
-    premium: "Smarter recommendations",
+    feature: "Verification",
+    free: "Free verification",
+    premium: "Free verification",
   },
   {
-    feature: "RFQ access",
-    free: "Limited monthly access",
-    premium: "Expanded RFQ capacity",
+    feature: "Smart search",
+    free: "Included",
+    premium: "Included",
   },
   {
-    feature: "Quote comparison",
-    free: "Basic review",
-    premium: "Faster comparison tools",
+    feature: "Sourcing board reach",
+    free: "Up to 5 suppliers per RFQ",
+    premium: "Up to 10 suppliers per RFQ",
   },
   {
-    feature: "Saved suppliers",
-    free: "Basic saved list",
-    premium: "Organized supplier shortlist",
+    feature: "Monthly RFQs",
+    free: "10 RFQs per month",
+    premium: "Unlimited RFQs",
   },
   {
-    feature: "Support response",
-    free: "Standard queue",
-    premium: "Priority support",
+    feature: "Monthly purchase orders",
+    free: "10 purchase orders per month",
+    premium: "Unlimited purchase orders",
+  },
+  {
+    feature: "RFQ item support",
+    free: "One item per RFQ",
+    premium: "Multi-item RFQs",
   },
 ];
 
 const premiumFeatures = [
-  "Smarter supplier recommendations",
-  "Expanded RFQ request capacity",
-  "Faster quote comparison tools",
-  "Organized supplier shortlists",
-  "Priority buyer support",
+  "Free verification",
+  "Access to smart search",
+  "Sourcing board RFQs to up to 10 suppliers",
+  "Unlimited RFQs per month",
+  "Unlimited purchase orders per month",
+  "Multi-item RFQs for larger sourcing requests",
 ];
 
 const freeFeatures = [
-  "Basic supplier discovery",
-  "Standard supplier matching",
-  "Limited RFQ request access",
-  "Basic saved suppliers",
+  "Free verification",
+  "Access to smart search",
+  "Sourcing board RFQs to up to 5 suppliers",
+  "10 RFQs per month",
+  "10 purchase orders per month",
+  "One item per RFQ",
 ];
 
 function CurrentPlanPill() {
@@ -161,7 +169,7 @@ function CurrentPlanPill() {
         Current Plan
       </span>
       <span className="h-4 w-px bg-slate-200" />
-      <span className="text-[14px] font-bold text-[#1E3A5F]">Free Buyer</span>
+      <span className="text-[14px] font-bold text-[#1E3A5F]">Standard</span>
     </div>
   );
 }
@@ -177,11 +185,12 @@ function PageHeader() {
       </div>
 
       <h1 className="text-[30px] font-extrabold leading-tight tracking-[-0.03em] text-[#1E3A5F] md:text-[36px]">
-        Upgrade your buyer plan
+        Choose the buyer plan that fits your sourcing pace
       </h1>
       <p className="mt-1.5 max-w-2xl text-[17px] leading-6 text-slate-500">
-        Source faster with smarter supplier matches, expanded RFQ access, and
-        tools that help your team compare quotes with confidence.
+        Standard keeps the essentials free, while Pro is built for buyers who
+        send more RFQs, manage more purchase orders, and need room for
+        multi-item requests.
       </p>
     </header>
   );
@@ -214,24 +223,26 @@ function PlanCard({ type }: PlanCardProps) {
       </div>
 
       <p className="text-[13px] font-bold uppercase tracking-widest text-slate-400">
-        {premium ? "Premium Plan" : "Free Plan"}
+        {premium ? "Pro Plan" : "Standard Plan"}
       </p>
 
       <h2 className="mt-1.5 text-[22px] font-extrabold tracking-tight text-[#1E3A5F]">
-        {premium ? "For active buyers" : "For basic sourcing"}
+        {premium ? "For scaling buyer teams" : "For steady sourcing needs"}
       </h2>
 
       <div className="mt-4 flex items-end gap-1.5">
         <span className="text-[38px] font-black leading-none tracking-tight text-[#1E3A5F]">
-          {premium ? "₱999" : "₱0"}
+          {premium ? "PHP 1,000" : "PHP 0"}
         </span>
-        <span className="mb-1 text-[14px] font-semibold text-slate-400">/ month</span>
+        <span className="mb-1 text-[14px] font-semibold text-slate-400">
+          {premium ? "/ year" : "/ forever"}
+        </span>
       </div>
 
       <p className="mt-3 text-[14px] leading-6 text-slate-500">
         {premium
-          ? "Unlock better supplier matches, more RFQ capacity, and faster quote comparison."
-          : "Use standard supplier discovery and basic sourcing tools."}
+          ? "Pro is designed for buyers who need higher sending limits, wider outreach, and more flexibility inside each RFQ."
+          : "Standard gives you the core buyer tools for free, including verification, smart search, and essential RFQ and PO access."}
       </p>
 
       <div className="my-5 h-px bg-slate-100" />
@@ -261,12 +272,12 @@ function PlanCard({ type }: PlanCardProps) {
             : "cursor-default border border-slate-200 bg-slate-50 text-slate-400"
         }`}
       >
-        {premium ? "Upgrade Now" : "Current Plan"}
+        {premium ? "Upgrade to Pro" : "Current Plan"}
       </button>
 
       {premium && (
         <p className="mt-2.5 text-center text-[12px] text-slate-400">
-          No commitment required · Cancel anytime
+          Best for repeat buyers and growing procurement teams
         </p>
       )}
     </div>
@@ -279,19 +290,19 @@ function PlanComparisonHero() {
       <div className="rounded-[24px] bg-[linear-gradient(115deg,#ffa726_0%,#f57c00_50%,#bf360c_100%)] p-6 text-white shadow-[0_8px_24px_rgba(255,122,0,0.25)] md:p-7">
         <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-white/20 px-3.5 py-1.5 text-[13px] font-bold tracking-wide text-white">
           <Icon name="sparkles" className="h-3.5 w-3.5" />
-          Buyer Premium
+          Buyer Pro
         </div>
 
         <h2 className="max-w-xl text-[30px] font-extrabold leading-[1.1] tracking-tight md:text-[38px]">
-          Find better suppliers in less time.
+          More sending power for serious sourcing.
         </h2>
 
         <p className="mt-3 max-w-sm text-[15px] leading-6 text-white/80">
-          Premium helps buyers source faster with better matches, expanded RFQs,
-          and quicker quote review.
+          Pro keeps the buyer experience simple while opening up higher RFQ
+          volume, more supplier reach, and multi-item requests.
         </p>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
+        <div className="mt-6 grid gap-3 sm:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-1">
           {premiumHighlights.map((item) => (
             <div key={item.title} className="rounded-2xl bg-white/15 p-4">
               <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 text-white">
@@ -318,10 +329,10 @@ function ComparisonTable() {
       <div className="flex flex-col gap-2 border-b border-slate-100 px-6 py-5 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-[20px] font-extrabold tracking-tight text-[#1E3A5F]">
-            Free vs Premium
+            Standard vs Pro
           </h2>
           <p className="mt-0.5 text-[14px] text-slate-500">
-            Compare buyer sourcing features before upgrading.
+            Compare the buyer features and monthly limits at a glance.
           </p>
         </div>
 
@@ -329,7 +340,7 @@ function ComparisonTable() {
           type="button"
           className="inline-flex items-center gap-2 rounded-xl bg-[linear-gradient(115deg,#ffa726_0%,#f57c00_50%,#bf360c_100%)] px-4 py-2.5 text-[14px] font-bold text-white shadow-[0_4px_14px_rgba(255,122,0,0.3)] transition hover:brightness-105"
         >
-          Upgrade Now
+          Upgrade to Pro
           <Icon name="arrow" className="h-4 w-4" />
         </button>
       </div>
@@ -342,10 +353,10 @@ function ComparisonTable() {
                 Feature
               </th>
               <th className="px-6 py-3 text-[13px] font-semibold uppercase tracking-wide text-slate-400">
-                Free
+                Standard
               </th>
               <th className="px-6 py-3 text-[13px] font-semibold uppercase tracking-wide text-[#FF7A00]">
-                Premium
+                Pro
               </th>
             </tr>
           </thead>
@@ -385,14 +396,15 @@ function BottomCTA() {
       <div className="relative flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
         <div className="max-w-[600px]">
           <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-orange-300">
-            Ready to source faster?
+            Ready to move beyond the basics?
           </p>
           <h2 className="mt-2 text-[24px] font-extrabold leading-tight tracking-tight text-white md:text-[28px]">
-            Give your team better tools for finding and comparing suppliers.
+            Upgrade to Pro when your sourcing volume starts to grow.
           </h2>
           <p className="mt-2 text-[14px] leading-6 text-white/60">
-            Upgrade to Premium to improve supplier matching, expand RFQ access,
-            and make quote decisions faster.
+            Keep free verification and smart search, then add unlimited RFQs,
+            unlimited purchase orders, and multi-item requests when your team
+            needs more room.
           </p>
         </div>
 
@@ -401,10 +413,10 @@ function BottomCTA() {
             type="button"
             className="inline-flex items-center gap-2 rounded-xl bg-[linear-gradient(115deg,#ffa726_0%,#f57c00_50%,#bf360c_100%)] px-6 py-3 text-[15px] font-bold text-white shadow-[0_4px_18px_rgba(255,122,0,0.4)] transition hover:brightness-105 active:scale-[0.98]"
           >
-            Upgrade Now
+            Upgrade to Pro
             <Icon name="arrow" className="h-4 w-4" />
           </button>
-          <p className="text-[12px] text-white/40">No commitment · Cancel anytime</p>
+          <p className="text-[12px] text-white/40">PHP 1,000 billed annually</p>
         </div>
       </div>
     </section>

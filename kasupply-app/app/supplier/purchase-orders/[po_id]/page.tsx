@@ -4,11 +4,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import {
   getSupplierPurchaseOrderDetail,
   type PurchaseOrderView,
 } from "../data";
 import {
+  reviewPurchaseOrderReceipt,
   updatePurchaseOrderStatus,
 } from "../actions";
 import { PurchaseOrderDetailActions } from "./detail-actions";
@@ -158,17 +160,17 @@ function getStatusBadge(status: PurchaseOrderView["status"]) {
 function getActiveStep(status: PurchaseOrderView["status"]) {
   switch (status) {
     case "confirmed":
-      return 2;
+      return 1;
     case "processing":
-      return 3;
+      return 2;
     case "shipped":
-      return 4;
+      return 3;
     case "completed":
-      return 5;
+      return 4;
     case "cancelled":
       return 4;
     default:
-      return 2;
+      return 1;
   }
 }
 
@@ -282,6 +284,133 @@ function Tracker({
   );
 }
 
+function ReceiptReviewPanel({
+  poId,
+  receiptStatus,
+  receiptReviewNotes,
+}: {
+  poId: number;
+  receiptStatus: string;
+  receiptReviewNotes: string | null;
+}) {
+  if (receiptStatus === "pending_review") {
+    return (
+      <section className="rounded-[18px] border border-[#E4ECF5] bg-white px-[22px] py-[22px] shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+        <div className="flex flex-col gap-3">
+          <div>
+            <p className="text-[17px] font-semibold text-[#223654]">Review buyer receipt</p>
+            <p className="mt-1 text-[14px] leading-[1.5] text-[#8E99AB]">
+              Approve the uploaded receipt if payment is confirmed, or reject it with a short reason so the buyer can upload a new one.
+            </p>
+          </div>
+
+          <form action={reviewPurchaseOrderReceipt} className="space-y-3">
+            <input type="hidden" name="po_id" value={poId} />
+            <div>
+              <label
+                htmlFor={`receipt-review-notes-${poId}`}
+                className="mb-2 block text-[13px] font-medium uppercase tracking-[0.02em] text-[#A4AFBF]"
+              >
+                Rejection notes
+              </label>
+              <textarea
+                id={`receipt-review-notes-${poId}`}
+                name="review_notes"
+                rows={4}
+                placeholder="Explain what needs to be fixed if you reject this receipt."
+                className="w-full rounded-[12px] bg-white border border-[#D6DFEA] px-4 py-3 text-[14px] text-[#374151] outline-none transition placeholder:text-[#A4AFBF] focus:border-[#1F436E]"
+              />
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="submit"
+                name="decision"
+                value="rejected"
+                className="inline-flex h-[44px] items-center justify-center rounded-[10px] border border-[#F2B6B0] bg-white px-5 text-[14px] font-semibold text-[#D55549] transition hover:bg-[#FFF5F4]"
+              >
+                Reject Receipt
+              </button>
+              <button
+                type="submit"
+                name="decision"
+                value="approved"
+                className="inline-flex h-[44px] items-center justify-center rounded-[10px] bg-[#1F436E] px-5 text-[14px] font-semibold text-white transition hover:bg-[#19385B]"
+              >
+                Approve Receipt
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+    );
+  }
+
+  if (receiptStatus === "approved") {
+    return (
+      <div className="rounded-[14px] border border-[#8ED2A8] bg-[#F4FFF8] px-[16px] py-[14px]">
+        <div className="flex items-start gap-[12px]">
+          <div className="mt-[1px] flex h-[44px] w-[44px] items-center justify-center rounded-[7px] bg-[#27814A] text-white">
+            <Image
+              src="/icons/order_arrived.svg"
+              alt=""
+              width={22}
+              height={22}
+              className="h-[22px] w-[22px]"
+              aria-hidden="true"
+            />
+          </div>
+          <div>
+            <p className="text-[14px] font-semibold text-[#27814A]">Receipt approved</p>
+            <p className="text-[13px] font-normal leading-[1.45] text-[#A2A8B3]">
+              Buyer payment has been verified. You may now mark this purchase order as completed.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (receiptStatus === "rejected") {
+    return (
+      <div className="rounded-[14px] border border-[#F5C2BC] bg-[#FFF7F6] px-[16px] py-[14px]">
+        <div className="flex items-start gap-[12px]">
+          <div className="mt-[1px] flex h-[44px] w-[44px] items-center justify-center rounded-[7px] bg-[#D55549] text-white">
+            <Image
+              src="/icons/order_processed.svg"
+              alt=""
+              width={22}
+              height={22}
+              className="h-[22px] w-[22px]"
+              aria-hidden="true"
+            />
+          </div>
+          <div>
+            <p className="text-[14px] font-semibold text-[#D55549]">Receipt rejected</p>
+            <p className="text-[13px] font-normal leading-[1.45] text-[#A2A8B3]">
+              Waiting for the buyer to upload a new receipt.
+            </p>
+            {receiptReviewNotes ? (
+              <p className="mt-2 text-[13px] leading-[1.45] text-[#B86B62]">
+                Reason: {receiptReviewNotes}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-[14px] border border-[#D7DDE8] bg-[#FAFBFD] px-[16px] py-[14px]">
+      <p className="text-[14px] font-semibold text-[#4A607A]">Waiting for buyer receipt</p>
+      <p className="mt-1 text-[13px] leading-[1.45] text-[#8E99AB]">
+        The order has been dispatched. Once the buyer confirms delivery and uploads the receipt, you can review it here.
+      </p>
+    </div>
+  );
+}
+
 export default async function SupplierPurchaseOrderDetailPage({
   params,
 }: {
@@ -307,9 +436,11 @@ export default async function SupplierPurchaseOrderDetailPage({
   const total = order.totalAmount ?? 0;
   const subtotal = order.subtotal ?? total - (order.deliveryFee ?? 0);
   const expectedDelivery = order.preferredDeliveryDate ?? order.deadline;
-  const hasBuyerReceipt = Boolean(order.receiptFileUrl || order.receiptFilePath);
   const statusBadge = getStatusBadge(order.status);
   const activeStep = getActiveStep(order.status);
+  const processingAt = order.processingAt ?? order.orderDate;
+  const shippedAt = order.shippedAt ?? order.processingAt ?? order.orderDate;
+  const canMarkCompleted = order.status === "shipped" && order.receiptStatus === "approved";
   const notes =
     order.additionalNotes ??
     order.specifications ??
@@ -329,7 +460,7 @@ export default async function SupplierPurchaseOrderDetailPage({
       date:
         order.status === "confirmed"
           ? "-"
-          : formatDateTime(order.orderDate),
+          : formatDateTime(processingAt),
       state:
         activeStep === 2
           ? "active"
@@ -341,7 +472,7 @@ export default async function SupplierPurchaseOrderDetailPage({
       label: "Shipped",
       date:
         order.status === "shipped" || order.status === "completed"
-          ? formatDateTime(expectedDelivery ?? order.orderDate)
+          ? formatDateTime(shippedAt)
           : "-",
       state:
         activeStep === 3
@@ -354,7 +485,7 @@ export default async function SupplierPurchaseOrderDetailPage({
       label: "Completed",
       date:
         order.status === "completed"
-          ? formatDateTime(order.completedAt ?? expectedDelivery ?? order.orderDate)
+          ? formatDateTime(order.completedAt)
           : "-",
       state:
         order.status === "completed"
@@ -432,9 +563,13 @@ export default async function SupplierPurchaseOrderDetailPage({
         <div className="mt-[14px] space-y-[14px]">
           <SectionCard title="Buyer Info">
             <div className="flex items-start gap-[14px]">
-              <div className="mt-[2px] flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-[#EDF9F1] text-[18px] font-medium text-[#2E8B57]">
-                {buyerInitials}
-              </div>
+              <ProfileAvatar
+                name={buyerName}
+                avatarUrl={order.buyerInfo?.avatarUrl ?? null}
+                fallbackInitials={buyerInitials}
+                sizes="44px"
+                className="mt-[2px] flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-[#EDF9F1] text-[18px] font-medium text-[#2E8B57]"
+              />
               <div className="min-w-0 pt-[1px]">
                 <div className="flex flex-wrap items-center gap-[8px]">
                   <h2 className="truncate text-[15px] font-semibold text-[#223654]">
@@ -589,29 +724,33 @@ export default async function SupplierPurchaseOrderDetailPage({
             </div>
           ) : null}
 
-          {order.status === "shipped" ? (
-            hasBuyerReceipt ? (
-              <div className="rounded-[14px] border border-[#8ED2A8] bg-[#F4FFF8] px-[16px] py-[14px]">
-                <div className="flex items-start gap-[12px]">
-                  <div className="mt-[1px] flex h-[44px] w-[44px] items-center justify-center rounded-[7px] bg-[#27814A] text-white">
-                    <Image
-                      src="/icons/order_arrived.svg"
-                      alt=""
-                      width={22}
-                      height={22}
-                      className="h-[22px] w-[22px]"
-                      aria-hidden="true"
-                    />
-                  </div>
-                  <div>
-                    <p className="text-[14px] font-semibold text-[#27814A]">Order completed successfully</p>
-                    <p className="text-[13px] font-normal leading-[1.45] text-[#A2A8B3]">
-                      This order was fulfilled and marked complete on {formatDate(order.completedAt ?? order.orderDate)}. Total payment collected{paymentSummarySuffix}: {formatCurrency(total)}.
-                    </p>
-                  </div>
+          {order.receiptFileUrl ? (
+            <div className="rounded-[18px] border border-[#E4ECF5] bg-white px-[28px] py-[26px] shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+              <div className="flex flex-col gap-[18px] sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-[18px] font-medium text-[#334155]">Payment Receipt</p>
+                  <p className="text-[15px] font-normal text-[#B0B7C3]">
+                    {order.receiptStatus === "approved"
+                      ? "Approved buyer receipt."
+                      : order.receiptStatus === "rejected"
+                        ? "Rejected buyer receipt. Waiting for a replacement upload."
+                        : "Uploaded by the buyer and awaiting your review."}
+                  </p>
                 </div>
+                <a
+                  href={order.receiptFileUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-[48px] items-center justify-center rounded-[10px] border border-[#AEB8C7] bg-white px-[30px] text-[15px] font-medium text-[#455468] transition hover:border-[#8F9CAF] hover:text-[#243B68]"
+                >
+                  View Receipt
+                </a>
               </div>
-            ) : (
+            </div>
+          ) : null}
+
+          {order.status === "shipped" ? (
+            order.receiptStatus === "not_uploaded" ? (
               <div className="rounded-[14px] border border-[#4E13B3] bg-[#FBF8FF] px-[16px] py-[14px]">
                 <div className="flex items-start gap-[12px]">
                   <div className="mt-[1px] flex h-[34px] w-[34px] items-center justify-center rounded-[10px] bg-[#4E13B3] text-white">
@@ -627,34 +766,21 @@ export default async function SupplierPurchaseOrderDetailPage({
                   <div>
                     <p className="text-[14px] font-semibold text-[#4E13B3]">Order on its way</p>
                     <p className="text-[13px] font-normal leading-[1.45] text-[#A2A8B3]">
-                      Order was dispatched on {formatDate(expectedDelivery ?? order.orderDate)}. Waiting for the buyer to confirm receipt.
+                      Order was dispatched on {formatDate(shippedAt)}. Waiting for the buyer to confirm receipt.
                     </p>
                   </div>
                 </div>
               </div>
+            ) : (
+              <ReceiptReviewPanel
+                poId={order.poId}
+                receiptStatus={order.receiptStatus}
+                receiptReviewNotes={order.receiptReviewNotes}
+              />
             )
           ) : null}
 
-          {order.receiptFileUrl ? (
-            <div className="rounded-[18px] border border-[#E4ECF5] bg-white px-[28px] py-[26px] shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
-              <div className="flex flex-col gap-[18px] sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-[18px] font-medium text-[#334155]">Payment Receipt</p>
-                  <p className="text-[15px] font-normal text-[#B0B7C3]">
-                    Uploaded by buyer upon order placement
-                  </p>
-                </div>
-                <a
-                  href={order.receiptFileUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex h-[48px] items-center justify-center rounded-[10px] border border-[#AEB8C7] bg-white px-[30px] text-[15px] font-medium text-[#455468] transition hover:border-[#8F9CAF] hover:text-[#243B68]"
-                >
-                  View Receipt
-                </a>
-              </div>
-            </div>
-          ) : null}
+          
 
           {order.status === "completed" ? (
             <div className="rounded-[14px] border border-[#8ED2A8] bg-[#F4FFF8] px-[16px] py-[14px]">
@@ -689,11 +815,21 @@ export default async function SupplierPurchaseOrderDetailPage({
 
           {order.status === "shipped" ? (
             <div className="grid gap-[12px] md:grid-cols-2">
-              <PurchaseOrderDetailActions
-                poId={order.poId}
-                status="shipped"
-                updateStatusAction={updatePurchaseOrderStatus}
-              />
+              {canMarkCompleted ? (
+                <PurchaseOrderDetailActions
+                  poId={order.poId}
+                  status="shipped"
+                  updateStatusAction={updatePurchaseOrderStatus}
+                />
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="flex h-[44px] w-full items-center justify-center rounded-[10px] bg-[#B7C2D3] text-[14px] font-semibold text-white"
+                >
+                  Mark as Completed
+                </button>
+              )}
               <Link
                 href="/supplier/purchase-orders"
                 className="flex h-[44px] w-full items-center justify-center rounded-[10px] border border-[#D6DFEA] bg-white text-[14px] font-medium text-[#8A97A8] transition hover:border-[#B9C7D8] hover:text-[#243B68]"

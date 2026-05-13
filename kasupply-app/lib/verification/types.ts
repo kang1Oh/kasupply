@@ -79,6 +79,15 @@ export type DocumentVerificationSummary = {
   notes: string[];
 };
 
+export type SiteVerificationSummary = {
+  status: DocumentVerificationStatus;
+  similarityScore: number | null;
+  deliverabilityStatus: "deliverable" | "undeliverable" | "unknown";
+  streetViewStatus: "available" | "unavailable" | "unknown";
+  manualReviewRequired: boolean;
+  notes: string[];
+};
+
 export type QueueVerificationRunInput = {
   profileId: number;
   targetType: VerificationTargetType;

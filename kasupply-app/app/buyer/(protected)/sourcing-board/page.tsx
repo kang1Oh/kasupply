@@ -7,6 +7,7 @@ export default async function BuyerSourcingBoardRoute() {
   return (
     <BuyerSourcingBoardPage
       buyerBusinessName={data.buyerBusinessName}
+      buyerAvatarUrl={data.buyerAvatarUrl}
       requests={data.requests}
     />
   );

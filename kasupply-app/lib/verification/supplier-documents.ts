@@ -438,18 +438,6 @@ function resolveSupplierChecks(params: {
       params.businessContext
     );
 
-    if (
-      params.dtiAnchor &&
-      dtiScopeOrLocation &&
-      !looksLikeNationalScope(dtiScopeOrLocation) &&
-      normalizeComparableText(params.extractedFields.business_address)
-    ) {
-      checks.address_aligns_with_dti_scope = resolveMatchStatus(
-        params.extractedFields.business_address,
-        dtiScopeOrLocation
-      );
-    }
-
     if (params.testMode) {
       checks.official_marks_present = "pass";
     }

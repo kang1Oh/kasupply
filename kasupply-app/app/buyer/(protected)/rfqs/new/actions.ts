@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentAppUser } from "@/lib/auth/get-current-app-user";
@@ -396,6 +397,9 @@ export async function createRFQ(formData: FormData) {
     console.error("Error creating RFQ engagement:", engagementError);
     throw new Error("Failed to create RFQ engagement.");
   }
+
+  revalidatePath("/supplier/rfq");
+  revalidatePath("/supplier/notifications");
 
   redirect("/buyer/rfqs");
 }

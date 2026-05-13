@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   BuyerSupplierCard,
@@ -139,7 +139,7 @@ function BuyerPremiumPromo() {
           </h2>
 
           <p className="mt-1 text-[17px] leading-6 text-white/80">
-            Better matches • More RFQ access • Faster quotes
+            More matches • More RFQs and Purchase Orders
           </p>
         </div>
 
@@ -152,30 +152,6 @@ function BuyerPremiumPromo() {
         </Link>
       </div>
     </section>
-  );
-}
-
-function FilterChip({
-  active,
-  label,
-  onClick,
-}: {
-  active?: boolean;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`shrink-0 rounded-full px-3.5 py-1.5 text-[14px] font-normal transition ${
-        active
-          ? "bg-[#294773] text-white"
-          : "border border-[#e2e8f0] bg-white text-[#6b7280] hover:border-[#c9d4e5] hover:text-[#223654]"
-      }`}
-    >
-      {label}
-    </button>
   );
 }
 
@@ -193,17 +169,14 @@ export function BuyerMarketplaceHome({
 
   const recommendedPages = useMemo(() => {
     const pages: BuyerHomepageSupplier[][] = [];
-    const maxStartIndex = Math.max(0, recommendedSuppliers.length - 3);
 
-    for (let index = 0; index <= maxStartIndex; index += 1) {
-      pages.push(recommendedSuppliers.slice(index, index + 3));
+    for (let index = 0; index < recommendedSuppliers.length; index += 2) {
+      pages.push(recommendedSuppliers.slice(index, index + 2));
     }
 
-    return pages.length > 0 ? pages : [recommendedSuppliers.slice(0, 3)];
+    return pages.length > 0 ? pages : [recommendedSuppliers.slice(0, 2)];
   }, [recommendedSuppliers]);
 
-  const visibleRecommendedSuppliers =
-    recommendedPages[recommendedPage] ?? recommendedSuppliers.slice(0, 3);
   const categoryPages = useMemo(() => {
     const pages: BuyerHomepageBrowseCategory[][] = [];
 
@@ -338,60 +311,73 @@ export function BuyerMarketplaceHome({
         </div>
 
         {recommendedSuppliers.length > 0 ? (
-          <div className="group relative py-1">
-            <div className="overflow-hidden">
-              <div className="flex gap-4 overflow-x-auto py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {visibleRecommendedSuppliers.map((supplier) => (
+          <div className="space-y-4">
+            <div className="group relative overflow-x-hidden overflow-y-visible px-2 py-2">
+              <div
+                className="flex transition-transform duration-500 ease-out"
+                style={{
+                  width: `${recommendedPages.length * 100}%`,
+                  transform: `translateX(-${recommendedPage * (100 / Math.max(recommendedPages.length, 1))}%)`,
+                }}
+              >
+                {recommendedPages.map((page, pageIndex) => (
                   <div
-                    key={`recommended-${supplier.supplierId}`}
-                    className="shrink-0"
-                    style={{ flexBasis: "calc((100% - 2rem) / 2.3)" }}
+                    key={`recommended-page-${pageIndex}`}
+                    className="w-full shrink-0 px-1"
+                    style={{ width: `${100 / Math.max(recommendedPages.length, 1)}%` }}
                   >
-                    <BuyerSupplierCard supplier={supplier} />
+                    <div className="grid gap-4 xl:grid-cols-2">
+                      {page.map((supplier) => (
+                        <BuyerSupplierCard
+                          key={`recommended-${supplier.supplierId}`}
+                          supplier={supplier}
+                        />
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
+
+              {recommendedPage > 0 ? (
+                <button
+                  type="button"
+                  onClick={handlePrevRecommended}
+                  aria-label="Previous recommended suppliers"
+                  className="absolute left-2 top-1/2 z-30 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-[#eef2f7] bg-white text-[#294773] shadow-[0_8px_16px_rgba(15,23,42,0.12)] transition hover:bg-[#f8fafc]"
+                >
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+                    <path
+                      d="m15 6-6 6 6 6"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+              ) : null}
+
+              {recommendedPage < recommendedPages.length - 1 ? (
+                <button
+                  type="button"
+                  onClick={handleNextRecommended}
+                  aria-label="Next recommended suppliers"
+                  className="absolute right-2 top-1/2 z-30 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-[#eef2f7] bg-white text-[#294773] shadow-[0_8px_16px_rgba(15,23,42,0.12)] transition hover:bg-[#f8fafc]"
+                >
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+                    <path
+                      d="m9 6 6 6-6 6"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+              ) : null}
             </div>
-
-            {recommendedPage > 0 ? (
-              <button
-                type="button"
-                onClick={handlePrevRecommended}
-                aria-label="Previous recommended suppliers"
-                className="pointer-events-none absolute left-2 top-1/2 z-30 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[#eef2f7] bg-white text-[#294773] opacity-0 shadow-[0_6px_14px_rgba(15,23,42,0.10)] transition hover:bg-[#f8fafc] group-hover:pointer-events-auto group-hover:opacity-100"
-              >
-                <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-                  <path
-                    d="m15 6-6 6 6 6"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-            ) : null}
-
-            {recommendedPage < recommendedPages.length - 1 ? (
-              <button
-                type="button"
-                onClick={handleNextRecommended}
-                aria-label="Next recommended suppliers"
-                className="pointer-events-none absolute right-2 top-1/2 z-30 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[#eef2f7] bg-white text-[#294773] opacity-0 shadow-[0_6px_14px_rgba(15,23,42,0.10)] transition hover:bg-[#f8fafc] group-hover:pointer-events-auto group-hover:opacity-100"
-              >
-                <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-                  <path
-                    d="m9 6 6 6-6 6"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-            ) : null}
           </div>
         ) : (
           <div className="rounded-[20px] border border-dashed border-[#d9e2ee] bg-white px-6 py-8 text-center">
@@ -449,7 +435,7 @@ export function BuyerMarketplaceHome({
 
         {browseCategories.length > 0 ? (
           <div className="space-y-4">
-            <div className="group relative overflow-hidden">
+            <div className="group relative overflow-x-hidden overflow-y-visible px-2 py-2">
               <div
                 className="flex transition-transform duration-500 ease-out"
                 style={{
@@ -460,7 +446,7 @@ export function BuyerMarketplaceHome({
                 {categoryPages.map((page, pageIndex) => (
                   <div
                     key={`category-page-${pageIndex}`}
-                    className="w-full shrink-0"
+                    className="w-full shrink-0 px-1"
                     style={{ width: `${100 / Math.max(categoryPages.length, 1)}%` }}
                   >
                     <div className="grid gap-4 xl:grid-cols-3">

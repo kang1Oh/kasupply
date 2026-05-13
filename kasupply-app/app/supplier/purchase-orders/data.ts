@@ -29,6 +29,7 @@ type UserRow = {
   user_id?: string;
   name?: string | null;
   email?: string | null;
+  avatar_url?: string | null;
 };
 
 type ProductRow = {
@@ -78,6 +79,7 @@ type ConversationRow = {
 
 type PartyInfo = {
   businessName: string;
+  avatarUrl: string | null;
   contactName: string | null;
   phone: string | null;
   email: string | null;
@@ -102,6 +104,8 @@ export type PurchaseOrderView = {
   receiptStatus: string;
   receiptReviewNotes: string | null;
   orderDate: string | null;
+  processingAt: string | null;
+  shippedAt: string | null;
   completedAt: string | null;
   quoteId: number | null;
   engagementId: number | null;
@@ -182,6 +186,7 @@ function buildPartyInfo(
 ): PartyInfo {
   return {
     businessName: businessProfile?.business_name ?? fallbackBusinessName,
+    avatarUrl: user?.avatar_url ?? null,
     contactName: user?.name ?? null,
     phone: businessProfile?.contact_number ?? null,
     email: user?.email ?? null,
@@ -235,7 +240,7 @@ async function getCurrentSupplierContext() {
 
   const { data: appUser, error: appUserError } = await supabase
     .from("users")
-    .select("user_id, name, email")
+    .select("user_id, name, email, avatar_url")
     .eq("auth_user_id", authUser.id)
     .single<UserRow>();
 
@@ -487,7 +492,7 @@ async function buildSupportingMaps(
       if (userIds.length > 0) {
         const { data: users, error: usersError } = await supabase
           .from("users")
-          .select("user_id, name, email")
+          .select("user_id, name, email, avatar_url")
           .in("user_id", userIds);
 
         if (usersError) {
@@ -620,6 +625,8 @@ async function buildPurchaseOrderView(
     receiptStatus,
     receiptReviewNotes: readFirstString(row, ["receipt_review_notes"]),
     orderDate: readFirstString(row, ["confirmed_at", "created_at"]),
+    processingAt: readFirstString(row, ["processing_at"]),
+    shippedAt: readFirstString(row, ["shipped_at"]),
     completedAt: readFirstString(row, ["completed_at"]),
     quoteId,
     engagementId: quotation?.engagement_id ?? null,

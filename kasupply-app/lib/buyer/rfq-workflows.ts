@@ -131,6 +131,7 @@ export type BuyerRfqDetailsData = {
       supplierId: number;
       supplierName: string;
       verifiedBadge: boolean;
+      avatarUrl: string | null;
       matchScore: number | null;
       matchReason: string | null;
       isVisible: boolean;
@@ -1855,6 +1856,7 @@ export async function getBuyerRfqDetails(rfqId: number) {
           supplierId: row.supplier_id,
           supplierName: supplier?.supplierName ?? "Unknown Supplier",
           verifiedBadge: supplier?.verifiedBadge ?? false,
+          avatarUrl: supplier?.avatarUrl ?? null,
           matchScore: row.match_score == null ? null : Number(row.match_score),
           matchReason: row.match_reason,
           isVisible: row.is_visible,

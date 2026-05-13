@@ -46,7 +46,7 @@ export function LeadTimeField({ defaultValue = "" }: LeadTimeFieldProps) {
   }, [customLeadTime, selectedOption]);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <input type="hidden" name="lead_time" value={submittedLeadTime} />
 
       <div className="relative">

@@ -1,4 +1,8 @@
 import { redirect } from "next/navigation";
+import {
+  ClipboardCheck,
+  MessageSquare,
+} from "lucide-react";
 import { getBuyerAccessRedirect } from "@/lib/auth/buyer-access";
 import { getUserOnboardingStatus } from "@/lib/auth/get-user-onboarding-status";
 import { getBuyerNotifications } from "@/lib/buyer/notifications";
@@ -7,6 +11,26 @@ import {
   markBuyerNotificationRead,
   openBuyerNotification,
 } from "./actions";
+
+const categoryIconMap = {
+  message: MessageSquare,
+  quotation_reply: ClipboardCheck,
+} as const;
+
+const categoryColorMap = {
+  message: {
+    iconWrap: "bg-[#EEF4FF]",
+    icon: "text-[#2E68F4]",
+    pill: "bg-[#E9F1FF] text-[#2E68F4]",
+    label: "New Message",
+  },
+  quotation_reply: {
+    iconWrap: "bg-[#FFF1F0]",
+    icon: "text-[#E15A4F]",
+    pill: "bg-[#FFF0ED] text-[#D14A3F]",
+    label: "Quotation Reply",
+  },
+} as const;
 
 function formatTimestamp(value: string) {
   const parsed = new Date(value);
@@ -19,14 +43,6 @@ function formatTimestamp(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(parsed);
-}
-
-function formatNotificationType(value: string) {
-  return value
-    .split(/[_\s-]+/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
 }
 
 export default async function BuyerNotificationsPage() {
@@ -42,6 +58,9 @@ export default async function BuyerNotificationsPage() {
   }
 
   const notifications = await getBuyerNotifications();
+  const quotationReplyCount = notifications.items.filter(
+    (item) => item.category === "quotation_reply",
+  ).length;
 
   return (
     <main className="space-y-6 p-6">
@@ -49,7 +68,7 @@ export default async function BuyerNotificationsPage() {
         <div>
           <h1 className="mt-2 text-2xl font-bold text-[#223654]">Notifications</h1>
           <p className="mt-2 max-w-2xl text-sm text-[#61738f]">
-            Track RFQ activity, sourcing updates, and order progress in one place.
+            Track new messages and quotation replies from your sourcing board requests.
           </p>
         </div>
 
@@ -59,8 +78,8 @@ export default async function BuyerNotificationsPage() {
             unread
           </div>
           <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-3 text-sm text-[#4a5b75] shadow-[0_10px_30px_rgba(36,63,104,0.08)]">
-            <span className="font-semibold text-[#223654]">{notifications.totalCount}</span>{" "}
-            total
+            <span className="font-semibold text-[#223654]">{quotationReplyCount}</span>{" "}
+            quotation repl{quotationReplyCount === 1 ? "y" : "ies"}
           </div>
 
           {notifications.unreadCount > 0 ? (
@@ -77,95 +96,95 @@ export default async function BuyerNotificationsPage() {
       </div>
 
       {notifications.items.length === 0 ? (
-        <section className="rounded-2xl border border-[#edf1f7] bg-white p-8 shadow-[0_10px_28px_rgba(15,23,42,0.04)]">
-          <h2 className="text-lg font-semibold text-[#223654]">No notifications yet</h2>
-          <p className="mt-2 text-sm text-[#8b95a5]">
-            New buyer activity will appear here once your RFQs, sourcing requests, or
-            orders start moving.
+        <section className="rounded-[24px] border border-dashed border-[#D8E2EE] bg-white px-[28px] py-[36px] shadow-[0_10px_30px_rgba(15,23,42,0.04)]">
+          <h2 className="text-[18px] font-semibold text-[#223654]">Notifications</h2>
+          <p className="mt-[10px] text-[15px] text-[#7C8798]">
+            You have no new notifications.
           </p>
         </section>
       ) : (
-        <div className="grid gap-4">
-          {notifications.items.map((notification) => (
-            <section
-              key={notification.notificationId}
-              className={`rounded-2xl border p-5 shadow-[0_10px_28px_rgba(15,23,42,0.04)] transition ${
-                notification.isRead
-                  ? "border-[#edf1f7] bg-white"
-                  : "border-[#cfe0ff] bg-[#f8fbff]"
-              }`}
-            >
-              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full border border-[#d7dee8] bg-white px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-[#5d7190]">
-                      {formatNotificationType(notification.type)}
-                    </span>
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                        notification.isRead
-                          ? "bg-[#eef3f9] text-[#6d7f98]"
-                          : "bg-[#dceaff] text-[#2456a6]"
-                      }`}
-                    >
-                      {notification.isRead ? "Read" : "Unread"}
-                    </span>
-                    <span className="text-xs text-[#8b95a5]">
-                      {formatTimestamp(notification.createdAt)}
-                    </span>
+        <section className="space-y-4">
+          {notifications.items.map((notification) => {
+            const Icon = categoryIconMap[notification.category];
+            const styles = categoryColorMap[notification.category];
+
+            return (
+              <section
+                key={notification.notificationId}
+                className={`rounded-[24px] border bg-white px-[20px] py-[20px] shadow-[0_10px_30px_rgba(15,23,42,0.04)] transition ${
+                  notification.isRead
+                    ? "border-[#E5EBF3]"
+                    : "border-[#D6E0EC] bg-[#FBFDFF]"
+                }`}
+              >
+                <div className="flex items-start gap-[14px]">
+                  <div
+                    className={`flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-[14px] ${styles.iconWrap}`}
+                  >
+                    <Icon className={`h-[20px] w-[20px] ${styles.icon}`} strokeWidth={1.9} />
                   </div>
 
-                  <div>
-                    <h2 className="text-lg font-semibold text-[#223654]">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-[10px]">
+                      <span
+                        className={`inline-flex items-center rounded-full px-[10px] py-[4px] text-[11px] font-semibold uppercase tracking-[0.04em] ${styles.pill}`}
+                      >
+                        {styles.label}
+                      </span>
+                      <span className="text-[12px] font-medium text-[#9AA4B2]">
+                        {formatTimestamp(notification.createdAt)}
+                      </span>
+                      {!notification.isRead ? (
+                        <span className="h-[8px] w-[8px] rounded-full bg-[#FF5B49]" aria-hidden="true" />
+                      ) : null}
+                    </div>
+
+                    <h2 className="mt-[10px] text-[18px] font-semibold text-[#304668]">
                       {notification.title}
                     </h2>
-                    <p className="mt-2 max-w-3xl text-sm leading-6 text-[#4a5b75]">
+                    <p className="mt-[6px] max-w-[880px] text-[14px] leading-[1.7] text-[#66758A]">
                       {notification.body}
                     </p>
+
+                    <div className="mt-5 flex flex-wrap gap-3">
+                      {notification.targetPath ? (
+                        <form action={openBuyerNotification}>
+                          <input
+                            type="hidden"
+                            name="notificationId"
+                            value={notification.notificationId}
+                          />
+                          <button
+                            type="submit"
+                            className="inline-flex items-center justify-center rounded-xl bg-[#243f68] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#1f3658]"
+                          >
+                            Open
+                          </button>
+                        </form>
+                      ) : null}
+
+                      {!notification.isRead ? (
+                        <form action={markBuyerNotificationRead}>
+                          <input
+                            type="hidden"
+                            name="notificationId"
+                            value={notification.notificationId}
+                          />
+                          <button
+                            type="submit"
+                            className="inline-flex items-center justify-center rounded-xl border border-[#D7DEE8] bg-white px-4 py-2.5 text-sm font-medium text-[#223654] transition hover:bg-[#F8FAFC]"
+                          >
+                            Mark as read
+                          </button>
+                        </form>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
-
-                {!notification.isRead ? (
-                  <div className="flex h-3 w-3 flex-none rounded-full bg-[#ff5331]" aria-hidden="true" />
-                ) : null}
-              </div>
-
-              <div className="mt-5 flex flex-wrap gap-3">
-                {notification.targetPath ? (
-                  <form action={openBuyerNotification}>
-                    <input
-                      type="hidden"
-                      name="notificationId"
-                      value={notification.notificationId}
-                    />
-                    <button
-                      type="submit"
-                      className="inline-flex items-center justify-center rounded-xl bg-[#243f68] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#1f3658]"
-                    >
-                      Open
-                    </button>
-                  </form>
-                ) : null}
-
-                {!notification.isRead ? (
-                  <form action={markBuyerNotificationRead}>
-                    <input
-                      type="hidden"
-                      name="notificationId"
-                      value={notification.notificationId}
-                    />
-                    <button
-                      type="submit"
-                      className="inline-flex items-center justify-center rounded-xl border border-[#d7dee8] bg-white px-4 py-2.5 text-sm font-medium text-[#223654] transition hover:bg-[#f8fafc]"
-                    >
-                      Mark as read
-                    </button>
-                  </form>
-                ) : null}
-              </div>
-            </section>
-          ))}
-        </div>
+              </section>
+            );
+          })}
+        </section>
       )}
     </main>
   );

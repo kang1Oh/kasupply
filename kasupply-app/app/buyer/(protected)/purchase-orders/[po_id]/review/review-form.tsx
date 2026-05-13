@@ -174,7 +174,7 @@ export function ReviewForm({
             value={reviewText}
             onChange={(event) => setReviewText(event.target.value)}
             placeholder="Share your experience, anything that would help other buyers"
-            className="mt-[14px] h-[96px] w-full resize-none rounded-[10px] border border-[#dbe2ec] px-[14px] py-[12px] text-[14px] text-[#223654] outline-none transition placeholder:text-[#c4cad4] focus:border-[#b9c4d5]"
+            className="mt-[14px] h-[96px] w-full resize-none rounded-[10px] border border-[#dbe2ec] px-[14px] py-[12px] text-[14px] bg-white text-[#223654] outline-none transition placeholder:text-[#c4cad4] focus:border-[#b9c4d5]"
           />
         </div>
       </section>
@@ -189,7 +189,7 @@ export function ReviewForm({
         <button
           type="submit"
           disabled={overallRating < 1}
-          className="inline-flex h-[44px] min-w-[148px] items-center justify-center rounded-[8px] bg-[#cfd5de] px-[20px] text-[14px] font-medium text-white transition enabled:bg-[#9EABC0] enabled:hover:bg-[#8e9cb2] disabled:cursor-not-allowed disabled:opacity-100"
+          className="inline-flex h-[44px] min-w-[148px] items-center justify-center rounded-[8px] bg-[#243f68] px-[20px] text-[14px] font-medium text-white transition enabled:bg-[#243f68] enabled:hover:bg-[#1a2a4a] disabled:cursor-not-allowed disabled:opacity-100"
         >
           Submit Review
         </button>

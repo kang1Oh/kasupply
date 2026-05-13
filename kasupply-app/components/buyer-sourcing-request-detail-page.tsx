@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { BuyerRfqDetailsData } from "@/lib/buyer/rfq-workflows";
 import { BuyerSourcingCloseRequestAction } from "@/components/buyer-sourcing-close-request-action";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import {
   acceptSourcingQuote,
   closeSourcingRequest,
@@ -9,6 +10,7 @@ import {
 
 type BuyerSourcingRequestDetailPageProps = {
   buyerBusinessName: string;
+  buyerAvatarUrl: string | null;
   data: BuyerRfqDetailsData;
   modal?: string;
 };
@@ -77,18 +79,7 @@ function formatQuantity(quantity: number | null, unit: string | null) {
   return `${new Intl.NumberFormat("en-PH").format(quantity)}${unit ? ` ${unit}` : ""}`;
 }
 
-function getInitials(value: string) {
-  const initials = value
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join("");
-
-  return initials || "SR";
-}
-
-function getRequestStatusConfig(status: string) {
+function getRequestStatusConfig(status: string, isClosed: boolean) {
   const normalized = status.toLowerCase();
 
   if (normalized === "cancelled") {
@@ -99,7 +90,7 @@ function getRequestStatusConfig(status: string) {
     };
   }
 
-  if (normalized === "closed" || normalized === "fulfilled") {
+  if (normalized === "closed" || normalized === "fulfilled" || isClosed) {
     return {
       label: "Closed",
       className: "bg-[#eef0f4] text-[#5d697a]",
@@ -181,6 +172,7 @@ function QuotationMetricCell({
 
 export function BuyerSourcingRequestDetailPage({
   buyerBusinessName,
+  buyerAvatarUrl,
   data,
 }: BuyerSourcingRequestDetailPageProps) {
   const matchScoreBySupplierId = new Map(
@@ -216,9 +208,11 @@ export function BuyerSourcingRequestDetailPage({
     });
 
   const quotationCount = quotationCards.length;
-  const requestStatus = getRequestStatusConfig(data.rfq.status);
-  const requestIsClosable =
+  const requestStatus = getRequestStatusConfig(data.rfq.status, data.rfq.isClosed);
+  const deadlineReachedClosure =
+    data.rfq.isClosed &&
     !["closed", "cancelled", "fulfilled"].includes(data.rfq.status.toLowerCase());
+  const requestIsClosable = !data.rfq.isClosed;
 
   return (
     <main className="mx-auto max-w-[1120px] px-6 py-8">
@@ -236,9 +230,14 @@ export function BuyerSourcingRequestDetailPage({
         <div className="flex flex-col gap-[12px]">
           <div className="flex flex-col gap-[12px] lg:flex-row lg:items-start lg:justify-between">
             <div className="flex min-w-0 items-start gap-[14px]">
-              <div className="flex h-[55px] w-[55px] shrink-0 items-center justify-center rounded-full bg-[#FFC3D0] text-[22px] font-[500] leading-none text-[#CB5C7B]">
-                {getInitials(buyerBusinessName)}
-              </div>
+              <ProfileAvatar
+                name={buyerBusinessName}
+                avatarUrl={buyerAvatarUrl}
+                alt={`${buyerBusinessName} avatar`}
+                fallbackInitials="SR"
+                sizes="55px"
+                className="flex h-[55px] w-[55px] shrink-0 items-center justify-center rounded-full bg-[#FFC3D0] text-[22px] font-[500] leading-none text-[#CB5C7B]"
+              />
 
               <div className="min-w-0">
                 <p className="truncate text-[16px] font-[500] leading-none text-[#455060]">
@@ -296,6 +295,13 @@ export function BuyerSourcingRequestDetailPage({
               </div>
             </div>
 
+            {deadlineReachedClosure ? (
+              <div className="mt-[12px] rounded-[12px] border border-[#d9dee6] bg-[#f8fafc] px-[16px] py-[12px] text-[14px] leading-[1.5] text-[#5d697a]">
+                This request closed automatically because its deadline of{" "}
+                {formatDate(data.rfq.deadline)} was reached.
+              </div>
+            ) : null}
+
             {requestIsClosable ? (
               <div className="mt-[12px]">
                 <BuyerSourcingCloseRequestAction
@@ -343,11 +349,14 @@ export function BuyerSourcingRequestDetailPage({
                 <div className="flex flex-col gap-[18px]">
                   <div className="flex flex-col gap-[14px] lg:flex-row lg:items-start lg:justify-between">
                     <div className="flex min-w-0 items-start gap-[14px]">
-                      <div
+                      <ProfileAvatar
+                        name={card.engagement.supplierName}
+                        avatarUrl={card.engagement.avatarUrl}
+                        alt={`${card.engagement.supplierName} avatar`}
+                        fallbackInitials="SR"
+                        sizes="50px"
                         className={`flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-[10px] text-[23px] font-[500] leading-none ${tone}`}
-                      >
-                        {getInitials(card.engagement.supplierName)}
-                      </div>
+                      />
 
                       <div className="min-w-0 pt-[4px]">
                         <div className="flex flex-wrap items-center gap-[8px]">

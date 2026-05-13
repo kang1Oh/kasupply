@@ -1,14 +1,13 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   BadgeCheck,
-  Search,
   FileCog,
   Flag,
-  LayoutDashboard,
   LogOut,
   Menu,
   Shield,
@@ -37,27 +36,40 @@ function getInitials(name: string) {
 }
 
 function isActivePath(pathname: string, href: string) {
-  if (href === "/admin/dashboard") {
+  if (href === "/admin/accounts") {
     return pathname === href;
   }
 
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function SidebarPanelIcon({ collapsed }: { collapsed: boolean }) {
+function SidebarPanelIcon({
+  src,
+  alt,
+  size = 20,
+}: {
+  src: string;
+  alt: string;
+  size?: number;
+}) {
   return (
-    <div className="relative flex h-4 w-4 items-center justify-center">
-      <span
-        className={`absolute h-[2px] w-3 rounded-full bg-current transition-all ${
-          collapsed ? "rotate-45" : "-translate-y-[3px]"
-        }`}
-      />
-      <span
-        className={`absolute h-[2px] w-3 rounded-full bg-current transition-all ${
-          collapsed ? "-rotate-45" : "translate-y-[3px]"
-        }`}
-      />
-    </div>
+    <Image
+      src={src}
+      alt={alt}
+      width={size}
+      height={size}
+      className="object-contain"
+    />
+  );
+}
+
+function ChevronPanelIcon({ collapsed }: { collapsed: boolean }) {
+  return (
+    <SidebarPanelIcon
+      src={collapsed ? "/icons/collapsed-panel.svg" : "/icons/sidebar-panel.svg"}
+      alt={collapsed ? "Collapsed sidebar" : "Expanded sidebar"}
+      size={collapsed ? 28 : 20}
+    />
   );
 }
 
@@ -70,11 +82,6 @@ export function AdminSidebar({ name, email, role }: AdminSidebarProps) {
 
   const navItems: NavItem[] = [
     {
-      href: "/admin/dashboard",
-      label: "Dashboard",
-      icon: <LayoutDashboard className="h-[18px] w-[18px]" strokeWidth={1.9} />,
-    },
-    {
       href: "/admin/accounts",
       label: "Accounts",
       icon: <Users className="h-[18px] w-[18px]" strokeWidth={1.9} />,
@@ -86,19 +93,14 @@ export function AdminSidebar({ name, email, role }: AdminSidebarProps) {
     },
     {
       href: "/admin/moderation",
-      label: "Moderation",
+      label: "Content Moderation",
       icon: <Shield className="h-[18px] w-[18px]" strokeWidth={1.9} />,
     },
     {
       href: "/admin/requirements",
       label: "Requirements",
       icon: <FileCog className="h-[18px] w-[18px]" strokeWidth={1.9} />,
-    },
-    {
-      href: "/admin/search-index",
-      label: "Search Index",
-      icon: <Search className="h-[18px] w-[18px]" strokeWidth={1.9} />,
-    },
+    }
   ];
 
   async function handleLogout() {
@@ -148,22 +150,27 @@ export function AdminSidebar({ name, email, role }: AdminSidebarProps) {
       >
         <div
           className={`border-b border-white/10 transition-all duration-300 ${
-            collapsed ? "px-3 py-3" : "px-4 py-5"
+            collapsed ? "px-3 py-3" : "px-4 py-4"
           }`}
         >
           <div className={`flex items-start ${collapsed ? "justify-center" : "justify-between gap-3"}`}>
             {!collapsed ? (
-              <div className="flex items-center gap-3">
-                <div className="flex h-[44px] w-[44px] items-center justify-center rounded-[14px] bg-white shadow-sm">
-                  <span className="text-[18px] font-semibold tracking-[-0.03em] text-[#1E3A5F]">
-                    K
-                  </span>
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-[40px] w-[40px] items-center justify-center rounded-[10px] bg-white shadow-sm">
+                  <Image
+                    src="/images/kasupply-logo.svg"
+                    alt="KaSupply logo"
+                    width={26}
+                    height={26}
+                    className="h-[26px] w-[26px]"
+                    priority
+                  />
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-[20px] font-semibold leading-none tracking-[-0.02em]">
                     KaSupply
                   </p>
-                  <p className="mt-1 text-[11px] text-white/88">Admin Portal</p>
+                  <p className="mt-0.5 text-[13px] font-medium text-white/88">Admin Portal</p>
                 </div>
               </div>
             ) : null}
@@ -176,7 +183,7 @@ export function AdminSidebar({ name, email, role }: AdminSidebarProps) {
                 aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
                 title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
               >
-                <SidebarPanelIcon collapsed={collapsed} />
+                <ChevronPanelIcon collapsed={collapsed} />
               </button>
 
               <button
@@ -201,7 +208,7 @@ export function AdminSidebar({ name, email, role }: AdminSidebarProps) {
                   <Link
                     href={item.href}
                     onClick={() => setMobileOpen(false)}
-                    className={`relative flex items-center text-[13px] font-medium transition ${
+                    className={`relative flex items-center text-[16px] font-medium transition ${
                       isActive
                         ? "bg-white/12 text-white"
                         : "text-white/88 hover:bg-white/8 hover:text-white"
@@ -222,14 +229,14 @@ export function AdminSidebar({ name, email, role }: AdminSidebarProps) {
 
         <div
           className={`border-t border-white/10 transition-all duration-300 ${
-            collapsed ? "px-2 py-3" : "pl-3 pr-2 py-3"
+            collapsed ? "px-2 py-3" : "px-2.5 py-2"
           }`}
         >
           <div
             className={`rounded-xl bg-white/4 transition-all duration-300 ${
               collapsed
-                ? "flex flex-col items-center gap-3 px-2 py-3"
-                : "flex items-center gap-2.5 pl-3 pr-2 py-3"
+                ? "flex items-center justify-center px-1 py-1"
+                : "flex items-center gap-2 px-2 py-2"
             }`}
           >
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#DDF2E5] text-[11px] font-semibold text-[#2B6C4A]">
@@ -238,10 +245,16 @@ export function AdminSidebar({ name, email, role }: AdminSidebarProps) {
 
             {!collapsed ? (
               <div className="min-w-0 flex-1 pr-1">
-                <p className="truncate text-[11px] font-semibold text-white" title={name}>
+                <p
+                  className="truncate text-[14px] font-semibold leading-tight text-white"
+                  title={name}
+                >
                   {name}
                 </p>
-                <p className="truncate text-[10px] text-white/70" title={email}>
+                <p
+                  className="mt-0 truncate text-[13px] leading-tight text-white/70"
+                  title={email}
+                >
                   {email}
                 </p>
                 <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-[3px] text-[9px] font-semibold uppercase tracking-[0.14em] text-white/88">

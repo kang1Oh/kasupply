@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { ChevronRight, Paperclip, Search, Send, X } from "lucide-react";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import {
   ALLOWED_MESSAGE_IMAGE_TYPES,
   MAX_MESSAGE_IMAGE_BYTES,
@@ -202,11 +203,15 @@ function AttachmentPreview({
 function MessageBubble({
   message,
   otherPartyInitials,
+  otherPartyAvatarUrl,
   ownInitials,
+  ownAvatarUrl,
 }: {
   message: MessageItem;
   otherPartyInitials: string;
+  otherPartyAvatarUrl: string | null;
   ownInitials: string;
+  ownAvatarUrl: string | null;
 }) {
   const own = message.isOwnMessage;
   const otherTheme = "bg-[#27456F] text-white";
@@ -219,13 +224,15 @@ function MessageBubble({
           own ? "flex-row-reverse" : "flex-row"
         }`}
       >
-        <div
+        <ProfileAvatar
+          name={own ? null : otherPartyInitials}
+          avatarUrl={own ? ownAvatarUrl : otherPartyAvatarUrl}
+          fallbackInitials={own ? ownInitials : otherPartyInitials}
+          sizes="40px"
           className={`flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full text-[15px] font-semibold ${
             own ? ownTheme : otherTheme
           }`}
-        >
-          {own ? ownInitials : otherPartyInitials}
-        </div>
+        />
 
         <div className={own ? "text-right" : "text-left"}>
           <div
@@ -488,7 +495,7 @@ export function SupplierMessagesClient({ initialData }: MessagesClientProps) {
   return (
     <div className="-m-6 bg-white">
       <div className="overflow-hidden border-y border-[#E3E8F0] bg-white">
-        <div className="grid min-h-[560px] grid-cols-1 lg:grid-cols-[30.2%_69.8%]">
+        <div className="grid h-screen grid-cols-1 lg:grid-cols-[30.2%_69.8%]">
           <aside className="border-r border-[#E6ECF3] bg-white">
             <div className="flex items-center justify-between border-b border-[#E6ECF3] px-5 py-4">
               <h1 className="text-[18px] font-semibold tracking-[-0.02em] text-[#233B63]">
@@ -536,11 +543,13 @@ export function SupplierMessagesClient({ initialData }: MessagesClientProps) {
                       ) : null}
 
                       <div className="relative shrink-0">
-                        <div
+                        <ProfileAvatar
+                          name={conversation.name}
+                          avatarUrl={conversation.avatarUrl}
+                          fallbackInitials={conversation.initials}
+                          sizes="34px"
                           className={`flex h-[34px] w-[34px] items-center justify-center rounded-[8px] text-[13px] font-semibold ${theme}`}
-                        >
-                          {conversation.initials}
-                        </div>
+                        />
                         {conversation.hasUnread ? (
                           <span className="absolute -right-0.5 top-0.5 h-[8px] w-[8px] rounded-full border border-white bg-[#2DBB5F]" />
                         ) : null}
@@ -571,9 +580,13 @@ export function SupplierMessagesClient({ initialData }: MessagesClientProps) {
               <>
                 <div className="flex items-center justify-between border-b border-[#E6ECF3] px-4 py-3 md:px-5">
                   <div className="flex min-w-0 items-center gap-4">
-                    <div className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-[12px] bg-[#27456F] text-[15px] font-semibold text-white">
-                      {selectedConversation.initials}
-                    </div>
+                    <ProfileAvatar
+                      name={selectedConversation.name}
+                      avatarUrl={selectedConversation.avatarUrl}
+                      fallbackInitials={selectedConversation.initials}
+                      sizes="42px"
+                      className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-[12px] bg-[#27456F] text-[15px] font-semibold text-white"
+                    />
 
                     <div className="min-w-0">
                       <h2 className="truncate text-[16px] font-semibold leading-5 text-[#233B63]">
@@ -650,7 +663,7 @@ export function SupplierMessagesClient({ initialData }: MessagesClientProps) {
                       No messages in this conversation yet.
                     </div>
                   ) : (
-                    <div className="flex min-h-[360px] flex-col justify-end">
+                    <div className="flex min-h-full flex-col justify-end">
                       <div className="mb-9 text-center text-[12px] font-medium text-[#B3BCC8]">
                         Today
                       </div>
@@ -660,7 +673,9 @@ export function SupplierMessagesClient({ initialData }: MessagesClientProps) {
                             key={message.id}
                             message={message}
                             otherPartyInitials={selectedConversation.initials}
+                            otherPartyAvatarUrl={selectedConversation.avatarUrl}
                             ownInitials={initialData.supplierInitials}
+                            ownAvatarUrl={initialData.supplierAvatarUrl}
                           />
                         ))}
                       </div>

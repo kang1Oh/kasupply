@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { SupplierProfileDetails } from "@/app/buyer/search/[supplierId]/actions";
+import { BuyerSupplierReportAction } from "@/components/buyer-supplier-profile-actions";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 
 type SupplierProfileContentProps = {
   supplier: SupplierProfileDetails;
@@ -12,23 +14,6 @@ type SupplierProfileContentProps = {
 type TabKey = "overview" | "products" | "reviews";
 type SortKey = "match" | "name" | "price_low" | "price_high";
 type ReviewSortKey = "recent" | "oldest" | "highest" | "lowest";
-
-function formatReviewDate(value: string | null) {
-  if (!value) {
-    return "Recently";
-  }
-
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return "Recently";
-  }
-
-  return new Intl.DateTimeFormat("en-PH", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  }).format(parsed);
-}
 
 function formatReviewMonthYear(value: string | null) {
   if (!value) {
@@ -148,17 +133,6 @@ function getNormalizedReviewSummary(supplier: SupplierProfileDetails) {
       ).averageValueForMoneyRating ??
       averageReviewValue(supplier.reviews, "valueForMoneyRating"),
   };
-}
-
-function getInitials(value: string | null | undefined) {
-  const initials = String(value ?? "")
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join("");
-
-  return initials || "RV";
 }
 
 function RatingStars({
@@ -313,9 +287,14 @@ function ReviewCard({
     <article className="rounded-[18px] border border-[#E6EBF2] bg-white px-[16px] py-[16px] shadow-[0_8px_20px_rgba(15,23,42,0.03)]">
       <div className="flex items-start justify-between gap-[12px]">
         <div className="flex min-w-0 items-start gap-[12px]">
-          <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-[#D949FF] text-[13px] font-medium text-white">
-            {getInitials(reviewerName)}
-          </div>
+          <ProfileAvatar
+            name={reviewerName}
+            avatarUrl={review.buyerAvatarUrl}
+            alt={`${reviewerName} avatar`}
+            fallbackInitials="RV"
+            sizes="34px"
+            className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-[#D949FF] text-[13px] font-medium text-white"
+          />
 
           <div className="min-w-0">
             <p className="truncate text-[15px] font-medium leading-none text-[#4A576B]">
@@ -446,10 +425,17 @@ function ProductCard({
               {product.description?.trim() || "Freshly harvested supplier product."}
             </p>
           </div>
-          <p className="shrink-0 text-[13px] font-semibold text-[#223654]">
-            {formatMoney(product.pricePerUnit)}
-            <span className="text-[11px] font-medium text-[#94a3b8]">/{product.unit}</span>
-          </p>
+          <div className="shrink-0 text-right">
+            <p className="text-[13px] font-semibold text-[#223654]">
+              {formatMoney(product.pricePerUnit)}
+              <span className="text-[11px] font-medium text-[#94a3b8]">/{product.unit}</span>
+            </p>
+            {product.resellerPrice != null ? (
+              <p className="mt-1 inline-flex items-center rounded-full border border-[#d9e8de] bg-[#f4faf6] px-2 py-0.5 text-[10px] font-medium text-[#3f7d55]">
+                Reseller {formatMoney(product.resellerPrice)}/{product.unit}
+              </p>
+            ) : null}
+          </div>
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-2">
@@ -612,6 +598,16 @@ function ProductDetailsModal({
                     /{product.unit}
                   </span>
                 </p>
+                {product.resellerPrice != null ? (
+                  <div className="mt-3 inline-flex max-w-full items-center gap-2 rounded-[14px] border border-[#dceade] bg-[#f5fbf6] px-3 py-2 text-[12px] text-[#4f6b59]">
+                    <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-[#3f7d55]">
+                      Reseller Price
+                    </span>
+                    <span className="truncate font-semibold text-[#244a31]">
+                      {formatMoney(product.resellerPrice)}/{product.unit}
+                    </span>
+                  </div>
+                ) : null}
               </div>
 
               <button
@@ -715,7 +711,6 @@ export function BuyerSupplierProfileContent({
   const productCount = supplier.products.length;
   const normalizedReviewSummary = getNormalizedReviewSummary(supplier);
   const reviewCount = normalizedReviewSummary.reviewCount;
-  const averageOverallRating = normalizedReviewSummary.averageOverallRating;
 
   const filteredProducts = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -841,7 +836,7 @@ export function BuyerSupplierProfileContent({
             <h2 className="text-[15px] font-semibold text-[#223654]">
               Business Description
             </h2>
-            <p className="mt-4 text-[13px] leading-7 text-[#5f6d80]">
+            <p className="mt-4 text-[14px] text-[#5f6d80]">
               {supplier.about?.trim() || "No business description provided yet."}
             </p>
           </section>
@@ -1036,6 +1031,22 @@ export function BuyerSupplierProfileContent({
                   </div>
                 )}
               </div>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-[#e3eaf2] bg-white p-6 shadow-[0_8px_20px_rgba(15,23,42,0.03)]">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-[15px] font-semibold text-[#223654]">Need to report this supplier?</h2>
+                <p className="mt-1 text-[13px] text-[#8b95a5]">
+                  Use this if you need to flag a serious issue for admin review.
+                </p>
+              </div>
+              <BuyerSupplierReportAction
+                supplierName={supplier.businessName}
+                reportedUserId={supplier.reportedUserId}
+                className="justify-center self-start sm:self-auto"
+              />
             </div>
           </section>
         </>

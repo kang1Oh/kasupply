@@ -1,5 +1,6 @@
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
 import Link from "next/link";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { PURCHASE_ORDER_PAYMENT_METHOD_OPTIONS } from "@/lib/purchase-orders/constants";
 import type { PurchaseOrderCreationDraft } from "./data";
 import { createPurchaseOrder } from "./actions";
@@ -37,17 +38,6 @@ function formatBusinessType(value: string | null | undefined) {
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" / ");
-}
-
-function getInitials(value: string | null | undefined) {
-  const initials = String(value || "")
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join("");
-
-  return initials || "PO";
 }
 
 function getReferenceCode(rfqId: number, createdAt: string | null) {
@@ -209,9 +199,14 @@ export function CreatePurchaseOrderPage({
         <Card title="Supplier Info">
           <div className="flex items-center justify-between gap-4 px-[2px]">
             <div className="flex min-w-0 items-center gap-[12px]">
-              <div className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-[#eefaf3] text-[22px] font-medium leading-none text-[#4f9b72]">
-                {getInitials(supplierName)}
-              </div>
+              <ProfileAvatar
+                name={supplierName}
+                avatarUrl={creationDraft.supplierInfo?.avatarUrl ?? null}
+                alt={`${supplierName} avatar`}
+                fallbackInitials="PO"
+                sizes="44px"
+                className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-[#eefaf3] text-[22px] font-medium leading-none text-[#4f9b72]"
+              />
 
               <div className="min-w-0">
                 <div className="flex items-center gap-[6px]">

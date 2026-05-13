@@ -64,37 +64,7 @@ async function ReportsPageContent({ searchParams }: ReportsPageProps) {
               Report Review
             </h1>
           </div>
-
-          <Link
-            href="/admin/dashboard"
-            className="inline-flex rounded-lg border border-[#223654] px-4 py-2.5 text-sm font-semibold text-[#223654] transition hover:bg-[#f7f9fc]"
-          >
-            Back to dashboard
-          </Link>
         </div>
-      </section>
-
-      <section className="grid gap-4 md:grid-cols-4">
-        <DashboardCard
-          title="All Reports"
-          value={data.summary.totalReports}
-          subtitle="Reported user cases currently stored."
-        />
-        <DashboardCard
-          title="Open Reports"
-          value={data.summary.openReports}
-          subtitle="Reports still awaiting admin resolution."
-        />
-        <DashboardCard
-          title="Under Review"
-          value={data.summary.underReviewReports}
-          subtitle="Cases actively being reviewed by admin."
-        />
-        <DashboardCard
-          title="Resolved"
-          value={data.summary.resolvedReports}
-          subtitle="Reports already actioned, dismissed, or closed."
-        />
       </section>
 
       <section className="rounded-[22px] border border-[#e6edf6] bg-white p-5 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">

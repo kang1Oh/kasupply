@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { BuyerRfqDetailsData } from "@/lib/buyer/rfq-workflows";
 import { BuyerRfqCancelAction } from "@/components/buyer-rfq-cancel-action";
 import { BuyerRfqDeclineQuoteAction } from "@/components/buyer-rfq-decline-quote-action";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import {
   acceptQuote,
   declineQuote,
@@ -114,17 +115,6 @@ function getReferenceCode(rfqId: number, createdAt: string) {
     : createdDate.getFullYear();
 
   return `RFQ-${year}-${String(rfqId).padStart(3, "0")}`;
-}
-
-function getInitials(value: string) {
-  const initials = value
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join("");
-
-  return initials || "RF";
 }
 
 function getDetailState(data: BuyerRfqDetailsData): DetailStateKey {
@@ -615,6 +605,8 @@ export function BuyerRfqDetailPage({ data }: BuyerRfqDetailPageProps) {
     primaryEngagement?.verifiedBadge ??
     data.requestMatches.suppliers[0]?.verifiedBadge ??
     false;
+  const supplierAvatarUrl =
+    primaryEngagement?.avatarUrl ?? data.requestMatches.suppliers[0]?.avatarUrl ?? null;
   const supplierSubtitle = [
     primaryEngagement?.businessType,
     primaryEngagement?.locationLabel,
@@ -757,9 +749,14 @@ export function BuyerRfqDetailPage({ data }: BuyerRfqDetailPageProps) {
 
         <div className="flex items-center justify-between gap-4 px-[18px] py-[16px]">
           <div className="flex min-w-0 items-center gap-[12px]">
-            <div className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-[#eefaf3] text-[22px] font-medium leading-none text-[#4f9b72]">
-              {getInitials(supplierName)}
-            </div>
+            <ProfileAvatar
+              name={supplierName}
+              avatarUrl={supplierAvatarUrl}
+              alt={`${supplierName} avatar`}
+              fallbackInitials="RF"
+              sizes="44px"
+              className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-[#eefaf3] text-[22px] font-medium leading-none text-[#4f9b72]"
+            />
 
             <div className="min-w-0">
               <div className="flex items-center gap-[6px]">

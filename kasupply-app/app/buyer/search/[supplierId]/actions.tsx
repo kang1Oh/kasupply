@@ -1,11 +1,14 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getCurrentAppUser } from "@/lib/auth/get-current-app-user";
 import { createClient } from "@/lib/supabase/server";
 
 export type SupplierProfileDetails = {
   supplierId: number;
   profileId: number;
+  reportedUserId: string | null;
   avatarUrl: string | null;
   businessName: string;
   businessType: string;
@@ -38,6 +41,7 @@ export type SupplierProfileDetails = {
     categoryName: string;
     unit: string;
     pricePerUnit: number;
+    resellerPrice: number | null;
     moq: number;
     maxCapacity: number | null;
     leadTime: string | null;
@@ -75,6 +79,7 @@ export type SupplierProfileDetails = {
     purchaseOrderId: number | null;
     buyerId: number;
     buyerName: string | null;
+    buyerAvatarUrl: string | null;
     verifiedPurchase: boolean;
     overallRating: number;
     productQualityRating: number | null;
@@ -105,6 +110,10 @@ function roundToSingleDecimal(value: number | null) {
   }
 
   return Number(value.toFixed(1));
+}
+
+function normalizeText(value: string | null | undefined) {
+  return String(value ?? "").trim().toLowerCase();
 }
 
 function getAverageFromReviews(
@@ -138,6 +147,7 @@ type BuyerProfileRow = {
 type BuyerBusinessProfileRow = {
   profile_id: number;
   business_name: string | null;
+  user_id: string | null;
 };
 
 function getFileNameFromPath(path: string | null | undefined) {
@@ -205,6 +215,7 @@ const SUPPLIER_CERTIFICATION_BUCKET_NAMES = [
   "business-documents",
 ];
 const BUSINESS_DOCUMENT_BUCKET_NAMES = ["business-documents"];
+const BUYER_VISIBLE_SUPPLIER_ACCOUNT_STATUSES = new Set(["active"]);
 
 function getDocumentTypeName(
   relation:
@@ -404,13 +415,19 @@ export async function getSupplierProfileDetails(
   if (profile.user_id) {
     const { data: userRow, error: userError } = await supabase
       .from("users")
-      .select("avatar_url")
+      .select("avatar_url, status")
       .eq("user_id", profile.user_id)
       .maybeSingle();
 
     if (userError) {
       console.error("Error fetching supplier avatar:", userError);
       throw new Error("Failed to fetch supplier avatar.");
+    }
+
+    const normalizedStatus = normalizeText(userRow?.status);
+
+    if (!BUYER_VISIBLE_SUPPLIER_ACCOUNT_STATUSES.has(normalizedStatus)) {
+      return null;
     }
 
     avatarUrl = userRow?.avatar_url ?? null;
@@ -427,6 +444,7 @@ export async function getSupplierProfileDetails(
       image_url,
       unit,
       price_per_unit,
+      reseller_price,
       moq,
       max_capacity,
       lead_time,
@@ -628,6 +646,8 @@ export async function getSupplierProfileDetails(
                 ?.category_name ?? "Uncategorized",
         unit: row.unit,
         pricePerUnit: Number(row.price_per_unit),
+        resellerPrice:
+          row.reseller_price == null ? null : Number(row.reseller_price),
         moq: row.moq,
         maxCapacity: row.max_capacity,
         leadTime: row.lead_time,
@@ -652,6 +672,7 @@ export async function getSupplierProfileDetails(
   const safeReviewRows = (reviewRows as SupplierReviewRow[] | null) ?? [];
   const buyerIds = Array.from(new Set(safeReviewRows.map((row) => row.buyer_id)));
   const buyerNameById = new Map<number, string | null>();
+  const buyerAvatarById = new Map<number, string | null>();
 
   if (buyerIds.length > 0) {
     const { data: buyerProfiles, error: buyerProfilesError } = await supabase
@@ -674,12 +695,13 @@ export async function getSupplierProfileDetails(
     );
 
     const businessNameByProfileId = new Map<number, string | null>();
+    const avatarByProfileId = new Map<number, string | null>();
 
     if (profileIds.length > 0) {
       const { data: buyerBusinessProfiles, error: buyerBusinessProfilesError } =
         await supabase
           .from("business_profiles")
-          .select("profile_id, business_name")
+          .select("profile_id, business_name, user_id")
           .in("profile_id", profileIds);
 
       if (buyerBusinessProfilesError) {
@@ -690,14 +712,47 @@ export async function getSupplierProfileDetails(
         throw new Error("Failed to fetch supplier review authors.");
       }
 
-      for (const row of (buyerBusinessProfiles as BuyerBusinessProfileRow[] | null) ?? []) {
+      const safeBuyerBusinessProfiles =
+        (buyerBusinessProfiles as BuyerBusinessProfileRow[] | null) ?? [];
+      const userIds = Array.from(
+        new Set(
+          safeBuyerBusinessProfiles
+            .map((row) => row.user_id)
+            .filter((value): value is string => Boolean(value))
+        )
+      );
+      const avatarByUserId = new Map<string, string | null>();
+
+      if (userIds.length > 0) {
+        const { data: buyerUsers, error: buyerUsersError } = await supabase
+          .from("users")
+          .select("user_id, avatar_url")
+          .in("user_id", userIds);
+
+        if (buyerUsersError) {
+          console.error("Error fetching buyer avatars for reviews:", buyerUsersError);
+          throw new Error("Failed to fetch supplier review authors.");
+        }
+
+        for (const row of
+          (buyerUsers as Array<{ user_id: string; avatar_url: string | null }> | null) ?? []) {
+          avatarByUserId.set(row.user_id, row.avatar_url);
+        }
+      }
+
+      for (const row of safeBuyerBusinessProfiles) {
         businessNameByProfileId.set(row.profile_id, row.business_name ?? null);
+        avatarByProfileId.set(
+          row.profile_id,
+          row.user_id ? avatarByUserId.get(row.user_id) ?? null : null
+        );
       }
     }
 
     for (const row of safeBuyerProfiles) {
       if (row.profile_id == null) continue;
       buyerNameById.set(row.buyer_id, businessNameByProfileId.get(row.profile_id) ?? null);
+      buyerAvatarById.set(row.buyer_id, avatarByProfileId.get(row.profile_id) ?? null);
     }
   }
 
@@ -706,6 +761,7 @@ export async function getSupplierProfileDetails(
     purchaseOrderId: row.purchase_order_id ?? null,
     buyerId: row.buyer_id,
     buyerName: buyerNameById.get(row.buyer_id) ?? null,
+    buyerAvatarUrl: buyerAvatarById.get(row.buyer_id) ?? null,
     verifiedPurchase: Boolean(row.purchase_order_id),
     overallRating: Number(row.overall_rating),
     productQualityRating:
@@ -741,6 +797,7 @@ export async function getSupplierProfileDetails(
   return {
     supplierId: supplierRow.supplier_id,
     profileId: profile.profile_id,
+    reportedUserId: profile.user_id ?? null,
     avatarUrl,
     businessName: profile.business_name,
     businessType: profile.business_type,
@@ -767,4 +824,59 @@ export async function getSupplierProfileDetails(
     },
     reviews,
   };
+}
+
+async function getCurrentBuyerReporterUserId() {
+  const { user, error } = await getCurrentAppUser();
+
+  if (error || !user) {
+    throw new Error("You must be logged in.");
+  }
+
+  const role = user.roles?.role_name?.trim().toLowerCase() ?? "";
+
+  if (role !== "buyer") {
+    throw new Error("Buyer access is required.");
+  }
+
+  return user.user_id;
+}
+
+export async function submitSupplierProfileReportAction(formData: FormData) {
+  const supabase = await createClient();
+  const reporterUserId = await getCurrentBuyerReporterUserId();
+  const reportedUserId = String(formData.get("reported_user_id") || "").trim();
+  const description = String(formData.get("description") || "").trim();
+
+  if (!reportedUserId) {
+    throw new Error("Supplier account is required.");
+  }
+
+  if (!description) {
+    throw new Error("Please enter your report message.");
+  }
+
+  if (description.length < 10) {
+    throw new Error("Please provide a little more detail in your report.");
+  }
+
+  const { error } = await supabase.from("moderation_reports").insert({
+    reporter_user_id: reporterUserId,
+    target_type: "user",
+    reported_user_id: reportedUserId,
+    reason_code: "supplier_profile",
+    description,
+    evidence: [],
+    status: "submitted",
+    priority: "normal",
+  });
+
+  if (error) {
+    throw new Error(error.message || "Failed to submit report.");
+  }
+
+  revalidatePath("/admin/dashboard");
+  revalidatePath("/admin/reports");
+
+  return { ok: true };
 }

@@ -144,6 +144,9 @@ export async function createInventoryItem(formData: FormData) {
   const description = String(formData.get("description") || "").trim();
   const unit = String(formData.get("unit") || "").trim();
   const price_per_unit = Number(formData.get("price_per_unit"));
+  const reseller_price_raw = String(formData.get("reseller_price") || "").trim();
+  const reseller_price =
+    reseller_price_raw === "" ? null : Number(reseller_price_raw);
   const moq = Number(formData.get("moq"));
   const max_capacity = Number(formData.get("max_capacity"));
   const lead_time = String(formData.get("lead_time") || "").trim();
@@ -156,6 +159,7 @@ export async function createInventoryItem(formData: FormData) {
   if (!category_id || Number.isNaN(category_id)) throw new Error("Category is required.");
   if (!unit) throw new Error("Unit is required.");
   if (Number.isNaN(price_per_unit) || price_per_unit < 0) throw new Error("Price per unit must be a valid number.");
+  if (reseller_price !== null && (Number.isNaN(reseller_price) || reseller_price < 0)) throw new Error("Reseller price must be a valid number.");
   if (Number.isNaN(moq) || moq < 0) throw new Error("MOQ must be a valid number.");
   if (Number.isNaN(max_capacity) || max_capacity < 0) throw new Error("Max capacity must be a valid number.");
   if (!lead_time) throw new Error("Lead time is required.");
@@ -175,6 +179,7 @@ export async function createInventoryItem(formData: FormData) {
     image_url,
     unit,
     price_per_unit,
+    reseller_price,
     moq,
     max_capacity,
     lead_time,
@@ -229,6 +234,9 @@ export async function updateInventoryItem(formData: FormData) {
   const description = String(formData.get("description") || "").trim();
   const unit = String(formData.get("unit") || "").trim();
   const price_per_unit = Number(formData.get("price_per_unit"));
+  const reseller_price_raw = String(formData.get("reseller_price") || "").trim();
+  const reseller_price =
+    reseller_price_raw === "" ? null : Number(reseller_price_raw);
   const moq = Number(formData.get("moq"));
   const max_capacity = Number(formData.get("max_capacity"));
   const lead_time = String(formData.get("lead_time") || "").trim();
@@ -246,6 +254,7 @@ export async function updateInventoryItem(formData: FormData) {
   if (!category_id || Number.isNaN(category_id)) throw new Error("Category is required.");
   if (!unit) throw new Error("Unit is required.");
   if (Number.isNaN(price_per_unit) || price_per_unit < 0) throw new Error("Price per unit must be a valid number.");
+  if (reseller_price !== null && (Number.isNaN(reseller_price) || reseller_price < 0)) throw new Error("Reseller price must be a valid number.");
   if (Number.isNaN(moq) || moq < 0) throw new Error("MOQ must be a valid number.");
   if (Number.isNaN(max_capacity) || max_capacity < 0) throw new Error("Max capacity must be a valid number.");
   if (!lead_time) throw new Error("Lead time is required.");
@@ -300,6 +309,7 @@ export async function updateInventoryItem(formData: FormData) {
       image_url: nextImageUrl,
       unit,
       price_per_unit,
+      reseller_price,
       moq,
       max_capacity,
       lead_time,

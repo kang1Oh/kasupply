@@ -31,10 +31,6 @@ type SupplierDocumentsStepFormProps = {
 
 type NormalizedStatus = "verifying" | "verified" | "failed" | null;
 
-const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
-const FILE_SIZE_ERROR_MESSAGE =
-  "File is too large. Maximum allowed size is 10MB.";
-
 function getNormalizedStatus(status?: string | null): NormalizedStatus {
   if (
     status === "queued" ||
@@ -59,29 +55,6 @@ function getNormalizedStatus(status?: string | null): NormalizedStatus {
   }
 
   return null;
-}
-
-function getStatusLabel(status: NormalizedStatus) {
-  if (status === "verifying") return "Verifying";
-  if (status === "verified") return "Verified";
-  if (status === "failed") return "Failed";
-  return "";
-}
-
-function getStatusBadgeClass(status: NormalizedStatus) {
-  if (status === "verifying") {
-    return "border border-[#bfdbfe] bg-[#eff6ff] text-[#3b82f6]";
-  }
-
-  if (status === "verified") {
-    return "border border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d]";
-  }
-
-  if (status === "failed") {
-    return "border border-[#fecdd3] bg-[#fff1f2] text-[#e11d48]";
-  }
-
-  return "";
 }
 
 function getCardBackgroundClass(status: NormalizedStatus) {
@@ -377,14 +350,6 @@ function DocumentCard({
   );
 }
 
-function AddCertificationIcon() {
-  return (
-    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[#c7d0dc] text-[14px] leading-none text-[#8a94a6]">
-      +
-    </span>
-  );
-}
-
 export function SupplierDocumentsStepForm({
   requiredDocumentTypes,
   optionalDocumentTypes,
@@ -392,9 +357,6 @@ export function SupplierDocumentsStepForm({
   canProceed,
 }: SupplierDocumentsStepFormProps) {
   const router = useRouter();
-  const [visibleOptionalCount, setVisibleOptionalCount] = useState(
-    Math.min(1, optionalDocumentTypes.length)
-  );
   const [selectedFilesByDocType, setSelectedFilesByDocType] = useState<
     Record<number, File | null>
   >({});
@@ -428,8 +390,6 @@ export function SupplierDocumentsStepForm({
     return mergedMap;
   }, [documentOverrides, uploadedDocuments]);
 
-  const visibleOptionalDocuments = optionalDocumentTypes.slice(0, visibleOptionalCount);
-  const hasMoreOptional = visibleOptionalCount < optionalDocumentTypes.length;
   const allRequiredUploaded = requiredDocumentTypes.every((docType) =>
     Boolean(uploadedMap.get(docType.doc_type_id)?.doc_id)
   );
@@ -549,6 +509,7 @@ export function SupplierDocumentsStepForm({
         router.refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Verification failed.");
+        router.refresh();
       }
     });
   };
@@ -564,24 +525,28 @@ export function SupplierDocumentsStepForm({
             KaSupply requires verification to maintain a trusted supplier network
           </p>
         </div>
-
         <p className="text-[16px] font-semibold text-[#223654]">Step 2 of 3</p>
       </div>
 
-      <section className="rounded-[14px] border border-[#e4e9f1] bg-[#f8fafc] p-6">
-        <div className="mx-auto max-w-3xl space-y-8">
-          <div className="flex items-center gap-3">
-            <StepIndicator number={1} label="Profile Setup" active />
-            <div className="h-px flex-1 bg-[#1f3d67]" />
-            <StepIndicator number={2} label="Verification" active />
-            <div className="h-px flex-1 bg-[#d7dee8]" />
-            <StepIndicator number={3} label="User Verified" />
-          </div>
+      <div className="flex items-center gap-3">
+        <StepIndicator number={1} label="Profile Setup" active />
+        <div className="h-px flex-1 bg-[#1f3d67]" />
+        <StepIndicator number={2} label="Verification" active />
+        <div className="h-px flex-1 bg-[#d7dee8]" />
+        <StepIndicator number={3} label="User Verified" />
+      </div>
 
+      <section className="rounded-[14px] border border-[#e4e9f1] bg-white p-6">
+        <div className="mx-auto space-y-8">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#7d8595]">
-              Required documents
-            </p>
+            <div>
+              <h2 className="text-[18px] font-semibold text-[#1f3d67]">
+                Required documents
+              </h2>
+              <p className="mt-0.5 text-[14px] text-[#8b95a5]">
+                Upload the required documents to complete your supplier verification.
+              </p>
+            </div>
             <div className="mt-3 space-y-3">
               {requiredDocumentTypes.map((docType) => {
                 const uploaded = uploadedMap.get(docType.doc_type_id);
@@ -607,6 +572,46 @@ export function SupplierDocumentsStepForm({
               })}
             </div>
           </div>
+
+          {optionalDocumentTypes.length > 0 ? (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#7d8595]">
+                Optional documents
+              </p>
+              <p className="mt-1 text-sm text-[#c0c5cf]">
+                Upload any extra supplier documents your current onboarding policy marks as
+                optional.
+              </p>
+
+              <div className="mt-3 space-y-3">
+                {optionalDocumentTypes.map((docType) => {
+                  const uploaded = uploadedMap.get(docType.doc_type_id);
+                  const previewFileName =
+                    selectedFileNamesByDocType[docType.doc_type_id] ||
+                    uploadedPreviewNamesByDocType[docType.doc_type_id] ||
+                    getStoredFileName(uploaded?.file_url);
+
+                  return (
+                    <DocumentCard
+                      key={docType.doc_type_id}
+                      docType={docType}
+                      uploaded={uploaded}
+                      optional
+                      selectedFileName={
+                        selectedFileNamesByDocType[docType.doc_type_id] ?? ""
+                      }
+                      previewFileName={previewFileName}
+                      pending={isUploadPending && uploadingDocTypeId === docType.doc_type_id}
+                      onFileChange={handleFileChange}
+                      onBrowse={(docTypeId) => inputRefs.current[docTypeId]?.click()}
+                      onUpload={handleUpload}
+                      registerInputRef={registerInputRef}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
 
           <div className="rounded-[14px] border border-[#e4e9f1] bg-[#f8fafc] p-4">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -641,7 +646,7 @@ export function SupplierDocumentsStepForm({
 
         {canProceed ? (
           <Link
-            href="/supplier/dashboard"
+            href="/supplier/notifications"
             className="rounded-md bg-[#8a9ab1] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#7385a1]"
           >
             Finish

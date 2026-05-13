@@ -14,6 +14,7 @@ type ReceiptUploadDetailPanelProps = {
   currentFileName?: string | null;
   reviewNotes?: string | null;
   submitAction: (formData: FormData) => Promise<void>;
+  resetAction?: ((formData: FormData) => Promise<void>) | null;
   redirectStep?: string;
 };
 
@@ -24,6 +25,7 @@ export function ReceiptUploadDetailPanel({
   currentFileName,
   reviewNotes,
   submitAction,
+  resetAction = null,
   redirectStep = "upload-receipt",
 }: ReceiptUploadDetailPanelProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -173,6 +175,16 @@ export function ReceiptUploadDetailPanel({
             >
               {isRejected ? "Resubmit" : "Upload"}
             </button>
+            {isRejected && resetAction ? (
+              <button
+                type="submit"
+                formAction={resetAction}
+                formNoValidate
+                className="inline-flex h-[40px] shrink-0 items-center justify-center rounded-[8px] border border-[#ffd1cb] bg-white px-[20px] text-[14px] font-medium text-[#d55549] transition hover:bg-[#fff6f5]"
+              >
+                Clear Receipt
+              </button>
+            ) : null}
           </div>
 
           {errorMessage ? (

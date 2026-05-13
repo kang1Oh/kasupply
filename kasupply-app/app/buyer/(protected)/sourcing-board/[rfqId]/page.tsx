@@ -30,6 +30,7 @@ export default async function SourcingRequestDetailRoute({
   return (
     <BuyerSourcingRequestDetailPage
       buyerBusinessName={pageData.buyerBusinessName}
+      buyerAvatarUrl={pageData.buyerAvatarUrl}
       data={pageData.data}
       modal={resolvedSearchParams.modal}
     />

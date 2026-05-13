@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { connection } from "next/server";
 import {
   Bell,
   BriefcaseBusiness,
@@ -211,6 +212,8 @@ function SourcingCard({
 }
 
 export default async function SupplierDashboardPage() {
+  await connection();
+
   let data = buildFallbackDashboardData();
   let hasLoadError = false;
 

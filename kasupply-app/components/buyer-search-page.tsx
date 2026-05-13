@@ -352,6 +352,19 @@ function getInitials(name: string) {
     .join("");
 }
 
+function getReviewLabel(params: {
+  reviewCount: number;
+  averageOverallRating: number | null;
+}) {
+  if (params.reviewCount === 0 || params.averageOverallRating == null) {
+    return "No reviews yet";
+  }
+
+  return `${params.averageOverallRating.toFixed(1)} rating · ${params.reviewCount} review${
+    params.reviewCount === 1 ? "" : "s"
+  }`;
+}
+
 function toHomepageSupplier(supplier: SupplierSearchItem): BuyerHomepageSupplier {
   const categoryTags = Array.from(
     new Set(
@@ -372,10 +385,13 @@ function toHomepageSupplier(supplier: SupplierSearchItem): BuyerHomepageSupplier
     shortDescription:
       supplier.about?.trim() || "Verified supplier in the Davao Region.",
     location: supplier.city,
-    verified: supplier.verifiedBadge,
+    verified: supplier.verifiedBadge || supplier.verified,
     recommendationScore: supplier.searchScore ?? undefined,
     matchLabel: supplier.matchLabel,
-    reviewLabel: "No reviews yet",
+    reviewLabel: getReviewLabel({
+      reviewCount: supplier.reviewCount,
+      averageOverallRating: supplier.averageOverallRating,
+    }),
   };
 }
 

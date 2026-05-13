@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { getSupplierRfqEngagementDetail } from "../data";
 import { declineEngagement, submitFinalQuotation } from "../actions";
 import { SupplierQuotationForm } from "./quotation-form";
@@ -520,9 +521,13 @@ export default async function SupplierRfqQuotePage({
         <div className="mt-[14px] space-y-[16px]">
           <SectionCard title="Buyer Info">
             <div className="flex items-start gap-[14px]">
-              <div className="mt-[2px] flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[6px] bg-[#EDF9F1] text-[20px] font-medium text-[#2E8B57]">
-                {buyerInitials}
-              </div>
+              <ProfileAvatar
+                name={data.buyer.businessName}
+                avatarUrl={"avatarUrl" in data.buyer ? data.buyer.avatarUrl : null}
+                fallbackInitials={buyerInitials}
+                sizes="44px"
+                className="mt-[2px] flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[6px] bg-[#EDF9F1] text-[20px] font-medium text-[#2E8B57]"
+              />
 
               <div className="min-w-0 pt-[1px]">
                 <div className="flex flex-wrap items-center gap-[8px]">

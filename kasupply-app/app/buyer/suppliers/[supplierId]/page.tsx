@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { BuyerSupplierProfileActions } from "@/components/buyer-supplier-profile-actions";
 import { BuyerSupplierProfileContent } from "@/components/buyer-supplier-profile-content";
 import { getSupplierProfileDetails } from "@/app/buyer/search/[supplierId]/actions";
 
@@ -45,6 +46,29 @@ function formatReviewSummary(params: {
   }`;
 }
 
+function SupplierUnavailableState() {
+  return (
+    <main className="mx-auto flex w-full max-w-[760px] flex-col gap-6 px-4 py-16 sm:px-6 lg:px-8">
+      <section className="rounded-[24px] border border-[#dfe7f1] bg-white px-8 py-12 text-center shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
+        <h1 className="text-[28px] font-semibold tracking-[-0.03em] text-[#223654]">
+          There&apos;s nothing here
+        </h1>
+        <p className="mt-3 text-[15px] leading-7 text-[#6c7a8e]">
+          This supplier does not exist or is no longer available to buyers.
+        </p>
+        <div className="mt-6">
+          <Link
+            href="/buyer/search"
+            className="inline-flex items-center justify-center rounded-xl bg-[#223654] px-5 py-3 text-[14px] font-semibold text-white transition hover:bg-[#1a2a42]"
+          >
+            Back to search
+          </Link>
+        </div>
+      </section>
+    </main>
+  );
+}
+
 export default async function SupplierProfilePage({
   params,
 }: SupplierProfilePageProps) {
@@ -58,7 +82,7 @@ export default async function SupplierProfilePage({
   const supplier = await getSupplierProfileDetails(numericSupplierId);
 
   if (!supplier) {
-    notFound();
+    return <SupplierUnavailableState />;
   }
 
   const categoryTags = Array.from(
@@ -232,41 +256,9 @@ export default async function SupplierProfilePage({
             </div>
           </div>
 
-          <div className="flex shrink-0 items-start gap-3 pt-6 lg:pt-8">
-            <Link
-              href={`/buyer/messages?supplierId=${supplier.supplierId}`}
-              className="inline-flex h-12 items-center gap-2 rounded-xl border border-[#e4e9f1] bg-white px-6 text-[14px] font-medium text-[#8c97a7] transition hover:border-[#cfd8e6] hover:text-[#223654]"
-            >
-              <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-                <path
-                  d="M7 17.25 3.75 20V6.75a2 2 0 0 1 2-2h12.5a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2H7Z"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.7"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              Message
-            </Link>
-
-            <button
-              type="button"
-              className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-[#e4e9f1] bg-white text-[#a2acbb] transition hover:border-[#cfd8e6] hover:text-[#223654]"
-              aria-label="Save supplier"
-            >
-              <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
-                <path
-                  d="M7.5 4.5h9a1.5 1.5 0 0 1 1.5 1.5v13.5L12 16.5l-6 3V6A1.5 1.5 0 0 1 7.5 4.5Z"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.7"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-          </div>
+          <BuyerSupplierProfileActions
+            supplierId={supplier.supplierId}
+          />
         </div>
       </section>
 

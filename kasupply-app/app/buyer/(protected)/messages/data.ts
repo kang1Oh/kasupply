@@ -30,6 +30,7 @@ type UserRow = {
   auth_user_id?: string | null;
   name: string | null;
   email: string | null;
+  avatar_url?: string | null;
 };
 
 function asNumber(value: unknown): number | null {
@@ -141,7 +142,7 @@ async function getCurrentBuyerContext() {
 
   const { data: appUser, error: appUserError } = await supabase
     .from("users")
-    .select("user_id, auth_user_id, name, email")
+    .select("user_id, auth_user_id, name, email, avatar_url")
     .eq("auth_user_id", authUser.id)
     .single<UserRow>();
 
@@ -282,6 +283,7 @@ export type ConversationListItem = {
   supplierId: number | null;
   name: string;
   initials: string;
+  avatarUrl: string | null;
   subtitle: string;
   latestMessage: string;
   latestMessageAt: string | null;
@@ -304,6 +306,7 @@ export type ConversationListItem = {
 export type BuyerMessagesData = {
   currentUserId: string;
   buyerInitials: string;
+  buyerAvatarUrl: string | null;
   filter: "all" | "unread";
   query: string;
   conversations: ConversationListItem[];
@@ -414,7 +417,7 @@ export async function getBuyerMessagesData(params?: {
       if (userIds.length > 0) {
         const { data: users } = await supabase
           .from("users")
-          .select("user_id, name, email")
+          .select("user_id, name, email, avatar_url")
           .in("user_id", userIds);
 
         for (const user of (users as UserRow[] | null) ?? []) {
@@ -598,6 +601,7 @@ export async function getBuyerMessagesData(params?: {
         supplierId,
         name,
         initials: getInitials(name),
+        avatarUrl: contactUser?.avatar_url ?? null,
         subtitle: subtitle || "Supplier",
         latestMessage: latestPayload.previewText || "No messages yet.",
         latestMessageAt,
@@ -697,6 +701,7 @@ export async function getBuyerMessagesData(params?: {
           initials: getInitials(
             buildConversationName(draftBusinessProfile, draftSupplierId),
           ),
+          avatarUrl: draftContactUser?.avatar_url ?? null,
           subtitle: draftSubtitle || "Supplier",
           latestMessage: "Start a conversation with this supplier.",
           latestMessageAt: null,
@@ -750,6 +755,7 @@ export async function getBuyerMessagesData(params?: {
   return {
     currentUserId,
     buyerInitials: getInitials(buyerBusinessName),
+    buyerAvatarUrl: appUser.avatar_url ?? null,
     filter,
     query,
     conversations: filteredConversations,

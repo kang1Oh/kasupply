@@ -68,6 +68,7 @@ function getReturnTo(formData: FormData, fallback = "/supplier/rfq") {
 function revalidateRfqPaths(returnTo: string) {
   revalidatePath("/supplier/rfq");
   revalidatePath("/supplier/dashboard");
+  revalidatePath("/supplier/notifications");
   revalidatePath(returnTo);
 }
 

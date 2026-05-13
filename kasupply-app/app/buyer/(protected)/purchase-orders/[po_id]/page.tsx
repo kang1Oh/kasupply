@@ -2,8 +2,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ModalShell } from "@/components/modals";
-import { cancelPurchaseOrder, uploadPurchaseOrderReceipt } from "../actions";
-import { getBuyerPurchaseOrderDetail, getBuyerPurchaseOrderReviewDraft } from "../data";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
+import {
+  cancelPurchaseOrder,
+  resetPurchaseOrderReceipt,
+  uploadPurchaseOrderReceipt,
+} from "../actions";
+import {
+  getBuyerPurchaseOrderDetail,
+  getBuyerPurchaseOrderReviewDraft,
+  type BuyerPurchaseOrderView,
+} from "../data";
 import { CompletedOrderActions } from "./completed-order-actions";
 import { ReceiptUploadDetailPanel } from "./receipt-upload-detail-panel";
 import { ReceiptUploadWidget } from "./receipt-upload-widget";
@@ -17,8 +26,6 @@ const BUYER_SUPPLIER_AVATAR_CLASS =
   "flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-[#eefaf3] text-[22px] font-medium leading-none text-[#4f9b72]";
 const BUYER_PO_CANCEL_BUTTON_CLASS =
   "inline-flex h-[44px] items-center justify-center px-[12px] text-[15px] font-medium leading-none text-[#ff3b30] transition hover:text-[#e5352b]";
-const BUYER_PO_PRIMARY_DISABLED_BUTTON_CLASS =
-  "inline-flex h-[44px] min-w-[198px] items-center justify-center rounded-[12px] bg-[#b7c2d3] px-[20px] text-[15px] font-medium leading-none text-white";
 
 function formatCurrency(value: number | null) {
   if (value === null || Number.isNaN(value)) return "Not available";
@@ -63,14 +70,6 @@ function formatStepTimestamp(value: string | null) {
   }).format(parsed);
 }
 
-function toTitleCase(value: string | null) {
-  return String(value ?? "")
-    .split("_")
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
 function formatBusinessType(value: string | null | undefined) {
   if (!value) return null;
 
@@ -88,17 +87,6 @@ function buildSupplierSubtitle(
   return [formatBusinessType(businessType), location].filter(Boolean).join(" \u00b7 ");
 }
 
-function getInitials(value: string | null | undefined) {
-  const initials = String(value || "")
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join("");
-
-  return initials || "PO";
-}
-
 function getPurchaseOrderCode(poId: number, createdAt: string | null) {
   if (!createdAt) {
     return `PO-${String(poId).padStart(4, "0")}`;
@@ -110,23 +98,6 @@ function getPurchaseOrderCode(poId: number, createdAt: string | null) {
     : parsed.getFullYear();
 
   return `PO-${year}-${String(poId).padStart(4, "0")}`;
-}
-
-function getStatusBadgeClasses(status: string) {
-  switch (status) {
-    case "confirmed":
-      return "border-[#ffe2cc] bg-[#fff2e7] text-[#f08b38]";
-    case "processing":
-      return "border-[#ffe2cc] bg-[#fff2e7] text-[#f08b38]";
-    case "shipped":
-      return "border-[#ead7fb] bg-[#f7efff] text-[#a15bd3]";
-    case "completed":
-      return "border-[#d7f0dd] bg-[#edf8ef] text-[#2f7a45]";
-    case "cancelled":
-      return "border-[#ffd9d6] bg-[#fff1f0] text-[#e05547]";
-    default:
-      return "border-[#dde3eb] bg-[#f8fafc] text-[#526176]";
-  }
 }
 
 function getFileName(path: string | null) {
@@ -194,11 +165,13 @@ function DetailMetric({
 
 function SupplierInfoCard({
   supplierName,
+  supplierAvatarUrl,
   supplierSubtitle,
   supplierProfileHref,
   supplierVerified,
 }: {
   supplierName: string;
+  supplierAvatarUrl: string | null;
   supplierSubtitle: string;
   supplierProfileHref: string;
   supplierVerified: boolean;
@@ -207,7 +180,14 @@ function SupplierInfoCard({
     <SectionCard title="Supplier Info">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className={BUYER_SUPPLIER_ROW_CLASS}>
-          <div className={BUYER_SUPPLIER_AVATAR_CLASS}>{getInitials(supplierName)}</div>
+          <ProfileAvatar
+            name={supplierName}
+            avatarUrl={supplierAvatarUrl}
+            alt={`${supplierName} avatar`}
+            fallbackInitials="PO"
+            sizes="44px"
+            className={BUYER_SUPPLIER_AVATAR_CLASS}
+          />
 
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-[8px]">
@@ -851,6 +831,17 @@ export default async function BuyerPurchaseOrderDetailPage({
     notFound();
   }
 
+  const orderWithRequestedProductName = order as BuyerPurchaseOrderView & {
+    requestedProductName?: string | null;
+    requested_product_name?: string | null;
+  };
+  const requestedProductName =
+    orderWithRequestedProductName.requestedProductName ??
+    orderWithRequestedProductName.requested_product_name;
+  if (!order.productName && requestedProductName) {
+    order.productName = requestedProductName;
+  }
+
   const canCancelOrder = ["confirmed", "processing"].includes(order.status);
   const messageSupplierHref = order.conversationId
     ? `/buyer/messages?conversation=${order.conversationId}`
@@ -869,8 +860,8 @@ export default async function BuyerPurchaseOrderDetailPage({
   );
   const stepTimeline = {
     confirmed: order.confirmedAt ?? order.createdAt,
-    processing: order.status === "processing" ? order.updatedAt : null,
-    shipped: order.status === "shipped" ? order.updatedAt : null,
+    processing: order.processingAt,
+    shipped: order.shippedAt,
     completed: order.completedAt,
   };
   const orderSummaryTotal =
@@ -881,8 +872,6 @@ export default async function BuyerPurchaseOrderDetailPage({
   const shouldShowReceiptUpload =
     order.status === "shipped" &&
     ["not_uploaded", "rejected"].includes(order.receiptStatus);
-  const shouldPromptReceiptConfirmation =
-    order.status === "shipped" && order.receiptStatus === "not_uploaded";
   const shouldShowReceiptResubmission =
     order.status === "shipped" && order.receiptStatus === "rejected";
   const shouldShowReceiptPendingReview =
@@ -901,8 +890,8 @@ export default async function BuyerPurchaseOrderDetailPage({
   const confirmedNotes = order.additionalNotes || order.specifications || "No additional instructions provided.";
   const processingNotes = confirmedNotes;
   const shippedNotes = confirmedNotes;
-  const processingStartedAt = order.updatedAt ?? order.confirmedAt ?? order.createdAt;
-  const shippedAt = order.updatedAt ?? order.confirmedAt ?? order.createdAt;
+  const processingStartedAt = order.processingAt ?? order.confirmedAt ?? order.createdAt;
+  const shippedAt = order.shippedAt ?? order.processingAt ?? order.confirmedAt ?? order.createdAt;
   const uploadReceiptCompletedAt = order.completedAt ?? null;
   const deliveryFeeLabel =
     order.status === "confirmed" && (!order.deliveryFee || order.deliveryFee <= 0)
@@ -955,6 +944,7 @@ export default async function BuyerPurchaseOrderDetailPage({
 
           <SupplierInfoCard
             supplierName={supplierName}
+            supplierAvatarUrl={order.supplierInfo?.avatarUrl ?? null}
             supplierSubtitle={supplierSubtitle}
             supplierProfileHref={supplierProfileHref}
             supplierVerified={Boolean(order.supplierInfo?.verifiedBadge)}
@@ -1044,9 +1034,14 @@ export default async function BuyerPurchaseOrderDetailPage({
 
             <div className="flex items-center justify-between gap-4 px-[22px] py-[25px]">
               <div className={BUYER_SUPPLIER_ROW_CLASS}>
-                <div className={BUYER_SUPPLIER_AVATAR_CLASS}>
-                  {getInitials(supplierName)}
-                </div>
+                <ProfileAvatar
+                  name={supplierName}
+                  avatarUrl={order.supplierInfo?.avatarUrl ?? null}
+                  alt={`${supplierName} avatar`}
+                  fallbackInitials="PO"
+                  sizes="44px"
+                  className={BUYER_SUPPLIER_AVATAR_CLASS}
+                />
 
                 <div className="min-w-0">
                   <div className="flex items-center gap-[8px]">
@@ -1177,18 +1172,17 @@ export default async function BuyerPurchaseOrderDetailPage({
 
           <div className="flex items-center justify-end gap-[12px] pt-[2px]">
             <Link
+              href="/buyer/purchase-orders"
+              className="inline-flex h-[44px] items-center justify-center rounded-[10px] border border-[#D6DFEA] bg-white px-[22px] text-[14px] font-medium text-[#8A97A8] transition hover:border-[#B9C7D8] hover:text-[#243B68]"
+            >
+              Back to Orders
+            </Link>
+            <Link
               href={buildDetailHref(order.poId, { modal: "cancel" })}
               className={BUYER_PO_CANCEL_BUTTON_CLASS}
             >
               Cancel Order
             </Link>
-            <button
-              type="button"
-              disabled
-              className={BUYER_PO_PRIMARY_DISABLED_BUTTON_CLASS}
-            >
-              Mark as Completed
-            </button>
           </div>
         </main>
 
@@ -1254,6 +1248,7 @@ export default async function BuyerPurchaseOrderDetailPage({
 
           <SupplierInfoCard
             supplierName={supplierName}
+            supplierAvatarUrl={order.supplierInfo?.avatarUrl ?? null}
             supplierSubtitle={supplierSubtitle}
             supplierProfileHref={supplierProfileHref}
             supplierVerified={Boolean(order.supplierInfo?.verifiedBadge)}
@@ -1281,23 +1276,22 @@ export default async function BuyerPurchaseOrderDetailPage({
           <NotificationCard
             tone="orange"
             title="Order is being processed"
-            description="You are currently preparing this order. Mark as shipped once it has been dispatched to the buyer."
+            description="Your supplier is currently preparing this order. You will be notified once it has been dispatched."
           />
 
           <div className="flex items-center justify-end gap-[12px] pt-[2px]">
+            <Link
+              href="/buyer/purchase-orders"
+              className="inline-flex h-[44px] items-center justify-center rounded-[10px] border border-[#D6DFEA] bg-white px-[22px] text-[14px] font-medium text-[#8A97A8] transition hover:border-[#B9C7D8] hover:text-[#243B68]"
+            >
+              Back to Orders
+            </Link>
             <Link
               href={buildDetailHref(order.poId, { modal: "cancel" })}
               className={BUYER_PO_CANCEL_BUTTON_CLASS}
             >
               Cancel Order
             </Link>
-            <button
-              type="button"
-              disabled
-              className={BUYER_PO_PRIMARY_DISABLED_BUTTON_CLASS}
-            >
-              Mark as Completed
-            </button>
           </div>
         </main>
 
@@ -1349,23 +1343,23 @@ export default async function BuyerPurchaseOrderDetailPage({
                 </p>
               </div>
 
-              <div className="pt-[4px]">
-                <span className="inline-flex items-center gap-[10px] rounded-full bg-[#DDFBEA] px-[14px] py-[8px] text-[14px] font-medium leading-none text-[#249A62]">
-                  <span className="h-[10px] w-[10px] rounded-full bg-[#249A62]" />
-                  Completed
-                </span>
-              </div>
-            </section>
+            <div className="pt-[4px]">
+              <span className="inline-flex items-center gap-[10px] rounded-full bg-[#F5E8FF] px-[14px] py-[8px] text-[14px] font-medium leading-none text-[#A54FF6]">
+                <span className="h-[10px] w-[10px] rounded-full bg-[#A54FF6]" />
+                Shipped
+              </span>
+            </div>
+          </section>
 
-            <UploadReceiptProgressCard
-              confirmedAt={order.confirmedAt ?? order.createdAt}
-              processingAt={processingStartedAt}
-              shippedAt={shippedAt}
-              completedAt={uploadReceiptCompletedAt}
-            />
+          <ShippedProgressCard
+            confirmedAt={order.confirmedAt ?? order.createdAt}
+            processingAt={processingStartedAt}
+            shippedAt={shippedAt}
+          />
 
             <SupplierInfoCard
               supplierName={supplierName}
+              supplierAvatarUrl={order.supplierInfo?.avatarUrl ?? null}
               supplierSubtitle={supplierSubtitle}
               supplierProfileHref={supplierProfileHref}
               supplierVerified={Boolean(order.supplierInfo?.verifiedBadge)}
@@ -1397,6 +1391,7 @@ export default async function BuyerPurchaseOrderDetailPage({
                 currentFileName={order.receiptFilePath ? getFileName(order.receiptFilePath) : null}
                 reviewNotes={order.receiptReviewNotes}
                 submitAction={uploadPurchaseOrderReceipt}
+                resetAction={resetPurchaseOrderReceipt}
               />
             ) : null}
 
@@ -1440,18 +1435,11 @@ export default async function BuyerPurchaseOrderDetailPage({
 
             <div className="flex items-center justify-end gap-[12px] pt-[2px]">
               <Link
-                href={messageSupplierHref}
-                className="inline-flex h-[44px] items-center justify-center px-[6px] text-[14px] font-semibold text-[#ff5a47] transition hover:text-[#ef4638]"
+                href="/buyer/purchase-orders"
+                className="inline-flex h-[44px] items-center justify-center rounded-[10px] border border-[#D6DFEA] bg-white px-[22px] text-[14px] font-medium text-[#8A97A8] transition hover:border-[#B9C7D8] hover:text-[#243B68]"
               >
-                Raise Dispute
+                Back to Orders
               </Link>
-              <button
-                type="button"
-                disabled
-                className={BUYER_PO_PRIMARY_DISABLED_BUTTON_CLASS}
-              >
-                Mark as Completed
-              </button>
             </div>
           </main>
         </>
@@ -1497,6 +1485,7 @@ export default async function BuyerPurchaseOrderDetailPage({
 
             <SupplierInfoCard
               supplierName={supplierName}
+              supplierAvatarUrl={order.supplierInfo?.avatarUrl ?? null}
               supplierSubtitle={supplierSubtitle}
               supplierProfileHref={supplierProfileHref}
               supplierVerified={Boolean(order.supplierInfo?.verifiedBadge)}
@@ -1524,10 +1513,13 @@ export default async function BuyerPurchaseOrderDetailPage({
             <NotificationCard
               tone="purple"
               title="Order on its way"
-              description={`Order was dispatched on ${formatDate(
-                shippedAt,
-              )}. Waiting for the buyer to confirm receipt. Collect COD payment upon delivery.`}
+              description="This order has been dispatched by the supplier. Once it is delivered and payment is completed, upload the receipt to complete the order."
             />
+              <ReceiptUploadWidget
+                poId={order.poId}
+                mode="first_upload"
+                submitAction={uploadPurchaseOrderReceipt}
+              />
 
           <div className="flex items-center justify-end gap-[12px] pt-[2px]">
             <Link
@@ -1536,14 +1528,6 @@ export default async function BuyerPurchaseOrderDetailPage({
             >
               Back to Orders
             </Link>
-            {shouldPromptReceiptConfirmation ? (
-              <Link
-                href={buildDetailHref(order.poId, { step: "upload-receipt" })}
-                className="inline-flex h-[44px] min-w-[132px] items-center justify-center rounded-[8px] bg-[#6f35d4] px-[18px] text-[14px] font-semibold text-white transition hover:bg-[#5f2abd]"
-              >
-                Confirm Receipt
-              </Link>
-            ) : null}
           </div>
         </main>
       </>
@@ -1586,9 +1570,14 @@ export default async function BuyerPurchaseOrderDetailPage({
         <SectionCard title="Supplier Info">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className={BUYER_SUPPLIER_ROW_CLASS}>
-              <div className={BUYER_SUPPLIER_AVATAR_CLASS}>
-                {getInitials(supplierName)}
-              </div>
+              <ProfileAvatar
+                name={supplierName}
+                avatarUrl={order.supplierInfo?.avatarUrl ?? null}
+                alt={`${supplierName} avatar`}
+                fallbackInitials="PO"
+                sizes="44px"
+                className={BUYER_SUPPLIER_AVATAR_CLASS}
+              />
 
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-[8px]">
@@ -1744,6 +1733,7 @@ export default async function BuyerPurchaseOrderDetailPage({
                 reviewNotes={order.receiptReviewNotes}
                 currentFileName={getFileName(order.receiptFilePath)}
                 submitAction={uploadPurchaseOrderReceipt}
+                resetAction={resetPurchaseOrderReceipt}
             />
           </>
         ) : null}

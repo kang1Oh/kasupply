@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Bell, MessageSquare } from "lucide-react";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import {
   SUPPLIER_CARD_ACTION_ROW_CLASS,
   SUPPLIER_CARD_PRIMARY_ACTION_CLASS,
@@ -212,11 +213,13 @@ export default async function SupplierPurchaseOrdersPage() {
                   >
                     <div className="flex items-start justify-between gap-[20px]">
                       <div className="flex min-w-0 items-start gap-[14px]">
-                        <div
+                        <ProfileAvatar
+                          name={order.buyer}
+                          avatarUrl={order.buyerInfo?.avatarUrl ?? null}
+                          fallbackInitials={getInitials(order.buyer)}
+                          sizes="54px"
                           className={`flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-[14px] text-[24px] font-medium ${getInitialsClassName(index)}`}
-                        >
-                          {getInitials(order.buyer)}
-                        </div>
+                        />
 
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-[8px]">

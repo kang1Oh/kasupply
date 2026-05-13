@@ -78,6 +78,6 @@ export async function generateSearchEmbedding(params: {
     );
   }
 
-  return SEARCH_EMBEDDING_DIMENSION === 3072 ? values : normalizeVector(values);
+  return normalizeVector(values);
 }
 

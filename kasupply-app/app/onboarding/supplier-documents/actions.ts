@@ -10,6 +10,7 @@ import {
   safeQueueDocumentVerification,
   safeSyncSupplierVerificationProfile,
 } from "@/lib/verification/onboarding";
+import { buildVerificationFailureUserMessage } from "@/lib/verification/user-facing-errors";
 import { getSupplierDocumentRequirements } from "@/lib/supplier-requirements";
 
 type ExistingDocumentRow = {
@@ -47,6 +48,11 @@ type SavedSupplierDocumentRow = {
   review_notes: string | null;
 };
 
+type VerificationRunOutcomeRow = {
+  status: string;
+  error_message: string | null;
+};
+
 export type SupplierDocumentActionResult = {
   ok: boolean;
   docTypeId: number;
@@ -73,7 +79,6 @@ export type SupplierBulkVerificationResult = {
 };
 
 const ALLOWED_DOCUMENT_MIME_TYPES = new Set([
-  "application/pdf",
   "image/jpeg",
   "image/jpg",
   "image/png",
@@ -123,6 +128,7 @@ function revalidateSupplierDocumentPaths() {
   revalidatePath("/onboarding/supplier-documents");
   revalidatePath("/dashboard");
   revalidatePath("/supplier/dashboard");
+  revalidatePath("/supplier/notifications");
 }
 
 function readDocumentTypeName(
@@ -159,6 +165,33 @@ function getSupplierVerificationPriority(documentTypeName: string) {
   }
 
   return 10;
+}
+
+async function assertVerificationRunSucceeded(params: {
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  runId: number;
+  documentLabel: string;
+}) {
+  const { data: verificationRun, error: verificationRunError } = await params.supabase
+    .from("verification_runs")
+    .select("status, error_message")
+    .eq("run_id", params.runId)
+    .maybeSingle<VerificationRunOutcomeRow>();
+
+  if (verificationRunError) {
+    throw new Error(
+      verificationRunError.message || "Failed to load the verification run result."
+    );
+  }
+
+  if (verificationRun?.status === "failed") {
+    throw new Error(
+      buildVerificationFailureUserMessage({
+        documentLabel: params.documentLabel,
+        rawErrorMessage: verificationRun.error_message,
+      })
+    );
+  }
 }
 
 export async function uploadSupplierDocument(
@@ -358,6 +391,12 @@ export async function processSupplierDocumentVerification(
     throw new Error("Supplier document verification could not be started. Please try again.");
   }
 
+  await assertVerificationRunSucceeded({
+    supabase,
+    runId: queuedRun.run_id,
+    documentLabel: existingDocumentType.document_type_name,
+  });
+
   await safeSyncSupplierVerificationProfile(businessProfile.profile_id);
 
   const { data: verifiedDocument, error: verifiedDocumentError } = await supabase
@@ -505,6 +544,12 @@ export async function processAllSupplierDocumentVerifications(): Promise<Supplie
     if (!queuedRun) {
       throw new Error(`Verification could not be started for ${documentTypeName}.`);
     }
+
+    await assertVerificationRunSucceeded({
+      supabase,
+      runId: queuedRun.run_id,
+      documentLabel: documentTypeName,
+    });
 
     const { data: verifiedDocument, error: verifiedDocumentError } = await supabase
       .from("business_documents")

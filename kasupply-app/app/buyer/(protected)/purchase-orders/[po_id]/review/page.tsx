@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { submitPurchaseOrderReview } from "../../actions";
 import { getBuyerPurchaseOrderReviewDraft } from "../../data";
 import { ReviewPageClient } from "./review-page-client";
@@ -32,17 +33,6 @@ function formatCurrency(value: number | null) {
     minimumFractionDigits: hasDecimals ? 2 : 0,
     maximumFractionDigits: 2,
   }).format(value);
-}
-
-function getInitials(value: string | null | undefined) {
-  const initials = String(value || "")
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join("");
-
-  return initials || "PO";
 }
 
 function getPurchaseOrderCode(poId: number, createdAt: string | null) {
@@ -196,9 +186,14 @@ export default async function BuyerPurchaseOrderReviewPage({
 
         <div className={`${REVIEW_CARD_BODY_CLASS} flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between`}>
           <div className="flex min-w-0 items-center gap-[12px]">
-            <div className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-[#eefaf3] text-[22px] font-medium leading-none text-[#4f9b72]">
-              {getInitials(supplierName)}
-            </div>
+            <ProfileAvatar
+              name={supplierName}
+              avatarUrl={order.supplierInfo?.avatarUrl ?? null}
+              alt={`${supplierName} avatar`}
+              fallbackInitials="PO"
+              sizes="44px"
+              className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-[#eefaf3] text-[22px] font-medium leading-none text-[#4f9b72]"
+            />
 
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-[8px]">

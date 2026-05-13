@@ -7,6 +7,7 @@ import {
   safeQueueDocumentVerification,
   safeSyncBuyerVerificationProfile,
 } from "@/lib/verification/onboarding";
+import { buildVerificationFailureUserMessage } from "@/lib/verification/user-facing-errors";
 
 const ALLOWED_BUYER_DOCUMENT_MIME_TYPES = new Set([
   "image/jpeg",
@@ -27,6 +28,11 @@ type BuyerDocumentActionResult = {
   status: string | null;
   reviewNotes: string | null;
   message: string;
+};
+
+type VerificationRunOutcomeRow = {
+  status: string;
+  error_message: string | null;
 };
 
 async function loadAuthenticatedBuyerContext() {
@@ -97,6 +103,33 @@ function revalidateBuyerDocumentPaths() {
   revalidatePath("/dashboard");
   revalidatePath("/buyer/account/edit");
   revalidatePath("/buyer/account");
+}
+
+async function assertVerificationRunSucceeded(params: {
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  runId: number;
+  documentLabel: string;
+}) {
+  const { data: verificationRun, error: verificationRunError } = await params.supabase
+    .from("verification_runs")
+    .select("status, error_message")
+    .eq("run_id", params.runId)
+    .maybeSingle<VerificationRunOutcomeRow>();
+
+  if (verificationRunError) {
+    throw new Error(
+      verificationRunError.message || "Failed to load the verification run result."
+    );
+  }
+
+  if (verificationRun?.status === "failed") {
+    throw new Error(
+      buildVerificationFailureUserMessage({
+        documentLabel: params.documentLabel,
+        rawErrorMessage: verificationRun.error_message,
+      })
+    );
+  }
 }
 
 export async function uploadBuyerDocument(
@@ -210,11 +243,21 @@ export async function processBuyerDocumentVerification(): Promise<BuyerDocumentA
     throw new Error("Upload a DTI document first before starting verification.");
   }
 
-  await safeQueueDocumentVerification({
+  const queuedRun = await safeQueueDocumentVerification({
     profileId: businessProfile.profile_id,
     docId: savedDocument.doc_id,
     kind: "buyer_document",
     documentTypeName: dtiDocumentType.document_type_name,
+  });
+
+  if (!queuedRun) {
+    throw new Error("Buyer document verification could not be started. Please try again.");
+  }
+
+  await assertVerificationRunSucceeded({
+    supabase,
+    runId: queuedRun.run_id,
+    documentLabel: dtiDocumentType.document_type_name,
   });
 
   await safeSyncBuyerVerificationProfile(businessProfile.profile_id);

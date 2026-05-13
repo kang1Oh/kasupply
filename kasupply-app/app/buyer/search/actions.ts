@@ -31,6 +31,8 @@ export type SupplierSearchItem = {
     description: string | null;
   }[];
   certificationsCount: number;
+  reviewCount: number;
+  averageOverallRating: number | null;
   searchScore: number | null;
   semanticSimilarity: number | null;
   keywordScore: number | null;
@@ -93,6 +95,11 @@ type ProductRow = {
         category_name?: string | null;
       }[]
     | null;
+};
+
+type SupplierReviewSummaryRow = {
+  supplier_id: number;
+  overall_rating: number;
 };
 
 type SearchIntent = {
@@ -503,15 +510,20 @@ export async function getSupplierSearchResults(
     .from("supplier_certifications")
     .select("supplier_id, status")
     .eq("status", "approved");
+  const supplierReviewRowsPromise = supabase
+    .from("supplier_reviews")
+    .select("supplier_id, overall_rating");
 
   const [
     { data: supplierRows, error: supplierError },
     { data: productRows, error: productError },
     { data: certificationRows, error: certificationError },
+    { data: supplierReviewRows, error: supplierReviewError },
   ] = await Promise.all([
     supplierRowsPromise,
     productRowsPromise,
     certificationRowsPromise,
+    supplierReviewRowsPromise,
   ]);
 
   if (supplierError) {
@@ -571,11 +583,12 @@ export async function getSupplierSearchResults(
   );
 
   const avatarByUserId = new Map<string, string | null>();
+  const activeUserIds = new Set<string>();
 
   if (userIds.length > 0) {
     const { data: userRows, error: userError } = await supabase
       .from("users")
-      .select("user_id, avatar_url")
+      .select("user_id, avatar_url, status")
       .in("user_id", userIds);
 
     if (userError) {
@@ -585,6 +598,10 @@ export async function getSupplierSearchResults(
 
     for (const row of userRows ?? []) {
       avatarByUserId.set(row.user_id, row.avatar_url);
+
+      if (normalizeText(row.status) === "active") {
+        activeUserIds.add(row.user_id);
+      }
     }
   }
 
@@ -596,6 +613,11 @@ export async function getSupplierSearchResults(
   if (certificationError) {
     console.error("Error fetching certifications:", certificationError);
     throw new Error("Failed to fetch certifications.");
+  }
+
+  if (supplierReviewError) {
+    console.error("Error fetching supplier reviews:", supplierReviewError);
+    throw new Error("Failed to fetch supplier review summaries.");
   }
 
   const productsBySupplier = new Map<number, SupplierSearchItem["products"]>();
@@ -631,6 +653,35 @@ export async function getSupplierSearchResults(
     );
   }
 
+  const reviewSummaryBySupplier = new Map<
+    number,
+    {
+      reviewCount: number;
+      averageOverallRating: number | null;
+    }
+  >();
+
+  for (const row of ((supplierReviewRows as SupplierReviewSummaryRow[] | null) ?? [])) {
+    const current = reviewSummaryBySupplier.get(row.supplier_id) ?? {
+      reviewCount: 0,
+      averageOverallRating: 0,
+    };
+
+    current.reviewCount += 1;
+    current.averageOverallRating = (current.averageOverallRating ?? 0) + Number(row.overall_rating);
+    reviewSummaryBySupplier.set(row.supplier_id, current);
+  }
+
+  for (const [supplierId, summary] of reviewSummaryBySupplier) {
+    reviewSummaryBySupplier.set(supplierId, {
+      reviewCount: summary.reviewCount,
+      averageOverallRating:
+        summary.reviewCount > 0
+          ? Number(((summary.averageOverallRating ?? 0) / summary.reviewCount).toFixed(1))
+          : null,
+    });
+  }
+
   const results: SupplierSearchItem[] = [];
 
   for (const row of safeSupplierRows) {
@@ -639,6 +690,7 @@ export async function getSupplierSearchResults(
       : row.business_profiles;
 
     if (!profile) continue;
+    if (!profile.user_id || !activeUserIds.has(profile.user_id)) continue;
 
     const supplierProducts = productsBySupplier.get(row.supplier_id) ?? [];
 
@@ -662,6 +714,9 @@ export async function getSupplierSearchResults(
         description: product.description,
       })),
       certificationsCount: certificationCountBySupplier.get(row.supplier_id) ?? 0,
+      reviewCount: reviewSummaryBySupplier.get(row.supplier_id)?.reviewCount ?? 0,
+      averageOverallRating:
+        reviewSummaryBySupplier.get(row.supplier_id)?.averageOverallRating ?? null,
       searchScore: null,
       semanticSimilarity: null,
       keywordScore: null,
@@ -671,6 +726,10 @@ export async function getSupplierSearchResults(
   }
 
   let filteredResults = results.filter((supplier) => {
+    if (!supplier.verifiedBadge && !supplier.verified) {
+      return false;
+    }
+
     if (verifiedOnly && !supplier.verifiedBadge) {
       return false;
     }

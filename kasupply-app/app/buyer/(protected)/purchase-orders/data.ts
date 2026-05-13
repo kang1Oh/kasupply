@@ -32,6 +32,7 @@ type UserRow = {
   user_id?: string;
   name?: string | null;
   email?: string | null;
+  avatar_url?: string | null;
 };
 
 type ProductRow = {
@@ -58,6 +59,7 @@ type EngagementRow = {
 type RfqRow = {
   rfq_id: number;
   product_id: number | null;
+  requested_product_name?: string | null;
   unit: string | null;
   specifications: string | null;
   created_at?: string | null;
@@ -78,6 +80,7 @@ export type PartyInfo = {
   businessName: string;
   businessType: string | null;
   verifiedBadge: boolean;
+  avatarUrl: string | null;
   contactName: string | null;
   phone: string | null;
   email: string | null;
@@ -107,6 +110,8 @@ export type BuyerPurchaseOrderView = {
   receiptReviewNotes: string | null;
   createdAt: string | null;
   confirmedAt: string | null;
+  processingAt: string | null;
+  shippedAt: string | null;
   completedAt: string | null;
   updatedAt: string | null;
   quoteId: number | null;
@@ -240,7 +245,7 @@ function getRfqProductName(rfq: RfqRow | null) {
   }
 
   const product = Array.isArray(rfq.products) ? rfq.products[0] : rfq.products;
-  return product?.product_name ?? null;
+  return product?.product_name ?? rfq.requested_product_name?.trim() ?? null;
 }
 
 function buildPartyInfo(
@@ -253,6 +258,7 @@ function buildPartyInfo(
     businessName: businessProfile?.business_name ?? fallbackBusinessName,
     businessType: businessProfile?.business_type ?? null,
     verifiedBadge: Boolean(supplierProfile?.verified_badge),
+    avatarUrl: user?.avatar_url ?? null,
     contactName: user?.name ?? null,
     phone: businessProfile?.contact_number ?? null,
     email: user?.email ?? null,
@@ -345,7 +351,7 @@ async function getSupplierInfoMap(
     if (userIds.length > 0) {
       const { data: users, error: usersError } = await supabase
         .from("users")
-        .select("user_id, name, email")
+        .select("user_id, name, email, avatar_url")
         .in("user_id", userIds);
 
       if (usersError) {
@@ -464,6 +470,7 @@ async function buildBuyerPurchaseOrderViews(
         `
         rfq_id,
         product_id,
+        requested_product_name,
         unit,
         specifications,
         preferred_delivery_date,
@@ -608,6 +615,8 @@ async function buildBuyerPurchaseOrderViews(
         receiptReviewNotes: readFirstString(row, ["receipt_review_notes"]),
         createdAt: readFirstString(row, ["created_at"]),
         confirmedAt: readFirstString(row, ["confirmed_at"]),
+        processingAt: readFirstString(row, ["processing_at"]),
+        shippedAt: readFirstString(row, ["shipped_at"]),
         completedAt: readFirstString(row, ["completed_at"]),
         updatedAt: readFirstString(row, ["updated_at"]),
         quoteId,
@@ -748,6 +757,7 @@ export async function getPurchaseOrderCreationDraft(rfqId: number, quoteId: numb
       rfq_id,
       buyer_id,
       product_id,
+      requested_product_name,
       created_at,
       unit,
       specifications,

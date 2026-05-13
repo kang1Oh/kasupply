@@ -63,7 +63,7 @@ async function OnboardingPageContent() {
   }
 
   if (status.isSupplierVerified && status.hasBusinessProfile) {
-    redirect("/supplier/dashboard");
+    redirect("/supplier/notifications");
   }
 
   const existingBusinessProfile = status.businessProfile

@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentBuyerContext } from "@/lib/buyer/rfq-workflows";
-import { getCurrentAppUser } from "@/lib/auth/get-current-app-user";
 
 type NotificationRow = {
   notification_id: number;
@@ -29,6 +28,7 @@ export type BuyerNotificationItem = {
   isRead: boolean;
   createdAt: string;
   targetPath: string | null;
+  category: "message" | "quotation_reply";
 };
 
 export type BuyerNotificationsData = {
@@ -49,6 +49,42 @@ function getBuyerRfqPath(rfq: RfqRouteRow) {
   return rfq.visibility === "public"
     ? `/buyer/sourcing-board/${rfq.rfq_id}`
     : `/buyer/rfqs/${rfq.rfq_id}`;
+}
+
+function classifyBuyerNotification(params: {
+  type: string;
+  referenceTable: string | null;
+  targetPath: string | null;
+}) {
+  const type = String(params.type ?? "").trim().toLowerCase();
+  const referenceTable = normalizeReferenceTable(params.referenceTable);
+  const targetPath = String(params.targetPath ?? "").trim().toLowerCase();
+
+  if (
+    type.includes("message") ||
+    referenceTable === "conversation" ||
+    referenceTable === "conversations" ||
+    targetPath.startsWith("/buyer/messages")
+  ) {
+    return "message" as const;
+  }
+
+  if (
+    targetPath.startsWith("/buyer/sourcing-board/") &&
+    (type.includes("quotation") ||
+      type.includes("quote") ||
+      type.includes("offer") ||
+      referenceTable === "quotation" ||
+      referenceTable === "quotations" ||
+      referenceTable === "negotiation_offer" ||
+      referenceTable === "negotiation_offers" ||
+      referenceTable === "rfq_engagement" ||
+      referenceTable === "rfq_engagements")
+  ) {
+    return "quotation_reply" as const;
+  }
+
+  return null;
 }
 
 async function getCurrentBuyerNotificationContext() {
@@ -347,49 +383,54 @@ export async function getBuyerNotifications(limit = 50): Promise<BuyerNotificati
 
   const rows = (data as NotificationRow[] | null) ?? [];
   const targetMap = await resolveBuyerNotificationTargets(rows);
+  const items = rows
+    .map((row) => {
+      const targetPath =
+        targetMap.get(getNotificationKey(row.reference_table, row.reference_id)) ?? null;
+      const category = classifyBuyerNotification({
+        type: row.type,
+        referenceTable: row.reference_table,
+        targetPath,
+      });
+
+      if (!category) {
+        return null;
+      }
+
+      return {
+        notificationId: row.notification_id,
+        type: row.type,
+        title: row.title,
+        body: row.body,
+        referenceTable: row.reference_table,
+        referenceId: row.reference_id,
+        isRead: row.is_read,
+        createdAt: row.created_at,
+        targetPath,
+        category,
+      } satisfies BuyerNotificationItem;
+    })
+    .filter((item): item is BuyerNotificationItem => item !== null);
 
   return {
-    items: rows.map((row) => ({
-      notificationId: row.notification_id,
-      type: row.type,
-      title: row.title,
-      body: row.body,
-      referenceTable: row.reference_table,
-      referenceId: row.reference_id,
-      isRead: row.is_read,
-      createdAt: row.created_at,
-      targetPath: targetMap.get(getNotificationKey(row.reference_table, row.reference_id)) ?? null,
-    })),
-    unreadCount: rows.filter((row) => !row.is_read).length,
-    totalCount: rows.length,
+    items,
+    unreadCount: items.filter((row) => !row.isRead).length,
+    totalCount: items.length,
   };
 }
 
 export async function getBuyerUnreadNotificationCount(userId?: string | null) {
-  const supabase = await createClient();
-  let appUserId = String(userId ?? "").trim();
+  try {
+    const notifications = await getBuyerNotifications(100);
 
-  if (!appUserId) {
-    const { user, error } = await getCurrentAppUser();
-
-    if (error || !user) {
-      return 0;
+    if (!userId) {
+      return notifications.unreadCount;
     }
 
-    appUserId = user.user_id;
-  }
-
-  const { count, error } = await supabase
-    .from("notifications")
-    .select("notification_id", { count: "exact", head: true })
-    .eq("user_id", appUserId)
-    .eq("is_read", false);
-
-  if (error) {
+    return notifications.items.filter((item) => !item.isRead).length;
+  } catch {
     return 0;
   }
-
-  return count ?? 0;
 }
 
 export async function getBuyerNotificationById(notificationId: number) {

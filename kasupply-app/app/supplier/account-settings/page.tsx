@@ -493,7 +493,7 @@ export default async function SupplierAccountSettingsPage({
             {activeTab === "business" ? (
               <SupplierBusinessProfileForm
                 headerBusinessName={businessProfile.business_name?.trim() || "Business Profile"}
-                headerInitials="DF"
+                avatarUrl={appUser.avatar_url}
                 userEmail={appUser.email?.trim() || ""}
                 businessProfile={{
                   businessName: businessProfile.business_name?.trim() || "",

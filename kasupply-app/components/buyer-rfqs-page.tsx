@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import type { BuyerRfqListItem } from "@/lib/buyer/rfq-workflows";
 
 type BuyerRfqsPageProps = {
@@ -85,17 +86,6 @@ function formatTargetPrice(value: number | null, unit: string) {
   }).format(value);
 
   return `\u20b1${amount} / ${unit}`;
-}
-
-function getInitials(value: string) {
-  const initials = value
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join("");
-
-  return initials || "RF";
 }
 
 function getReferenceCode(rfq: BuyerRfqListItem) {
@@ -308,6 +298,8 @@ export function BuyerRfqsPage({ rfqs }: BuyerRfqsPageProps) {
         {visibleRfqs.map((rfq, index) => {
           const status = statusById.get(rfq.rfqId) ?? getDisplayStatus(rfq);
           const supplierName = getPrimarySupplierName(rfq);
+          const supplierAvatarUrl =
+            rfq.supplierPreview?.avatarUrl ?? rfq.engagements[0]?.avatarUrl ?? null;
 
           return (
             <Link
@@ -318,15 +310,16 @@ export function BuyerRfqsPage({ rfqs }: BuyerRfqsPageProps) {
               <article className="overflow-hidden rounded-[20px] border border-[#E3E8EF] bg-white px-[26px] py-[24px] shadow-[0_1px_2px_rgba(15,23,42,0.02)] transition group-hover:border-[#d7dee8] group-hover:shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
                 <div className="flex items-start justify-between gap-[24px]">
                   <div className="flex min-w-0 items-start gap-[16px]">
-                    <div
-                      className={`flex h-[68px] w-[68px] shrink-0 items-center justify-center rounded-[16px] text-[24px] font-medium leading-none ${getAvatarClassName(
+                    <ProfileAvatar
+                      name={supplierName}
+                      avatarUrl={supplierAvatarUrl}
+                      alt={`${supplierName} avatar`}
+                      fallbackInitials="RF"
+                      sizes="68px"
+                      className={`flex h-[68px] w-[68px] shrink-0 items-center justify-center rounded-[16px] text-[22px] font-medium leading-none ${getAvatarClassName(
                         index,
                       )}`}
-                    >
-                      <span className="text-[22px] font-medium">
-                        {getInitials(supplierName)}
-                      </span>
-                    </div>
+                    />
 
                     <div className="min-w-0 pt-[4px]">
                       <p className="truncate text-[18px] font-[500] leading-none text-[#6C778A]">

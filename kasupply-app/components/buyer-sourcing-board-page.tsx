@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { BuyerRfqListItem } from "@/lib/buyer/rfq-workflows";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 
 type BuyerSourcingBoardPageProps = {
   buyerBusinessName: string;
+  buyerAvatarUrl: string | null;
   requests: BuyerRfqListItem[];
 };
 
@@ -91,17 +93,6 @@ function isPastDue(deadline: string) {
   }
 
   return parsed.getTime() < Date.now();
-}
-
-function getInitials(value: string) {
-  const initials = value
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join("");
-
-  return initials || "SB";
 }
 
 function getDescription(request: BuyerRfqListItem) {
@@ -190,6 +181,7 @@ function QuotationsIcon() {
 
 export function BuyerSourcingBoardPage({
   buyerBusinessName,
+  buyerAvatarUrl,
   requests,
 }: BuyerSourcingBoardPageProps) {
   const [selectedFilter, setSelectedFilter] = useState<FilterKey>("all");
@@ -344,9 +336,14 @@ export function BuyerSourcingBoardPage({
                 <div className="flex flex-col gap-[12px]">
                   <div className="flex flex-col gap-[12px] lg:flex-row lg:items-start lg:justify-between">
                     <div className="flex min-w-0 items-start gap-[14px]">
-                      <div className="flex h-[55px] w-[55px] shrink-0 items-center justify-center rounded-full bg-[#FFC3D0] text-[22px] font-[500] leading-none text-[#CB5C7B]">
-                        {getInitials(buyerBusinessName)}
-                      </div>
+                      <ProfileAvatar
+                        name={buyerBusinessName}
+                        avatarUrl={buyerAvatarUrl}
+                        alt={`${buyerBusinessName} avatar`}
+                        fallbackInitials="SB"
+                        sizes="55px"
+                        className="flex h-[55px] w-[55px] shrink-0 items-center justify-center rounded-full bg-[#FFC3D0] text-[22px] font-[500] leading-none text-[#CB5C7B]"
+                      />
 
                       <div className="min-w-0">
                         <p className="truncate text-[16px] font-[500] leading-none text-[#455060]">

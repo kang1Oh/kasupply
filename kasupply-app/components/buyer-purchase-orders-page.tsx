@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 
 type PurchaseOrderListItem = {
   poId: number;
@@ -15,6 +16,7 @@ type PurchaseOrderListItem = {
   leadTime: string | null;
   supplierInfo: {
     businessName: string;
+    avatarUrl: string | null;
   } | null;
 };
 
@@ -68,17 +70,6 @@ function ChevronDownIcon() {
       />
     </svg>
   );
-}
-
-function getInitials(value: string | null | undefined) {
-  const initials = String(value || "")
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join("");
-
-  return initials || "PO";
 }
 
 function formatCurrency(value: number | null) {
@@ -354,15 +345,16 @@ export function BuyerPurchaseOrdersPage({
                 <article className="overflow-hidden rounded-[20px] border border-[#E3E8EF] bg-white px-[26px] py-[24px] shadow-[0_1px_2px_rgba(15,23,42,0.02)] transition group-hover:border-[#d7dee8] group-hover:shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
                   <div className="flex items-start justify-between gap-[24px]">
                     <div className="flex min-w-0 items-start gap-[16px]">
-                      <div
-                        className={`flex h-[68px] w-[68px] shrink-0 items-center justify-center rounded-[16px] text-[24px] font-medium leading-none ${
+                      <ProfileAvatar
+                        name={supplierName}
+                        avatarUrl={order.supplierInfo?.avatarUrl ?? null}
+                        alt={`${supplierName} avatar`}
+                        fallbackInitials="PO"
+                        sizes="68px"
+                        className={`flex h-[68px] w-[68px] shrink-0 items-center justify-center rounded-[16px] text-[22px] font-medium leading-none ${
                           CARD_ACCENTS[index % CARD_ACCENTS.length].panelClassName
                         }`}
-                      >
-                        <span className="text-[22px] font-medium">
-                          {getInitials(supplierName)}
-                        </span>
-                      </div>
+                      />
 
                       <div className="min-w-0 pt-[4px]">
                         <p className="truncate text-[18px] font-[500] leading-none text-[#6C778A]">

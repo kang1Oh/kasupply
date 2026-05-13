@@ -22,12 +22,6 @@ export function CompletedOrderActions({
   return (
     <>
       <div className="flex items-center justify-end gap-[12px] pt-[2px]">
-        <Link
-          href={disputeHref}
-          className="inline-flex h-[44px] items-center justify-center px-[6px] text-[14px] font-semibold text-[#ff5a47] transition hover:text-[#ef4638]"
-        >
-          Raise Dispute
-        </Link>
         <button
           type="button"
           disabled={reviewSubmitted}
@@ -41,7 +35,7 @@ export function CompletedOrderActions({
               : "inline-flex h-[44px] min-w-[198px] items-center justify-center rounded-[12px] bg-[#27466f] px-[20px] text-[15px] font-medium leading-none text-white transition hover:bg-[#1f3958]"
           }
         >
-          Mark as Completed
+          {reviewSubmitted ? "Review Submitted" : "Leave a Review"}
         </button>
       </div>
 

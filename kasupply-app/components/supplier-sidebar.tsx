@@ -3,14 +3,17 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import { Bell, Menu, X } from "lucide-react";
 import { AccountConfirmModal } from "@/components/modals";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { createClient } from "@/lib/supabase/client";
 import { useState } from "react";
 
 type SupplierSidebarProps = {
   businessName: string;
   businessType: string;
+  avatarUrl?: string | null;
+  notificationBadgeTone?: "red" | "yellow" | null;
 };
 
 type NavItem = {
@@ -19,6 +22,7 @@ type NavItem = {
   icon: ReactNode;
   badge?: string | null;
   badgeClassName?: string;
+  indicatorTone?: "red" | "yellow" | null;
 };
 
 function SidebarNavIcon({
@@ -88,13 +92,6 @@ function LogoutIcon() {
   );
 }
 
-function getInitials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "S";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
-}
-
 function formatBusinessType(value: string) {
   return value
     .split("_")
@@ -103,7 +100,7 @@ function formatBusinessType(value: string) {
 }
 
 function isActivePath(pathname: string, href: string) {
-  if (href === "/supplier/dashboard") {
+  if (href === "/supplier/sourcing-board") {
     return pathname === href;
   }
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -112,6 +109,8 @@ function isActivePath(pathname: string, href: string) {
 export function SupplierSidebar({
   businessName,
   businessType,
+  avatarUrl,
+  notificationBadgeTone = null,
 }: SupplierSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -122,9 +121,10 @@ export function SupplierSidebar({
 
   const navItems: NavItem[] = [
     {
-      href: "/supplier/dashboard",
-      label: "Dashboard",
-      icon: <SidebarNavIcon src="/icons/dashboard-icon.svg" alt="Dashboard" />,
+      href: "/supplier/notifications",
+      label: "Notifications",
+      icon: <Bell className="h-[20px] w-[20px]" strokeWidth={1.9} />,
+      indicatorTone: notificationBadgeTone,
     },
     {
       href: "/supplier/inventory",
@@ -135,6 +135,11 @@ export function SupplierSidebar({
       href: "/supplier/rfq",
       label: "RFQs",
       icon: <SidebarNavIcon src="/icons/rfq-icon.svg" alt="RFQs" />,
+    },
+    {
+      href: "/supplier/sourcing-board",
+      label: "Sourcing Board",
+      icon: <SidebarNavIcon src="/icons/dashboard-icon.svg" alt="Sourcing Board" />,
     },
     {
       href: "/supplier/purchase-orders",
@@ -284,8 +289,24 @@ export function SupplierSidebar({
                     {isActive ? (
                       <span className="absolute inset-y-0 left-0 w-[3px] rounded-r-full bg-[#FF7A00]" />
                     ) : null}
-                    <span className="shrink-0 text-white/90">{item.icon}</span>
+                    <span className="relative shrink-0 text-white/90">
+                      {item.icon}
+                      {collapsed && item.indicatorTone ? (
+                        <span
+                          className={`absolute -right-[2px] -top-[2px] h-[8px] w-[8px] rounded-full border border-[#1E3A5F] ${
+                            item.indicatorTone === "red" ? "bg-[#FF5B49]" : "bg-[#F0B429]"
+                          }`}
+                        />
+                      ) : null}
+                    </span>
                     {!collapsed ? <span className="flex-1">{item.label}</span> : null}
+                    {!collapsed && item.indicatorTone ? (
+                      <span
+                        className={`h-[8px] w-[8px] rounded-full ${
+                          item.indicatorTone === "red" ? "bg-[#FF5B49]" : "bg-[#F0B429]"
+                        }`}
+                      />
+                    ) : null}
                     {!collapsed && item.badge ? (
                       <span
                         className={`inline-flex min-w-[24px] items-center justify-center rounded-full px-2 py-1 text-[10px] font-semibold ${
@@ -338,9 +359,14 @@ export function SupplierSidebar({
           >
             {!collapsed ? (
               <>
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#DDF2E5] text-[11px] font-semibold text-[#2B6C4A]">
-                  {getInitials(businessName)}
-                </div>
+                <ProfileAvatar
+                  name={businessName}
+                  avatarUrl={avatarUrl}
+                  alt={`${businessName} avatar`}
+                  fallbackInitials="S"
+                  sizes="32px"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#DDF2E5] text-[11px] font-semibold text-[#2B6C4A]"
+                />
 
                 <div className="min-w-0 flex-1 pr-1">
                   <p

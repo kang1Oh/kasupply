@@ -10,6 +10,20 @@ import {
   RGBLuminanceSource,
 } from "@zxing/library";
 
+type JimpLike = {
+  bitmap: {
+    data: Buffer | Uint8Array;
+    width: number;
+    height: number;
+  };
+  clone(): JimpLike;
+  greyscale(): JimpLike;
+  normalize(): JimpLike;
+  contrast(amount: number): JimpLike;
+  resize(options: { w: number }): JimpLike;
+  rotate(angle: number): JimpLike;
+};
+
 const QR_DECODE_HINTS = new Map<DecodeHintType, unknown>([
   [DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.QR_CODE]],
   [DecodeHintType.TRY_HARDER, true],
@@ -21,7 +35,7 @@ const PURE_QR_DECODE_HINTS = new Map<DecodeHintType, unknown>([
   [DecodeHintType.PURE_BARCODE, true],
 ]);
 
-function toLuminanceData(image: InstanceType<typeof Jimp>) {
+function toLuminanceData(image: JimpLike) {
   const { data, width, height } = image.bitmap;
   const luminance = new Uint8ClampedArray(width * height);
 
@@ -42,7 +56,7 @@ function toLuminanceData(image: InstanceType<typeof Jimp>) {
   return luminance;
 }
 
-function toBinaryBitmap(image: InstanceType<typeof Jimp>, mode: "hybrid" | "global" = "hybrid") {
+function toBinaryBitmap(image: JimpLike, mode: "hybrid" | "global" = "hybrid") {
   const { width, height } = image.bitmap;
   const luminanceSource = new RGBLuminanceSource(toLuminanceData(image), width, height);
   const binarizer =
@@ -53,7 +67,7 @@ function toBinaryBitmap(image: InstanceType<typeof Jimp>, mode: "hybrid" | "glob
   return new BinaryBitmap(binarizer);
 }
 
-function tryDecodeWithMultiFormatReader(image: InstanceType<typeof Jimp>) {
+function tryDecodeWithMultiFormatReader(image: JimpLike) {
   const reader = new MultiFormatReader();
 
   reader.setHints(QR_DECODE_HINTS);
@@ -65,7 +79,7 @@ function tryDecodeWithMultiFormatReader(image: InstanceType<typeof Jimp>) {
   }
 }
 
-function tryDecodeWithPureQrReader(image: InstanceType<typeof Jimp>) {
+function tryDecodeWithPureQrReader(image: JimpLike) {
   const reader = new QRCodeReader();
 
   for (const mode of ["hybrid", "global"] as const) {
@@ -79,40 +93,40 @@ function tryDecodeWithPureQrReader(image: InstanceType<typeof Jimp>) {
   return null;
 }
 
-function tryDecodeImage(image: InstanceType<typeof Jimp>) {
+function tryDecodeImage(image: JimpLike) {
   return tryDecodeWithMultiFormatReader(image) ?? tryDecodeWithPureQrReader(image);
 }
 
-function buildDecodeVariants(source: InstanceType<typeof Jimp>) {
-  const variants: InstanceType<typeof Jimp>[] = [];
-  const push = (image: InstanceType<typeof Jimp>) => {
+function buildDecodeVariants(source: JimpLike) {
+  const variants: JimpLike[] = [];
+  const push = (image: JimpLike) => {
     variants.push(image);
   };
 
-  push(source.clone() as InstanceType<typeof Jimp>);
-  push(source.clone().greyscale() as InstanceType<typeof Jimp>);
-  push(source.clone().greyscale().normalize() as InstanceType<typeof Jimp>);
-  push(source.clone().greyscale().contrast(0.75).normalize() as InstanceType<typeof Jimp>);
-  push(source.clone().greyscale().contrast(1) as InstanceType<typeof Jimp>);
+  push(source.clone());
+  push(source.clone().greyscale());
+  push(source.clone().greyscale().normalize());
+  push(source.clone().greyscale().contrast(0.75).normalize());
+  push(source.clone().greyscale().contrast(1));
 
   const scaledWidth = Math.min(Math.max(source.bitmap.width * 2, source.bitmap.width), 2400);
 
   if (scaledWidth > source.bitmap.width) {
-    push(source.clone().resize({ w: scaledWidth }) as InstanceType<typeof Jimp>);
-    push(source.clone().resize({ w: scaledWidth }).greyscale().normalize() as InstanceType<typeof Jimp>);
+    push(source.clone().resize({ w: scaledWidth }));
+    push(source.clone().resize({ w: scaledWidth }).greyscale().normalize());
     push(
       source
         .clone()
         .resize({ w: scaledWidth })
         .greyscale()
         .contrast(0.75)
-        .normalize() as InstanceType<typeof Jimp>
+        .normalize()
     );
   }
 
   for (const angle of [90, 180, 270]) {
-    push(source.clone().rotate(angle) as InstanceType<typeof Jimp>);
-    push(source.clone().rotate(angle).greyscale().normalize() as InstanceType<typeof Jimp>);
+    push(source.clone().rotate(angle));
+    push(source.clone().rotate(angle).greyscale().normalize());
   }
 
   return variants;
@@ -120,7 +134,7 @@ function buildDecodeVariants(source: InstanceType<typeof Jimp>) {
 
 export async function decodeQrFromBuffer(buffer: Buffer): Promise<string | null> {
   try {
-    const image = await Jimp.read(buffer);
+    const image = (await Jimp.read(buffer)) as unknown as JimpLike;
     const variants = buildDecodeVariants(image);
 
     for (const variant of variants) {

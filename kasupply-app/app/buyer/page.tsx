@@ -259,7 +259,7 @@ function buildPopularRecommendedSuppliers(params: {
   }
 
   const suppliersWithReviews = params.supplierDirectory
-    .map((supplier) => {
+    .map((supplier): BuyerHomepageSupplier | null => {
       const stats = reviewStatsBySupplierId.get(supplier.supplierId);
 
       if (!stats || stats.reviewCount === 0) {
@@ -283,7 +283,7 @@ function buildPopularRecommendedSuppliers(params: {
         reviewLabel: `${stats.reviewCount} review${
           stats.reviewCount === 1 ? "" : "s"
         }`,
-      } satisfies BuyerHomepageSupplier;
+      };
     })
     .filter((supplier): supplier is BuyerHomepageSupplier => supplier !== null)
     .sort((left, right) => {
@@ -420,11 +420,12 @@ async function loadHomepageSupplierDirectory(
     ),
   );
   const avatarByUserId = new Map<string, string | null>();
+  const activeUserIds = new Set<string>();
 
   if (userIds.length > 0) {
     const { data: userRows, error: userError } = await supabase
       .from("users")
-      .select("user_id, avatar_url")
+      .select("user_id, avatar_url, status")
       .in("user_id", userIds);
 
     if (userError) {
@@ -433,6 +434,10 @@ async function loadHomepageSupplierDirectory(
 
     for (const row of userRows ?? []) {
       avatarByUserId.set(row.user_id, row.avatar_url);
+
+      if (normalizeText(row.status) === "active") {
+        activeUserIds.add(row.user_id);
+      }
     }
   }
 
@@ -465,6 +470,10 @@ async function loadHomepageSupplierDirectory(
         : row.business_profiles;
 
       if (!profile) {
+        return null;
+      }
+
+      if (!profile.user_id || !activeUserIds.has(profile.user_id)) {
         return null;
       }
 

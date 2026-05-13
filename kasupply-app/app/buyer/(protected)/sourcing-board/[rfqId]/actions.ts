@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getCurrentAppUser } from "@/lib/auth/get-current-app-user";
 import { createClient } from "@/lib/supabase/server";
 import {
   finalizeAcceptedOffer,
@@ -12,6 +13,7 @@ import {
 
 export type SourcingRequestPageData = {
   buyerBusinessName: string;
+  buyerAvatarUrl: string | null;
   data: BuyerRfqDetailsData;
 };
 
@@ -49,9 +51,10 @@ async function assertBuyerOwnsSourcingRequest(rfqId: number) {
 export async function getSourcingRequestPageData(
   rfqId: number
 ): Promise<SourcingRequestPageData | null> {
-  const [data, buyerContext] = await Promise.all([
+  const [data, buyerContext, currentUser] = await Promise.all([
     getBuyerRfqDetails(rfqId),
     getCurrentBuyerContext(),
+    getCurrentAppUser(),
   ]);
 
   if (
@@ -64,6 +67,7 @@ export async function getSourcingRequestPageData(
 
   return {
     buyerBusinessName: buyerContext?.businessProfile.business_name ?? "Your Business",
+    buyerAvatarUrl: currentUser.user?.avatar_url ?? null,
     data,
   };
 }

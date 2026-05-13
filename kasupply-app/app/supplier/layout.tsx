@@ -1,7 +1,9 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { getUserOnboardingStatus } from "@/lib/auth/get-user-onboarding-status";
 import { SupplierSidebar } from "@/components/supplier-sidebar";
+import { getSupplierNotificationSummary } from "@/lib/supplier/notifications";
 
 function SupplierLayoutFallback() {
   return (
@@ -35,6 +37,8 @@ async function SupplierLayoutContent({
 }: {
   children: React.ReactNode;
 }) {
+  await connection();
+
   const status = await getUserOnboardingStatus();
 
   if (!status.authenticated) {
@@ -55,12 +59,23 @@ async function SupplierLayoutContent({
     }
   }
 
+  let notificationBadgeTone: "red" | "yellow" | null = null;
+
+  try {
+    const summary = await getSupplierNotificationSummary();
+    notificationBadgeTone = summary.badgeTone;
+  } catch (error) {
+    console.error("Unable to load supplier notification summary.", error);
+  }
+
   return (
     <div className="min-h-screen bg-[#F5F7FB]">
       <div className="flex min-h-screen">
         <SupplierSidebar
           businessName={status.businessProfile?.business_name ?? "Supplier"}
           businessType={status.businessProfile?.business_type ?? "Supplier"}
+          avatarUrl={status.appUser?.avatar_url ?? null}
+          notificationBadgeTone={notificationBadgeTone}
         />
 
         <main className="min-w-0 flex-1 p-6">{children}</main>

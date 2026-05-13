@@ -58,13 +58,6 @@ async function ModerationPageContent({ searchParams }: ModerationPageProps) {
               Content Moderation
             </h1>
           </div>
-
-          <Link
-            href="/admin/dashboard"
-            className="inline-flex rounded-lg border border-[#223654] px-4 py-2.5 text-sm font-semibold text-[#223654] transition hover:bg-[#f7f9fc]"
-          >
-            Back to dashboard
-          </Link>
         </div>
       </section>
 

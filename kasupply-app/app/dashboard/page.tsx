@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { getUserOnboardingStatus } from "@/lib/auth/get-user-onboarding-status";
@@ -6,7 +7,7 @@ function DashboardPageFallback() {
   return <div className="p-6">Checking your account...</div>;
 }
 
-export default async function DashboardPage() {
+async function DashboardPageContent() {
   await connection();
 
   const status = await getUserOnboardingStatus();
@@ -28,11 +29,19 @@ export default async function DashboardPage() {
       redirect("/onboarding/supplier-documents");
     }
 
-    redirect("/supplier/dashboard");
+    redirect("/supplier/notifications");
   }
 
   redirect("/auth/login");
 
   // fallback UI if somehow no redirect occurs
   return <DashboardPageFallback />;
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<DashboardPageFallback />}>
+      <DashboardPageContent />
+    </Suspense>
+  );
 }

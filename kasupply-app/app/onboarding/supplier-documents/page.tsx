@@ -15,24 +15,7 @@ type UploadedDocumentRow = {
   doc_type_id: number;
   file_url: string | null;
   status: string | null;
-};
-
-type CertificationTypeRow = {
-  cert_type_id: number;
-  certification_type_name: string;
-};
-
-type SupplierProfileRow = {
-  supplier_id: number;
-};
-
-type UploadedCertificationRow = {
-  certification_id: number;
-  cert_type_id: number;
-  file_url: string | null;
-  status: string | null;
   review_notes: string | null;
-  file_url: string | null;
 };
 
 function SupplierDocumentsPageFallback() {
@@ -72,20 +55,12 @@ async function SupplierDocumentsPageContent() {
     redirect("/onboarding");
   }
 
-  if (status.isSupplierVerified) {
-    redirect("/supplier/dashboard");
-  }
-
   if (!status.hasCompletedCategorySelection) {
     redirect("/onboarding/categories");
   }
 
   if (status.role !== "supplier") {
     redirect("/dashboard");
-  }
-
-  if (status.hasApprovedRequiredSupplierDocuments) {
-    redirect("/supplier/dashboard");
   }
 
   const supabase = await createClient();
@@ -110,71 +85,13 @@ async function SupplierDocumentsPageContent() {
     (uploadedDocuments as UploadedDocumentRow[] | null) ?? []
   )
     .filter((document) => Boolean(document.file_url?.trim()))
-    .map(({ doc_id, doc_type_id, file_url, status }) => ({
+    .map(({ doc_id, doc_type_id, file_url, status, review_notes }) => ({
       doc_id,
       doc_type_id,
       file_url,
       status,
+      review_notes,
     }));
-
-  const { data: supplierProfile, error: supplierProfileError } = await supabase
-    .from("supplier_profiles")
-    .select("supplier_id")
-    .eq("profile_id", businessProfileId)
-    .maybeSingle<SupplierProfileRow>();
-
-  if (supplierProfileError) {
-    throw new Error(supplierProfileError.message || "Failed to load supplier profile.");
-  }
-
-  const { data: certificationTypes, error: certificationTypesError } = await supabase
-    .from("certification_types")
-    .select("cert_type_id, certification_type_name")
-    .order("cert_type_id", { ascending: true });
-
-  if (certificationTypesError) {
-    throw new Error(certificationTypesError.message || "Failed to load certification types.");
-  }
-
-  const safeCertificationTypes = (
-    (certificationTypes as CertificationTypeRow[] | null) ?? []
-  ).map(({ cert_type_id, certification_type_name }) => ({
-    cert_type_id,
-    certification_type_name,
-  }));
-
-  let safeUploadedCertifications: {
-    certification_id: number;
-    cert_type_id: number;
-    file_url: string | null;
-    status: string | null;
-  }[] = [];
-
-  if (supplierProfile?.supplier_id) {
-    const { data: uploadedCertifications, error: uploadedCertificationsError } =
-      await supabase
-        .from("supplier_certifications")
-        .select("certification_id, cert_type_id, file_url, status")
-        .eq("supplier_id", supplierProfile.supplier_id)
-        .not("file_url", "is", null);
-
-    if (uploadedCertificationsError) {
-      throw new Error(
-        uploadedCertificationsError.message || "Failed to load uploaded certifications.",
-      );
-    }
-
-    safeUploadedCertifications = (
-      (uploadedCertifications as UploadedCertificationRow[] | null) ?? []
-    )
-      .filter((certification) => Boolean(certification.file_url?.trim()))
-      .map(({ certification_id, cert_type_id, file_url, status }) => ({
-        certification_id,
-        cert_type_id,
-        file_url,
-        status,
-      }));
-  }
 
   const documentRequirements = await getSupplierDocumentRequirements(supabase);
   const activeDocumentRequirements = documentRequirements.filter(

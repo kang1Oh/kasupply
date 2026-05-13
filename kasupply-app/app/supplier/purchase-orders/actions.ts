@@ -12,6 +12,7 @@ type SupplierProfileRow = {
 function revalidatePurchaseOrderPaths(poId: number) {
   revalidatePath("/supplier/purchase-orders");
   revalidatePath(`/supplier/purchase-orders/${poId}`);
+  revalidatePath("/supplier/notifications");
   revalidatePath("/buyer/purchase-orders");
   revalidatePath(`/buyer/purchase-orders/${poId}`);
 }
@@ -151,19 +152,34 @@ export async function updatePurchaseOrderStatus(formData: FormData) {
     if (!receiptPath) {
       throw new Error("The buyer must upload a receipt before the order can be completed.");
     }
+
+    if (String(order.receipt_status || "").toLowerCase() !== "approved") {
+      throw new Error("Approve the buyer receipt before completing this purchase order.");
+    }
   }
 
+  const timestamp = new Date().toISOString();
   const updatePayload: {
     status: string;
     completed_at: string | null;
     updated_at: string;
+    processing_at?: string;
+    shipped_at?: string;
     delivery_fee?: number;
     total_amount?: number;
   } = {
     status: nextStatus,
-    completed_at: nextStatus === "completed" ? new Date().toISOString() : null,
-    updated_at: new Date().toISOString(),
+    completed_at: nextStatus === "completed" ? timestamp : null,
+    updated_at: timestamp,
   };
+
+  if (nextStatus === "processing") {
+    updatePayload.processing_at = timestamp;
+  }
+
+  if (nextStatus === "shipped") {
+    updatePayload.shipped_at = timestamp;
+  }
 
   if (nextStatus === "processing" && deliveryFeeEntry !== null) {
     const deliveryFee = deliveryFeeRaw === "" ? 0 : Number(deliveryFeeRaw);
@@ -301,7 +317,7 @@ export async function reviewPurchaseOrderReceipt(formData: FormData) {
 
   const { data: order, error: orderError } = await supabase
     .from("purchase_orders")
-    .select("po_id, status, receipt_file_url")
+    .select("po_id, status, receipt_file_url, receipt_status")
     .eq("po_id", poId)
     .eq("supplier_id", supplierId)
     .single();
@@ -316,6 +332,14 @@ export async function reviewPurchaseOrderReceipt(formData: FormData) {
 
   if (order.status === "completed" || order.status === "cancelled") {
     throw new Error("Receipt review is no longer available for this order.");
+  }
+
+  if (String(order.status || "").toLowerCase() !== "shipped") {
+    throw new Error("Receipt review is only available after the order has been marked as shipped.");
+  }
+
+  if (decision === "approved" && String(order.receipt_status || "").toLowerCase() === "approved") {
+    redirect(`/supplier/purchase-orders/${poId}`);
   }
 
   const { error: updateError } = await supabase

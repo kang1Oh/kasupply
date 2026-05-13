@@ -13,6 +13,8 @@ type ReceiptUploadWidgetProps = {
   currentFileName?: string | null;
   reviewNotes?: string | null;
   submitAction: (formData: FormData) => Promise<void>;
+  resetAction?: ((formData: FormData) => Promise<void>) | null;
+  redirectStep?: string;
 };
 
 const ACCEPTED_TYPES_TEXT = "PNG, JPG, JPEG, or PDF";
@@ -23,6 +25,8 @@ export function ReceiptUploadWidget({
   currentFileName,
   reviewNotes,
   submitAction,
+  resetAction = null,
+  redirectStep = "upload-receipt",
 }: ReceiptUploadWidgetProps) {
   const [file, setFile] = useState<File | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -66,6 +70,7 @@ export function ReceiptUploadWidget({
   return (
     <form className="space-y-3" action={submitAction}>
       <input type="hidden" name="poId" value={poId} />
+      <input type="hidden" name="redirectStep" value={redirectStep} />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <label className="inline-flex cursor-pointer items-center gap-3 rounded-xl border border-[#D5DFF0] bg-white px-4 py-3 text-sm font-medium text-[#24446A] transition hover:border-[#9FB4D9]">
           <span>{fileLabel}</span>
@@ -84,6 +89,16 @@ export function ReceiptUploadWidget({
         >
           {submitLabel}
         </button>
+        {mode === "resubmit" && resetAction ? (
+          <button
+            className="inline-flex h-11 items-center justify-center rounded-xl border border-[#D5DFF0] bg-white px-5 text-sm font-semibold text-[#526176] transition hover:border-[#b9c8dd] hover:text-[#223654]"
+            formAction={resetAction}
+            formNoValidate
+            type="submit"
+          >
+            Clear Rejected Receipt
+          </button>
+        ) : null}
       </div>
       <p className="text-xs text-[#8FA0B8]">
         Accepted files: {ACCEPTED_TYPES_TEXT}. Max size {formatReceiptFileSizeLimit()}.

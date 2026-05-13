@@ -82,76 +82,82 @@ type PlanCardProps = {
 const premiumHighlights = [
   {
     icon: "search",
-    title: "Priority discovery",
-    copy: "Your profile appears more prominently when buyers search and compare suppliers.",
+    title: "Stable search exposure",
+    copy: "Both plans keep supplier discovery tied to real product and business match, while Pro gives you room to scale listings without hitting platform caps.",
   },
   {
     icon: "zap",
-    title: "More quoting chances",
-    copy: "Access more RFQs so your team can respond to more purchasing opportunities.",
+    title: "More room to sell",
+    copy: "Pro removes monthly acceptance limits so your team can keep taking quotations and purchase orders as demand grows.",
   },
   {
     icon: "shield",
-    title: "Stronger trust signal",
-    copy: "A Premium badge helps buyers quickly identify serious and active suppliers.",
+    title: "Smoother checkout options",
+    copy: "Unlock more payment options for customers who need flexibility beyond cash on delivery when closing deals.",
   },
 ];
 
 const comparisonRows = [
   {
-    feature: "Supplier profile badge",
-    free: "Standard",
-    premium: "Premium badge",
+    feature: "Verification",
+    free: "Free verification",
+    premium: "Free verification",
   },
   {
-    feature: "Buyer search placement",
-    free: "Standard ranking",
-    premium: "Priority placement",
+    feature: "Buyer search exposure",
+    free: "Equal match-based exposure",
+    premium: "Equal match-based exposure",
   },
   {
-    feature: "RFQ response access",
-    free: "Limited",
-    premium: "Expanded monthly access",
+    feature: "Product listing slots",
+    free: "30 listings",
+    premium: "Unlimited listings",
   },
   {
-    feature: "Profile visibility",
-    free: "Basic listing",
-    premium: "Boosted listing",
+    feature: "Quotations accepted",
+    free: "30 per month",
+    premium: "Unlimited",
   },
   {
-    feature: "Support response",
-    free: "Standard queue",
-    premium: "Priority queue",
+    feature: "Purchase orders accepted",
+    free: "30 per month",
+    premium: "Unlimited",
+  },
+  {
+    feature: "Payment options",
+    free: "Cash on delivery only",
+    premium: "More payment options",
   },
 ];
 
 const premiumFeatures = [
-  "Priority buyer search placement",
-  "Expanded RFQ response access",
-  "Premium supplier badge",
-  "Boosted supplier profile visibility",
-  "Priority support queue",
+  "Free verification",
+  "Equal exposure in search based on actual product and business match",
+  "Unlimited product listing slots",
+  "Unlimited quotations to accept",
+  "Unlimited purchase orders to accept",
+  "Integrate more payment options for customers",
 ];
 
 const freeFeatures = [
-  "Basic supplier profile",
-  "Standard buyer search ranking",
-  "Limited RFQ response access",
-  "Standard support",
+  "Free for the first 3 months",
+  "Free verification",
+  "Equal exposure in search based on actual product and business match",
+  "30 product listing slots",
+  "30 quotations accepted per month",
+  "30 purchase orders accepted per month",
+  "Cash on delivery only",
 ];
 
 function CurrentPlanPill() {
   return (
     <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 shadow-sm">
       <span className="h-2 w-2 rounded-full bg-emerald-500" />
-
       <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
         Current Plan
       </span>
-
       <span className="h-4 w-px bg-slate-200" />
-
-      <span className="text-sm font-bold text-[#1E3A5F]">Free Supplier</span>
+      <span className="text-sm font-bold text-[#1E3A5F]">Standard</span>
     </div>
   );
 }
@@ -168,13 +174,14 @@ function PageHeader() {
       </div>
 
       <div>
-        <h1 className="text-[28 px] font-bold leading-tight tracking-[-0.03em] text-[#1E3A5F] md:text-[32px]">
-          Upgrade your supplier plan
+        <h1 className="text-[28px] font-bold leading-tight tracking-[-0.03em] text-[#1E3A5F] md:text-[32px]">
+          Choose the supplier plan that matches your selling volume
         </h1>
 
         <p className="mt-1.5 max-w-3xl text-[18px] leading-6 text-slate-600">
-          Give buyers more reasons to notice, trust, and contact your business
-          on KaSupply.
+          Standard gives suppliers a strong starting package, while Pro is built
+          for businesses ready to list more products, accept more deals, and
+          offer more convenient ways for buyers to pay.
         </p>
       </div>
     </header>
@@ -208,26 +215,26 @@ function PlanCard({ type }: PlanCardProps) {
       </div>
 
       <p className="text-sm font-semibold text-slate-500">
-        {premium ? "Premium Plan" : "Free Plan"}
+        {premium ? "Pro Plan" : "Standard Plan"}
       </p>
 
       <h2 className="mt-1 text-[22px] font-bold tracking-tight text-[#1E3A5F]">
-        {premium ? "For active suppliers" : "For getting started"}
+        {premium ? "For growth-focused suppliers" : "For building your presence"}
       </h2>
 
       <div className="mt-3 flex items-end gap-2">
         <span className="text-[34px] font-black tracking-tight text-[#1E3A5F]">
-          {premium ? "₱999" : "₱0"}
+          {premium ? "PHP 3,000" : "PHP 1,500"}
         </span>
         <span className="mb-1 text-sm font-semibold text-slate-500">
-          / month
+          / year
         </span>
       </div>
 
       <p className="mt-3 text-sm leading-6 text-slate-600">
         {premium
-          ? "Unlock better placement, more RFQ access, and a stronger trust signal for buyers."
-          : "Keep a basic supplier profile and access standard platform features."}
+          ? "Pro is for suppliers who want to keep winning orders without product, quotation, or purchase order limits slowing the team down."
+          : "Standard gives you a paid yearly base plan with a free first 3 months and enough room to start selling seriously on the platform."}
       </p>
 
       <div className="mt-5 flex-1 space-y-3">
@@ -255,8 +262,18 @@ function PlanCard({ type }: PlanCardProps) {
             : "cursor-default border border-slate-200 bg-slate-50 text-slate-500"
         }`}
       >
-        {premium ? "Upgrade Now" : "Current Plan"}
+        {premium ? "Upgrade to Pro" : "Current Plan"}
       </button>
+
+      {!premium ? (
+        <p className="mt-2.5 text-center text-[12px] text-slate-400">
+          First 3 months included before annual billing starts
+        </p>
+      ) : (
+        <p className="mt-2.5 text-center text-[12px] text-slate-400">
+          Best for suppliers managing higher order volume
+        </p>
+      )}
     </div>
   );
 }
@@ -267,16 +284,17 @@ function PlanComparisonHero() {
       <div className="rounded-[28px] bg-[#1E3A5F] p-7 text-white shadow-sm md:p-8">
         <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-sm font-semibold text-amber-100">
           <Icon name="sparkles" className="h-4 w-4" />
-          Premium upgrade
+          Supplier Pro
         </div>
 
         <h2 className="max-w-xl text-[32px] font-bold leading-[1.08] tracking-tight md:text-[42px]">
-          Turn your supplier profile into a stronger sales channel.
+          More capacity for suppliers ready to close more business.
         </h2>
 
         <p className="mt-4 max-w-2xl text-base leading-7 text-white/75">
-          Premium makes the value clear: better visibility, more quoting
-          opportunities, and stronger buyer confidence.
+          Pro keeps discovery fair through actual business match, then removes
+          the operational limits that can get in the way as your catalog and
+          order volume expand.
         </p>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
@@ -310,11 +328,10 @@ function ComparisonTable() {
       <div className="flex flex-col gap-3 border-b border-slate-200 px-6 py-5 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-xl font-bold tracking-tight text-[#1E3A5F]">
-            Free vs Premium
+            Standard vs Pro
           </h2>
           <p className="mt-0.4 text-[16px] text-slate-600">
-            A clear side-by-side comparison makes the upgrade easier to
-            understand.
+            Compare what changes when your supplier account needs more capacity.
           </p>
         </div>
 
@@ -322,7 +339,7 @@ function ComparisonTable() {
           type="button"
           className="inline-flex w-fit items-center gap-2 rounded-xl bg-[#1E3A5F] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#244D7C]"
         >
-          Upgrade Now
+          Upgrade to Pro
           <Icon name="arrow" className="h-4 w-4" />
         </button>
       </div>
@@ -335,10 +352,10 @@ function ComparisonTable() {
                 Feature
               </th>
               <th className="px-6 py-3.5 text-sm font-semibold text-slate-500">
-                Free
+                Standard
               </th>
               <th className="px-6 py-3.5 text-sm font-semibold text-amber-700">
-                Premium
+                Pro
               </th>
             </tr>
           </thead>
@@ -373,16 +390,17 @@ function BottomCTA() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="max-w-2xl">
           <p className="text-sm font-bold uppercase tracking-wide text-amber-700">
-            Ready to grow?
+            Ready to scale supply?
           </p>
 
           <h2 className="mt-1.5 text-2xl font-bold tracking-tight text-[#1E3A5F]">
-            Help more buyers discover and trust your supplier profile.
+            Upgrade to Pro when more buyers start saying yes.
           </h2>
 
           <p className="mt-1.5 text-md leading-6 text-slate-600">
-            Upgrade to Premium to improve your visibility, access more RFQ
-            opportunities, and make your supplier profile stand out to buyers.
+            Keep free verification and equal match-based search exposure, then
+            add unlimited listings, unlimited accepted deals, and more payment
+            flexibility when your operations are ready for higher volume.
           </p>
         </div>
 
@@ -390,7 +408,7 @@ function BottomCTA() {
           type="button"
           className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#FF7A00] px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:brightness-105"
         >
-          Upgrade Now
+          Upgrade to Pro
           <Icon name="arrow" className="h-4 w-4" />
         </button>
       </div>

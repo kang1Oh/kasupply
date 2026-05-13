@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { createClient } from "@/lib/supabase/server";
 import { getUserOnboardingStatus } from "@/lib/auth/get-user-onboarding-status";
 import { declineEngagement } from "./actions";
@@ -22,6 +23,13 @@ type BusinessProfileRow = {
   business_location: string | null;
   city: string | null;
   province: string | null;
+  user_id: string | null;
+};
+
+type UserRow = {
+  user_id: string;
+  name: string | null;
+  avatar_url: string | null;
 };
 
 type ProductRelation =
@@ -97,6 +105,7 @@ type RfqCard = {
   buyerSubtitle: string;
   initials: string;
   initialsClassName: string;
+  buyerAvatarUrl: string | null;
   status: DisplayStatus;
   statusLabel: string;
   statusClassName: string;
@@ -415,7 +424,7 @@ export default async function SupplierRfqPage({
   const { data: buyerBusinesses, error: buyerBusinessesError } = businessProfileIds.length
     ? await supabase
         .from("business_profiles")
-        .select("profile_id, business_name, business_type, business_location, city, province")
+        .select("profile_id, business_name, business_type, business_location, city, province, user_id")
         .in("profile_id", businessProfileIds)
     : { data: [], error: null };
 
@@ -435,6 +444,30 @@ export default async function SupplierRfqPage({
   const businessByProfileId = new Map<number, BusinessProfileRow>();
   for (const row of (buyerBusinesses as BusinessProfileRow[] | null) ?? []) {
     businessByProfileId.set(row.profile_id, row);
+  }
+
+  const buyerUserIds = Array.from(
+    new Set(
+      Array.from(businessByProfileId.values())
+        .map((row) => row.user_id)
+        .filter((value): value is string => Boolean(value)),
+    ),
+  );
+
+  const { data: buyerUsers, error: buyerUsersError } = buyerUserIds.length
+    ? await supabase
+        .from("users")
+        .select("user_id, name, avatar_url")
+        .in("user_id", buyerUserIds)
+    : { data: [], error: null };
+
+  if (buyerUsersError) {
+    throw new Error(buyerUsersError.message || "Failed to load buyer user profiles.");
+  }
+
+  const buyerUserById = new Map<string, UserRow>();
+  for (const row of (buyerUsers as UserRow[] | null) ?? []) {
+    buyerUserById.set(row.user_id, row);
   }
 
   const engagementIds = safeEngagements.map((engagement) => engagement.engagement_id);
@@ -480,6 +513,8 @@ export default async function SupplierRfqPage({
     const rfq = getSingleRfq(engagement.rfqs);
     const buyerProfileId = rfq?.buyer_id ? profileIdByBuyerId.get(rfq.buyer_id) : undefined;
     const buyerBusiness = buyerProfileId != null ? businessByProfileId.get(buyerProfileId) : null;
+    const buyerUser =
+      buyerBusiness?.user_id != null ? buyerUserById.get(buyerBusiness.user_id) ?? null : null;
     const latestQuotation = quotationByEngagement.get(engagement.engagement_id) ?? null;
     const purchaseOrder = latestQuotation
       ? purchaseOrdersByQuoteId.get(latestQuotation.quote_id) ?? null
@@ -512,6 +547,7 @@ export default async function SupplierRfqPage({
       buyerSubtitle,
       initials: getInitials(buyerName || "Buyer"),
       initialsClassName: getInitialsColors(index),
+      buyerAvatarUrl: buyerUser?.avatar_url ?? null,
       status: displayStatus,
       statusLabel: presentation.label,
       statusClassName: presentation.className,
@@ -573,7 +609,7 @@ export default async function SupplierRfqPage({
           <div className="mb-[24px]">
             <h1 className="text-[23px] font-semibold text-[#1E3A5F]">RFQ Requests</h1>
             <p className="mt-[2px] text-[16px] text-[#94A3B8]">
-              {filteredCards.length} incoming requests from buyers
+              {filteredCards.length} requests from buyers
             </p>
           </div>
 
@@ -638,11 +674,13 @@ export default async function SupplierRfqPage({
                 >
                   <div className="flex items-start justify-between gap-[20px]">
                     <div className="flex min-w-0 items-start gap-[14px]">
-                      <div
+                      <ProfileAvatar
+                        name={card.buyer}
+                        avatarUrl={card.buyerAvatarUrl}
+                        fallbackInitials={card.initials}
+                        sizes="54px"
                         className={`flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-[14px] text-[24px] font-medium ${card.initialsClassName}`}
-                      >
-                        {card.initials}
-                      </div>
+                      />
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-[8px]">
                           <h2 className="text-[18px] font-medium text-[#6A717F]">{card.product}</h2>

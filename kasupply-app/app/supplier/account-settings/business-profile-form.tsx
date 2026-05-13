@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { updateSupplierAccountSettings } from "./actions";
 
 type CategoryOption = {
@@ -10,7 +11,7 @@ type CategoryOption = {
 
 type SupplierBusinessProfileFormProps = {
   headerBusinessName: string;
-  headerInitials?: string;
+  avatarUrl?: string | null;
   userEmail: string;
   businessProfile: {
     businessName: string;
@@ -48,18 +49,9 @@ const BUSINESS_TYPE_OPTIONS = [
   { label: "Wholesaler", value: "wholesaler" },
 ] as const;
 
-function getInitials(value: string) {
-  return value
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join("");
-}
-
 export function SupplierBusinessProfileForm({
   headerBusinessName,
-  headerInitials = "DF",
+  avatarUrl,
   userEmail,
   businessProfile,
   categories,
@@ -87,12 +79,7 @@ export function SupplierBusinessProfileForm({
     initialSelectedCategoryIds,
   );
   const [fileInputKey, setFileInputKey] = useState(0);
-  const avatarInitials = useMemo(
-    () =>
-      headerInitials.trim() ||
-      getInitials(headerBusinessName || businessProfile.businessName || "BP"),
-    [businessProfile.businessName, headerBusinessName, headerInitials],
-  );
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
 
   const normalizedBusinessType = useMemo(() => {
     const currentValue = formState.businessType.trim().toLowerCase();
@@ -120,8 +107,22 @@ export function SupplierBusinessProfileForm({
     setError("");
     setFormState(initialFormState);
     setSelectedCategoryIds(initialSelectedCategoryIds);
+    setAvatarPreviewUrl((current) => {
+      if (current?.startsWith("blob:")) {
+        URL.revokeObjectURL(current);
+      }
+      return null;
+    });
     setFileInputKey((current) => current + 1);
   }
+
+  useEffect(() => {
+    return () => {
+      if (avatarPreviewUrl?.startsWith("blob:")) {
+        URL.revokeObjectURL(avatarPreviewUrl);
+      }
+    };
+  }, [avatarPreviewUrl]);
 
   return (
     <form
@@ -133,6 +134,15 @@ export function SupplierBusinessProfileForm({
           try {
             await updateSupplierAccountSettings(formData);
           } catch (err) {
+            if (
+              err instanceof Error &&
+              (err.message === "NEXT_REDIRECT" ||
+                String((err as Error & { digest?: string }).digest ?? "").startsWith(
+                  "NEXT_REDIRECT",
+                ))
+            ) {
+              throw err;
+            }
             setError(err instanceof Error ? err.message : "Something went wrong.");
           }
         });
@@ -148,15 +158,20 @@ export function SupplierBusinessProfileForm({
       <section className="rounded-[24px] border border-[#E6ECF3] bg-white px-[22px] py-[22px] shadow-[0_3px_10px_rgba(15,23,42,0.025)]">
         <div className="flex flex-col gap-[16px] sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-[14px]">
-            <div className="flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-full bg-[#DDF7E8] text-[17px] font-medium text-[#2E7D5B]">
-              {avatarInitials}
-            </div>
+            <ProfileAvatar
+              name={headerBusinessName || businessProfile.businessName}
+              avatarUrl={avatarPreviewUrl ?? avatarUrl}
+              alt={`${headerBusinessName || businessProfile.businessName || "Supplier"} avatar`}
+              fallbackInitials="DF"
+              sizes="60px"
+              className="flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-full bg-[#DDF7E8] text-[17px] font-medium text-[#2E7D5B]"
+            />
 
             <div className="min-w-0">
               <p className="truncate text-[17px] font-medium text-[#4A5B73]">
                 {headerBusinessName}
               </p>
-              <p className="mt-[5px] text-[14px] text-[#A7B0BE]">JPG or PNG. Max 2MB.</p>
+              <p className="mt-[5px] text-[14px] text-[#A7B0BE]">JPG or PNG. Max 5MB.</p>
             </div>
           </div>
 
@@ -168,6 +183,16 @@ export function SupplierBusinessProfileForm({
               type="file"
               accept="image/png,image/jpeg,image/jpg"
               className="sr-only"
+              onChange={(event) => {
+                const nextFile = event.target.files?.[0] ?? null;
+                setError("");
+                setAvatarPreviewUrl((current) => {
+                  if (current?.startsWith("blob:")) {
+                    URL.revokeObjectURL(current);
+                  }
+                  return nextFile ? URL.createObjectURL(nextFile) : null;
+                });
+              }}
             />
           </label>
         </div>

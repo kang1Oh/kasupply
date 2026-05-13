@@ -23,6 +23,7 @@ type BusinessProfileRow = {
 type UserRow = {
   user_id: string;
   name: string | null;
+  avatar_url: string | null;
 };
 
 type RfqRow = {
@@ -229,6 +230,7 @@ async function getBuyerDetails(
       businessLocation: null,
       city: null,
       province: null,
+      avatarUrl: null,
     };
   }
 
@@ -248,12 +250,13 @@ async function getBuyerDetails(
       businessLocation: null,
       city: null,
       province: null,
+      avatarUrl: null,
     };
   }
 
   const { data: buyerUser } = await supabase
     .from("users")
-    .select("user_id, name")
+    .select("user_id, name, avatar_url")
     .eq("user_id", businessProfile.user_id)
     .maybeSingle<UserRow>();
 
@@ -264,6 +267,7 @@ async function getBuyerDetails(
     businessLocation: businessProfile.business_location ?? null,
     city: businessProfile.city ?? null,
     province: businessProfile.province ?? null,
+    avatarUrl: buyerUser?.avatar_url ?? null,
   };
 }
 

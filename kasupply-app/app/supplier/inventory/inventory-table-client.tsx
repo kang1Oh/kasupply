@@ -22,6 +22,7 @@ type InventoryItem = {
   imageSrc: string | null;
   unit: string;
   pricePerUnit: number;
+  resellerPrice: number | null;
   moq: number;
   maxCapacity: number;
   leadTime: string;
@@ -423,9 +424,20 @@ export function SupplierInventoryTableClient({
                       <td className="px-3 py-3.5 align-middle text-[14px] font-normal text-[#66748B]">
                         {product.stockAvailable} {product.unit}
                       </td>
-                      <td className="px-3 py-3.5 align-middle text-[14px] font-normal text-[#66748B]">
-                        {formatCurrency(Number(product.pricePerUnit))}
-                        <span className="text-[#96A0AF]">/{product.unit}</span>
+                      <td className="px-3 py-3.5 align-middle text-[13px] text-[#66748B]">
+                        <div className="space-y-1">
+                          <p className="font-medium text-[#4B5565]">
+                            {formatCurrency(Number(product.pricePerUnit))}
+                            <span className="text-[#96A0AF]">/{product.unit}</span>
+                          </p>
+                          {product.resellerPrice != null ? (
+                            <p className="text-[11px] font-medium text-[#7A8A9F]">
+                              <span className="text-[#98A2B3]">Reseller:</span>{" "}
+                              {formatCurrency(Number(product.resellerPrice))}
+                              <span className="text-[#A8B1BE]">/{product.unit}</span>
+                            </p>
+                          ) : null}
+                        </div>
                       </td>
                       <td className="px-3 py-3.5 align-middle text-[14px] font-normal text-[#66748B]">
                         {product.moq} {product.unit}

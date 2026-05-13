@@ -852,7 +852,7 @@ export async function getSupplierDashboardData(): Promise<SupplierDashboardData>
     return !isOwn && !isRead;
   });
 
-  const notifications: SupplierDashboardData["notifications"] = [
+  const notificationCandidates: Array<SupplierDashboardData["notifications"][number] | null> = [
     requestMatchesResult[0]
       ? (() => {
           const rfq = getSingleRfq(requestMatchesResult[0].rfqs);
@@ -934,9 +934,11 @@ export async function getSupplierDashboardData(): Promise<SupplierDashboardData>
           };
         })()
       : null,
-  ]
+  ];
+
+  const notifications: SupplierDashboardData["notifications"] = notificationCandidates
     .filter(
-      (item): item is NonNullable<(typeof notifications)[number]> =>
+      (item): item is SupplierDashboardData["notifications"][number] =>
         item !== null && Number.isFinite(item.sortTime),
     )
     .sort((left, right) => right.sortTime - left.sortTime)

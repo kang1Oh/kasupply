@@ -25,6 +25,7 @@ type ProductRow = {
   image_url: string | null;
   unit: string;
   price_per_unit: number;
+  reseller_price: number | null;
   moq: number;
   max_capacity: number;
   lead_time: string;
@@ -158,7 +159,7 @@ function ProductFormFields({
   existingImages?: Array<{ id: number; url: string }>;
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 [&_input]:bg-white [&_input]:text-[#344054] [&_textarea]:bg-white [&_textarea]:text-[#344054] [&_select]:bg-white [&_select]:text-[#344054]">
       <SupplierProductImagePicker
         name="image_file"
         existingImages={existingImages}
@@ -287,6 +288,18 @@ function ProductFormFields({
           />
         </InventoryField>
 
+        <InventoryField label={<>Reseller price</>}>
+          <input
+            name="reseller_price"
+            type="number"
+            step="0.01"
+            min="0"
+            defaultValue={product?.reseller_price ?? ""}
+            className="h-[34px] w-full rounded-[8px] border border-[#C9D3E0] px-3 text-[12px] text-[#344054] outline-none placeholder:text-[#B0B8C5]"
+            placeholder="Optional"
+          />
+        </InventoryField>
+
         <InventoryField label={<>Min. Order Qty <span className="text-[#F04438]">*</span></>}>
           <input
             name="moq"
@@ -371,7 +384,7 @@ export default async function SupplierInventoryPage({ searchParams }: { searchPa
   if (categoriesError) throw new Error(categoriesError.message || "Failed to load categories.");
 
   const { data: products, error: productsError } = await supabase.from("products").select(`
-      product_id, category_id, product_name, description, image_url, unit, price_per_unit, moq, max_capacity, lead_time, stock_available, is_published, created_at, updated_at
+      product_id, category_id, product_name, description, image_url, unit, price_per_unit, reseller_price, moq, max_capacity, lead_time, stock_available, is_published, created_at, updated_at
     `).eq("supplier_id", supplierProfile.supplier_id).order("created_at", { ascending: true });
   if (productsError) throw new Error(productsError.message || "Failed to load products.");
 
@@ -464,6 +477,8 @@ export default async function SupplierInventoryPage({ searchParams }: { searchPa
     imageSrc: imageSrcMap.get(product.product_id) ?? null,
     unit: product.unit,
     pricePerUnit: Number(product.price_per_unit),
+    resellerPrice:
+      product.reseller_price == null ? null : Number(product.reseller_price),
     moq: product.moq,
     maxCapacity: product.max_capacity,
     leadTime: product.lead_time,
@@ -482,24 +497,7 @@ export default async function SupplierInventoryPage({ searchParams }: { searchPa
               <span className="text-[#CBD2DE]">/</span>
               <span className="font-medium text-[#1E3A5F]">Inventory</span>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                aria-label="Notifications"
-                className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-[11px] border border-[#E2E8F0] bg-[#F9FBFD] text-[#A6B0BF] transition hover:border-[#D6DFEA] hover:text-[#4D5E75]"
-              >
-                <svg viewBox="0 0 24 24" className="h-[15px] w-[15px]" aria-hidden="true"><path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5m6 0a3 3 0 1 1-6 0m6 0H9" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
-              </button>
-              <button
-                type="button"
-                aria-label="Messages"
-                className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-[11px] border border-[#E2E8F0] bg-[#F9FBFD] text-[#A6B0BF] transition hover:border-[#D6DFEA] hover:text-[#4D5E75]"
-              >
-                <svg viewBox="0 0 24 24" className="h-[15px] w-[15px]" aria-hidden="true"><path d="M7 18.5A2.5 2.5 0 0 1 4.5 16V8A2.5 2.5 0 0 1 7 5.5h10A2.5 2.5 0 0 1 19.5 8v8a2.5 2.5 0 0 1-2.5 2.5H11l-4 3v-3H7Z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
-              </button>
-            </div>
           </div>
-
         </section>
 
         <section className="px-[24px] py-6">
@@ -605,7 +603,7 @@ export default async function SupplierInventoryPage({ searchParams }: { searchPa
                       <th className="px-3 py-4 text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Stock</th>
                       <th className="px-3 py-4 text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Price</th>
                       <th className="px-3 py-4 text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Min Qty</th>
-                      <th className="whitespace-nowrap px-3 py-4 text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Max Capacity</th>
+                      <th className="px-3 py-4 text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Max Capacity</th>
                       <th className="px-3 py-4 text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Lead Time</th>
                       <th className="px-3 py-4 text-center text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Visibility</th>
                       <th className="px-3 py-4 text-center text-[10px] font-semibold uppercase tracking-[0.03em] text-[#ABB4C2]">Status</th>

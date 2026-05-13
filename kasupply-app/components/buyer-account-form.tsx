@@ -8,6 +8,7 @@ import {
   useState,
   useTransition,
   type ChangeEvent,
+  type ReactNode,
 } from "react";
 import { updateBuyerAccount } from "@/app/buyer/(protected)/account/actions";
 
@@ -133,7 +134,6 @@ type BuyerAccountFormProps = {
   user: {
     name: string;
     email: string;
-    avatarUrl?: string | null;
   };
   businessProfile: {
     business_name: string;
@@ -155,6 +155,7 @@ type BuyerAccountFormProps = {
   backHref?: string | null;
   backLabel?: string;
   submitLabel?: string;
+  formLead?: ReactNode;
 };
 
 type FormValues = {
@@ -312,15 +313,6 @@ function buildContactNumberError(value: string): string | null {
   
   // Then check for 11-digit validation
   return validateContactNumber(value);
-}
-
-function getInitials(value: string) {
-  return value
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join("");
 }
 
 function ChevronDownIcon() {
@@ -577,6 +569,7 @@ export function BuyerAccountForm({
   backHref,
   backLabel,
   submitLabel,
+  formLead,
 }: BuyerAccountFormProps) {
   const initialCity = flattenOptions(DAVAO_CITY_GROUPS).some(
     (option) => option.value === businessProfile.city,
@@ -626,7 +619,6 @@ export function BuyerAccountForm({
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [submitError, setSubmitError] = useState("");
-  const [selectedAvatarFileName, setSelectedAvatarFileName] = useState("");
   const isEditMode = mode === "edit";
   const resolvedBackHref =
     backHref === undefined ? (isEditMode ? "/buyer/account" : "/buyer") : backHref;
@@ -636,9 +628,6 @@ export function BuyerAccountForm({
   const headingDescription = isEditMode
     ? ""
     : "Share a few details so we can tailor KaSupply to your needs";
-  const avatarInitials = getInitials(
-    values.business_name || values.contact_name || user.name || "BU",
-  ) || "BU";
 
   const isFormComplete = getActiveRequiredFields(values).every((fieldName) =>
     values[fieldName].trim(),
@@ -794,46 +783,7 @@ export function BuyerAccountForm({
         value={"+63" + values.contact_number}
       />
 
-      <section className="rounded-[12px] border border-[#e4e9f1] bg-white p-4 sm:p-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-center gap-4">
-            {user.avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={user.avatarUrl}
-                alt={`${values.business_name || user.name} profile`}
-                className="h-[60px] w-[60px] shrink-0 rounded-full object-cover"
-              />
-            ) : (
-              <div className="flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-full bg-[#DDF7E8] text-[17px] font-medium text-[#2E7D5B]">
-                {avatarInitials}
-              </div>
-            )}
-
-            <div className="min-w-0">
-              <p className="truncate text-[17px] font-medium text-[#4A5B73]">
-                {values.business_name || user.name}
-              </p>
-              <p className="mt-[5px] text-[14px] text-[#A7B0BE]">
-                {selectedAvatarFileName || "JPG or PNG. Max 5MB."}
-              </p>
-            </div>
-          </div>
-
-          <label className="inline-flex h-[40px] cursor-pointer items-center justify-center rounded-[10px] border border-[#D8E1ED] bg-white px-[18px] text-[15px] font-medium text-[#42536B] transition hover:bg-[#F8FAFC]">
-            Change photo
-            <input
-              name="avatar_file"
-              type="file"
-              accept="image/png,image/jpeg,image/jpg"
-              className="sr-only"
-              onChange={(event) =>
-                setSelectedAvatarFileName(event.target.files?.[0]?.name ?? "")
-              }
-            />
-          </label>
-        </div>
-      </section>
+      {formLead}
 
       <section>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">

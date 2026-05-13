@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { getAdminAccountsPageData } from "@/app/admin/dashboard/actions";
 import { DashboardCard, getStatusPillClasses, toTitleCase } from "@/components/admin/admin-view-helpers";
-import { AdminAccountStatusForm } from "@/components/admin/admin-account-status-form";
 
 type AccountsPageProps = {
   searchParams?: Promise<{
@@ -59,17 +58,10 @@ async function AccountsPageContent({ searchParams }: AccountsPageProps) {
               Account Monitoring
             </h1>
           </div>
-
-          <Link
-            href="/admin/dashboard"
-            className="inline-flex rounded-lg border border-[#223654] px-4 py-2.5 text-sm font-semibold text-[#223654] transition hover:bg-[#f7f9fc]"
-          >
-            Back to dashboard
-          </Link>
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-2">
         <DashboardCard
           title="Accounts"
           value={data.summary.totalAccounts}
@@ -79,11 +71,6 @@ async function AccountsPageContent({ searchParams }: AccountsPageProps) {
           title="Flagged Accounts"
           value={data.summary.flaggedAccounts}
           subtitle="Accounts with moderation or verification review concerns."
-        />
-        <DashboardCard
-          title="Matching Results"
-          value={data.pagination.totalItems}
-          subtitle="Accounts matching your current filters."
         />
       </section>
 
@@ -144,7 +131,6 @@ async function AccountsPageContent({ searchParams }: AccountsPageProps) {
                 <th className="px-3 py-3 font-medium">Account</th>
                 <th className="px-3 py-3 font-medium">Business</th>
                 <th className="px-3 py-3 font-medium">Verification</th>
-                <th className="px-3 py-3 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -194,32 +180,6 @@ async function AccountsPageContent({ searchParams }: AccountsPageProps) {
                       >
                         {toTitleCase(account.verificationLabel ?? "not_started")}
                       </span>
-                    </td>
-                    <td className="px-3 py-3">
-                      <div className="space-y-3">
-                        {account.openReportsCount > 0 ? (
-                          <div className="rounded-xl border border-[#fde68a] bg-[#fffbeb] p-3">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-[#b45309]">
-                              Open reports
-                            </p>
-                            <p className="mt-1 text-sm text-[#92400e]">
-                              {account.openReportsCount} active report
-                              {account.openReportsCount === 1 ? "" : "s"} linked to this account.
-                            </p>
-                            <Link
-                              href={`/admin/reports?q=${encodeURIComponent(account.email)}`}
-                              className="mt-2 inline-flex text-xs font-semibold text-[#92400e] transition hover:text-[#78350f]"
-                            >
-                              Review reports
-                            </Link>
-                          </div>
-                        ) : null}
-
-                        <AdminAccountStatusForm
-                          userId={account.userId}
-                          currentStatus={account.accountStatus}
-                        />
-                      </div>
                     </td>
                   </tr>
                 ))

@@ -458,11 +458,9 @@ export async function uploadPurchaseOrderReceipt(formData: FormData) {
   const { data: updatedOrder, error: updateError } = await databaseClient
     .from("purchase_orders")
     .update({
-      status: "completed",
       receipt_file_url: nextReceiptPath,
       receipt_status: "pending_review",
       receipt_review_notes: null,
-      completed_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
     .eq("po_id", poId)
@@ -496,6 +494,77 @@ export async function uploadPurchaseOrderReceipt(formData: FormData) {
     uploadInfo.existingReceiptFilePath &&
     uploadInfo.existingReceiptFilePath !== nextReceiptPath
   ) {
+    await (adminSupabase ?? supabase).storage
+      .from(PURCHASE_ORDER_RECEIPTS_BUCKET)
+      .remove([uploadInfo.existingReceiptFilePath]);
+  }
+
+  const rfqId = updatedOrder.quote_id
+    ? await getPurchaseOrderRfqId(supabase, updatedOrder.quote_id)
+    : null;
+
+  revalidatePurchaseOrderPaths({
+    poId,
+    rfqId,
+  });
+
+  redirect(buildBuyerPurchaseOrderHref(poId, { step: redirectStep }));
+}
+
+export async function resetPurchaseOrderReceipt(formData: FormData) {
+  const supabase = await createClient();
+  const adminSupabase = createAdminClient();
+  const databaseClient = adminSupabase ?? supabase;
+  const poId = Number(formData.get("poId")?.toString() ?? "");
+  const redirectStep = String(formData.get("redirectStep") || "").trim() || "upload-receipt";
+  const uploadInfo = await getCurrentBuyerReceiptUploadInfo(poId);
+
+  if (!poId || Number.isNaN(poId)) {
+    redirect("/buyer/purchase-orders");
+  }
+
+  if (!uploadInfo) {
+    redirectReceiptError(poId, "Purchase order not found.", redirectStep);
+  }
+
+  if (uploadInfo.status !== "shipped") {
+    redirectReceiptError(
+      poId,
+      "Receipt removal is only available while the order is waiting for supplier completion.",
+      redirectStep,
+    );
+  }
+
+  if (uploadInfo.receiptStatus !== "rejected") {
+    redirectReceiptError(
+      poId,
+      "Only rejected receipts can be cleared and reuploaded.",
+      redirectStep,
+    );
+  }
+
+  const { data: updatedOrder, error: updateError } = await databaseClient
+    .from("purchase_orders")
+    .update({
+      receipt_file_url: null,
+      receipt_status: "not_uploaded",
+      receipt_review_notes: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("po_id", poId)
+    .eq("buyer_id", uploadInfo.buyerId)
+    .select("po_id, quote_id")
+    .single();
+
+  if (updateError || !updatedOrder) {
+    redirectReceiptError(
+      poId,
+      updateError?.message || "Failed to clear the rejected receipt.",
+      redirectStep,
+    );
+  }
+
+  if (uploadInfo.existingReceiptFilePath) {
     await (adminSupabase ?? supabase).storage
       .from(PURCHASE_ORDER_RECEIPTS_BUCKET)
       .remove([uploadInfo.existingReceiptFilePath]);

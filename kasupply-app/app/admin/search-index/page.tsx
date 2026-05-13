@@ -76,11 +76,17 @@ export default async function AdminSearchIndexPage({
     tone?: string;
   }>;
 }) {
-  const [{ message, tone }, overview, queue] = await Promise.all([
-    searchParams ?? Promise.resolve({}),
+  const resolvedSearchParams: {
+    message?: string;
+    tone?: string;
+  } = (await searchParams) ?? {};
+
+  const [overview, queue] = await Promise.all([
     getSupplierSearchIndexOverview(),
     getSupplierSearchIndexQueue(),
   ]);
+
+  const { message, tone } = resolvedSearchParams;
 
   const queuePreview = [...queue].sort((left, right) => {
     const statusOrder = { pending: 0, partial: 1, indexed: 2 } as const;

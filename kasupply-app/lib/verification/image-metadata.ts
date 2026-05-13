@@ -127,7 +127,11 @@ function parseTiffExif(bytes: Buffer, tiffStart: number) {
     count: number;
     valueOffset: number;
     entryOffset: number;
-  }) => {
+  } | undefined) => {
+    if (!entry) {
+      return null;
+    }
+
     if (entry.type !== 2 || entry.count <= 1) {
       return null;
     }
