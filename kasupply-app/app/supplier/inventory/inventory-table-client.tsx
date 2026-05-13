@@ -3,8 +3,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useDeferredValue, useEffect, useMemo, useState, useTransition } from "react";
-import { RemoveProductModal } from "@/components/modals";
-import { deleteInventoryItem } from "./actions";
 
 type InventoryStatus = "all" | "in-stock" | "low-stock" | "out-of-stock";
 
@@ -181,31 +179,6 @@ export function SupplierInventoryTableClient({
     pageNumbers.push(totalPages);
   }
 
-  const handleRemoveConfirm = () => {
-    if (!selectedProduct) {
-      return;
-    }
-
-    startRemoveTransition(async () => {
-      const formData = new FormData();
-      formData.set("product_id", String(selectedProduct.productId));
-      await deleteInventoryItem(formData);
-    });
-  };
-
-  const handleRemoveCancel = () => {
-    if (isRemoving) return;
-    setIsRemoveModalOpen(false);
-    setSelectedProduct(null);
-  };
-
-  const handleRemoveOpen = (product: InventoryItem) => {
-    setSelectedProduct({
-      productId: product.productId,
-      name: product.productName,
-    });
-    setIsRemoveModalOpen(true);
-  };
 
   return (
     <>
@@ -487,20 +460,6 @@ export function SupplierInventoryTableClient({
                               className="h-[32px] w-[40px]"
                             />
                           </Link>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveOpen(product)}
-                            aria-label="Delete product"
-                            className="block h-[32px] w-[40px] shrink-0 transition hover:opacity-90"
-                          >
-                            <Image
-                              src="/icons/inventory-delete.svg"
-                              alt=""
-                              width={40}
-                              height={32}
-                              className="h-[32px] w-[40px]"
-                            />
-                          </button>
                         </div>
                       </td>
                     </tr>
@@ -560,13 +519,6 @@ export function SupplierInventoryTableClient({
           <span>→</span>
         </button>
       </div>
-      <RemoveProductModal
-        open={isRemoveModalOpen}
-        onClose={handleRemoveCancel}
-        onConfirm={handleRemoveConfirm}
-        productName={selectedProduct?.name}
-        isSubmitting={isRemoving}
-      />
     </>
   );
 }

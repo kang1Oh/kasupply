@@ -10,7 +10,6 @@ export { DeclineQuoteModalIcon } from "./decline-quote-modal-icon";
 export { ModalField } from "./modal-field";
 export { ModalShell } from "./modal-shell";
 export { OrderCompletedModal } from "./order-completed-modal";
-export { RemoveProductModal } from "./RemoveProductModal";
 export { RemoveSavedSupplierModal } from "./RemoveSavedSupplierModal";
 export { ReviewSubmittedModal } from "./ReviewSubmittedModal";
 export { TrashCanModalIcon } from "./trash-can-modal-icon";
