@@ -7,6 +7,7 @@ import {
   safeQueueDocumentVerification,
   safeSyncBuyerVerificationProfile,
 } from "@/lib/verification/onboarding";
+import { resolveStoredVerificationNotes } from "@/lib/verification/review-notes";
 import { buildVerificationFailureUserMessage } from "@/lib/verification/user-facing-errors";
 
 const ALLOWED_BUYER_DOCUMENT_MIME_TYPES = new Set([
@@ -20,6 +21,7 @@ type SavedDocumentRow = {
   file_url: string;
   status: string | null;
   review_notes: string | null;
+  verification_analysis: Record<string, unknown> | null;
 };
 
 type BuyerDocumentActionResult = {
@@ -132,6 +134,25 @@ async function assertVerificationRunSucceeded(params: {
   }
 }
 
+function mapBuyerDocumentActionResult(params: {
+  fileUrl: string | null;
+  status: string | null;
+  reviewNotes: string | null;
+  verificationAnalysis: Record<string, unknown> | null;
+  message: string;
+}): BuyerDocumentActionResult {
+  return {
+    ok: true,
+    fileUrl: params.fileUrl,
+    status: params.status,
+    reviewNotes: resolveStoredVerificationNotes({
+      reviewNotes: params.reviewNotes,
+      verificationAnalysis: params.verificationAnalysis,
+    }),
+    message: params.message,
+  };
+}
+
 export async function uploadBuyerDocument(
   formData: FormData
 ): Promise<BuyerDocumentActionResult> {
@@ -196,12 +217,12 @@ export async function uploadBuyerDocument(
       .from("business_documents")
       .update(documentPayload)
       .eq("doc_id", existingDocument.doc_id)
-      .select("doc_id, file_url, status, review_notes")
+      .select("doc_id, file_url, status, review_notes, verification_analysis")
       .single<SavedDocumentRow>()
     : await supabase
         .from("business_documents")
         .insert(documentPayload)
-        .select("doc_id, file_url, status, review_notes")
+        .select("doc_id, file_url, status, review_notes, verification_analysis")
         .single<SavedDocumentRow>();
 
   if (documentSaveError || !savedDocument) {
@@ -215,13 +236,13 @@ export async function uploadBuyerDocument(
   await safeSyncBuyerVerificationProfile(businessProfile.profile_id);
   revalidateBuyerDocumentPaths();
 
-  return {
-    ok: true,
+  return mapBuyerDocumentActionResult({
     fileUrl: savedDocument.file_url,
     status: savedDocument.status,
     reviewNotes: savedDocument.review_notes,
+    verificationAnalysis: savedDocument.verification_analysis,
     message: "Document uploaded. Click Verify Document when you are ready to process it.",
-  };
+  });
 }
 
 export async function processBuyerDocumentVerification(): Promise<BuyerDocumentActionResult> {
@@ -230,7 +251,7 @@ export async function processBuyerDocumentVerification(): Promise<BuyerDocumentA
 
   const { data: savedDocument, error: savedDocumentError } = await supabase
     .from("business_documents")
-    .select("doc_id, file_url, status, review_notes")
+    .select("doc_id, file_url, status, review_notes, verification_analysis")
     .eq("profile_id", businessProfile.profile_id)
     .eq("doc_type_id", dtiDocumentType.doc_type_id)
     .maybeSingle<SavedDocumentRow>();
@@ -264,7 +285,7 @@ export async function processBuyerDocumentVerification(): Promise<BuyerDocumentA
 
   const { data: verifiedDocument, error: verifiedDocumentError } = await supabase
     .from("business_documents")
-    .select("doc_id, file_url, status, review_notes")
+    .select("doc_id, file_url, status, review_notes, verification_analysis")
     .eq("doc_id", savedDocument.doc_id)
     .maybeSingle<SavedDocumentRow>();
 
@@ -276,14 +297,14 @@ export async function processBuyerDocumentVerification(): Promise<BuyerDocumentA
 
   revalidateBuyerDocumentPaths();
 
-  return {
-    ok: true,
+  return mapBuyerDocumentActionResult({
     fileUrl: verifiedDocument?.file_url ?? savedDocument.file_url,
     status: verifiedDocument?.status ?? null,
     reviewNotes: verifiedDocument?.review_notes ?? null,
+    verificationAnalysis: verifiedDocument?.verification_analysis ?? null,
     message:
       verifiedDocument?.status === "approved"
         ? "Your DTI document was approved."
         : "Your DTI document was rejected. Review the feedback and upload a corrected file.",
-  };
+  });
 }

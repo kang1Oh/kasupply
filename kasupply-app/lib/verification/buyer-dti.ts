@@ -346,13 +346,13 @@ function buildBuyerDtiUserReviewNotes(params: {
 
   if (params.checks.qr_matches_visible_text === "fail") {
     reasons.push(
-      "The decoded QR details did not match the visible details shown on the document."
+      "The QR code's decoded details did not match the information printed on the certificate."
     );
   }
 
   if (params.checks.authoritative_source_matches_certificate === "fail") {
     reasons.push(
-      "The QR could not be confirmed as a valid DTI/BNRS verification source for this certificate."
+      "The QR or BNRS verification data could not be matched confidently to this certificate."
     );
   }
 
@@ -402,7 +402,7 @@ function buildBuyerDtiUserReviewNotes(params: {
     );
   }
 
-  return `Your document was denied. It might be due to the following: ${reasons.join(" ")}`;
+  return `We couldn't verify your document. Please review the following and upload a clearer or corrected copy: ${reasons.join(" ")}`;
 }
 
 function toCheckMap(value: Record<string, unknown> | undefined) {

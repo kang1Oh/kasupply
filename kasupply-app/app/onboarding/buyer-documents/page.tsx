@@ -4,6 +4,7 @@ import { BuyerDocumentsForm } from "@/components/buyer-documents-form";
 import { getUserOnboardingStatus } from "@/lib/auth/get-user-onboarding-status";
 import { createClient } from "@/lib/supabase/server";
 import { isBuyerDtiDocumentTypeName } from "@/lib/verification/document-rules";
+import { resolveStoredVerificationNotes } from "@/lib/verification/review-notes";
 
 type BuyerDocumentsPageProps = {
   searchParams?: Promise<{
@@ -16,6 +17,7 @@ type BuyerDocumentRow = {
   file_url: string | null;
   status: string | null;
   review_notes: string | null;
+  verification_analysis: Record<string, unknown> | null;
   document_types:
     | {
         document_type_name: string;
@@ -102,6 +104,7 @@ async function BuyerDocumentsPageContent({
           status,
           file_url,
           review_notes,
+          verification_analysis,
           document_types!business_documents_doc_type_id_fkey (
             document_type_name
           )
@@ -117,7 +120,10 @@ async function BuyerDocumentsPageContent({
       currentDocument = {
         fileUrl: matchedDocument.file_url,
         status: matchedDocument.status,
-        reviewNotes: matchedDocument.review_notes,
+        reviewNotes: resolveStoredVerificationNotes({
+          reviewNotes: matchedDocument.review_notes,
+          verificationAnalysis: matchedDocument.verification_analysis,
+        }),
       };
     }
   }

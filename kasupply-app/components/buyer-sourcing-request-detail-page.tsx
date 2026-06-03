@@ -408,7 +408,7 @@ export function BuyerSourcingRequestDetailPage({
                       )}
                     />
                     <QuotationMetricCell
-                      label="Total / Week"
+                      label="Total Amount"
                       value={buildMetricValueTotal(
                         card.quotation.pricePerUnit,
                         card.quotation.quantity,
