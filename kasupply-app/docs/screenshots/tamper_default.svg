@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="260">
+  <style>
+    .code { font-family: 'Courier New', monospace; font-size:14px; fill:#222; }
+    .bg { fill: #f7f7f7; }
+    .title { font-family: Arial, sans-serif; font-size:12px; fill:#666; }
+  </style>
+  <rect class="bg" x="0" y="0" width="1200" height="260" rx="6"/>
+  <text x="12" y="18" class="title">lib/verification/supplier-documents.ts - tamper default</text>
+  <foreignObject x="12" y="28" width="1176" height="220">
+    <pre xmlns="http://www.w3.org/1999/xhtml" class="code"><![CDATA[const checks: Record<string, string> = {
+  ...params.geminiChecks,
+};
+
+checks.ocr_readability =
+  checks.ocr_readability ?? (params.ocrText.trim().length >= 80 ? "pass" : "fail");
+checks.tamper_screen = checks.tamper_screen ?? "uncertain";
+
+const dtiBusinessName = params.dtiAnchor?.extractedFields.business_name;
+]]></pre>
+  </foreignObject>
+</svg>

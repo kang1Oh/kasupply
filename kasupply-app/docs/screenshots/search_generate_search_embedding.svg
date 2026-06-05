@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="340">
+  <style>
+    .bg { fill: #fbfbfb; }
+    .code { font-family: 'Courier New', monospace; font-size:14px; fill:#1c1c1c; }
+    .title { font-family: Arial, sans-serif; font-size:12px; fill:#666; }
+  </style>
+  <rect class="bg" x="0" y="0" width="1200" height="340" rx="10"/>
+  <text x="14" y="20" class="title">lib/search/gemini.ts (lines 35-81) — generateSearchEmbedding</text>
+  <foreignObject x="14" y="36" width="1172" height="300">
+    <pre xmlns="http://www.w3.org/1999/xhtml" class="code"><![CDATA[export async function generateSearchEmbedding(params: {
+  text: string;
+  taskType: SearchEmbeddingTaskType;
+  title?: string | null;
+}) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  const text = params.text.trim();
+
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is not configured.");
+  }
+
+  if (!text) {
+    throw new Error("Search embedding text cannot be empty.");
+  }
+
+  const response = await fetch(GEMINI_EMBEDDING_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey,
+    },
+    body: JSON.stringify({
+      content: {
+        parts: [{ text }],
+      },
+      taskType: params.taskType,
+      title:
+        params.taskType === "RETRIEVAL_DOCUMENT" ? params.title?.trim() || undefined : undefined,
+      outputDimensionality: SEARCH_EMBEDDING_DIMENSION,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Gemini embedding request failed with status ${response.status}.`);
+  }
+
+  const data = (await response.json()) as GeminiEmbeddingResponse;
+  const values = data.embedding?.values ?? [];
+
+  if (values.length !== SEARCH_EMBEDDING_DIMENSION) {
+    throw new Error(
+      `Expected ${SEARCH_EMBEDDING_DIMENSION}-dimension embedding, received ${values.length}.`
+    );
+  }
+
+  return normalizeVector(values);
+}
+]]></pre>
+  </foreignObject>
+</svg>

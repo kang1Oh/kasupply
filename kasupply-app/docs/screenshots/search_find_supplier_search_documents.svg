@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360">
+  <style>
+    .bg { fill: #fbfbfb; }
+    .code { font-family: 'Courier New', monospace; font-size:14px; fill:#1c1c1c; }
+    .title { font-family: Arial, sans-serif; font-size:12px; fill:#666; }
+  </style>
+  <rect class="bg" x="0" y="0" width="1200" height="360" rx="10"/>
+  <text x="14" y="20" class="title">lib/search/index.ts (lines 402-454) — findSupplierSearchDocuments</text>
+  <foreignObject x="14" y="36" width="1172" height="320">
+    <pre xmlns="http://www.w3.org/1999/xhtml" class="code"><![CDATA[export async function findSupplierSearchDocuments(params: {
+  query: string;
+  matchCount?: number;
+  categoryId?: number | null;
+  city?: string | null;
+  province?: string | null;
+  region?: string | null;
+  sourceTypes?: Array<"profile" | "product">;
+}): Promise<SupplierSearchDocumentMatch[]> {
+  const supabase = getSearchAdminClient();
+  const query = params.query.trim();
+
+  if (!query) {
+    return [];
+  }
+
+  const embedding = await generateSearchEmbedding({
+    text: query,
+    taskType: "RETRIEVAL_QUERY",
+  });
+
+  const { data, error } = await supabase.rpc("match_supplier_search_documents", {
+    query_embedding_text: toVectorLiteral(embedding),
+    match_count: params.matchCount ?? SEARCH_DEFAULT_MATCH_COUNT,
+    filter_category_id: params.categoryId ?? null,
+    filter_city: params.city?.trim() || null,
+    filter_province: params.province?.trim() || null,
+    filter_region: params.region?.trim() || null,
+    filter_source_types: params.sourceTypes ?? null,
+  });
+
+  if (error) {
+    throw new Error(error.message || "Failed to run supplier search.");
+  }
+
+  return ((data as MatchSupplierSearchDocumentsRow[] | null) ?? []).map((row) => ({
+    search_document_id: row.search_document_id,
+    supplier_id: row.supplier_id,
+    profile_id: row.profile_id,
+    source_type: row.source_type,
+    source_id: row.source_id,
+    title: row.title,
+    content: row.content,
+    category_id: row.category_id,
+    moq: row.moq == null ? null : Number(row.moq),
+    max_capacity: row.max_capacity == null ? null : Number(row.max_capacity),
+    unit: row.unit,
+    city: row.city,
+    province: row.province,
+    region: row.region,
+    metadata: row.metadata ?? {},
+    similarity: row.similarity == null ? 0 : Number(row.similarity),
+  }));
+}
+]]></pre>
+  </foreignObject>
+</svg>

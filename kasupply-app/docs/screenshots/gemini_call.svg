@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="440">
+  <style>
+    .code { font-family: 'Courier New', monospace; font-size:13px; fill:#222; }
+    .bg { fill: #f7f7f7; }
+    .title { font-family: Arial, sans-serif; font-size:12px; fill:#666; }
+  </style>
+  <rect class="bg" x="0" y="0" width="1200" height="440" rx="6"/>
+  <text x="12" y="18" class="title">lib/verification/supplier-documents.ts - Gemini call</text>
+  <foreignObject x="12" y="28" width="1176" height="400">
+    <pre xmlns="http://www.w3.org/1999/xhtml" class="code"><![CDATA[const testMode = detectDocumentTestMode(ocrResult.text);
+
+const geminiResult = await generateGeminiStructuredOutput<SupplierGeminiResponse>({
+  prompt: buildSupplierDocumentPrompt({
+    documentTypeLabel: blueprint.label,
+    requiredFieldLabels: blueprint.requiredFields.map((field) => field.label),
+    checkDescriptions: blueprint.checks.map((check) => ({
+      key: check.key,
+      description: check.description,
+    })),
+    ocrText: ocrResult.text,
+    businessContext: params.businessContext,
+    dtiAnchor: params.dtiAnchor,
+    testMode: testMode.enabled,
+  }),
+  schema: buildSupplierSchema(
+    blueprint.requiredFields.map((field) => field.key),
+    ["ocr_readability", ...blueprint.checks.map((check) => check.key)]
+  ),
+  inlineMedia: [
+    {
+      mimeType: storageFile.mimeType,
+      bytes: storageFile.bytes,
+    },
+  ],
+});]]></pre>
+  </foreignObject>
+</svg>

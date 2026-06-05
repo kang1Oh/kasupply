@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="820">
+  <style>
+    .bg { fill: #fbfbfb; }
+    .code { font-family: 'Courier New', monospace; font-size:12px; fill:#111; }
+    .title { font-family: Arial, sans-serif; font-size:12px; fill:#666; }
+  </style>
+  <rect class="bg" x="0" y="0" width="1400" height="820" rx="10"/>
+  <text x="14" y="20" class="title">lib/buyer/rfq-workflows.ts (lines 1011-1158) — getTopSupplierMatchesForRfq</text>
+  <foreignObject x="14" y="36" width="1372" height="780">
+    <pre xmlns="http://www.w3.org/1999/xhtml" class="code"><![CDATA[export async function getTopSupplierMatchesForRfq(params: {
+  categoryId: number;
+  categoryName: string | null;
+  productName: string;
+  specifications: string | null;
+  quantity: number;
+  requestedUnit: string;
+  deliveryLocation: string | null;
+  buyerLocation: Pick<BusinessProfileLocation, "city" | "province" | "region">;
+}) {
+  const supplierCandidates = await getSupplierMatchCandidates();
+  const intent = buildRfqMatchIntent({
+    productName: params.productName,
+    categoryName: params.categoryName,
+    specifications: params.specifications,
+    deliveryLocation: params.deliveryLocation,
+  });
+  const semanticQuery = [
+    intent.intentQuery,
+    params.categoryName?.trim() || "",
+    params.productName.trim(),
+  ]
+    .filter((value) => value.length > 0)
+    .join(" ")
+    .trim();
+  let semanticSignals = new Map<
+    number,
+    {
+      productSimilarity: number | null;
+      profileSimilarity: number | null;
+    }
+  >();
+
+  try {
+    semanticSignals = await getSemanticSupplierSignals({
+      categoryId: params.categoryId,
+      query: semanticQuery,
+    });
+  } catch (error) {
+    console.error("Semantic RFQ supplier matching failed. Falling back to keyword scoring.", error);
+  }
+
+  const useSemanticSignals = semanticSignals.size > 0;
+
+  const scoredMatches = supplierCandidates
+    .map((supplier) => {
+      if (!useSemanticSignals) {
+        const fallbackMatch = getTemporarySupplierMatchScore({
+          categoryId: params.categoryId,
+          intent,
+          quantity: params.quantity,
+          requestedUnit: params.requestedUnit,
+          buyerLocation: params.buyerLocation,
+          deliveryLocation: params.deliveryLocation,
+          supplier,
+        });
+
+        return {
+          supplierId: supplier.supplierId,
+          matchScore: fallbackMatch.score,
+          matchReason: fallbackMatch.reason,
+          verifiedBadge: supplier.verifiedBadge,
+        };
+      }
+
+      const evidence = getIntentMatchEvidence({
+        intentTokens: intent.intentTokens,
+        supplier,
+      });
+      const semanticSignal = semanticSignals.get(supplier.supplierId) ?? {
+        productSimilarity: null,
+        profileSimilarity: null,
+      };
+      const productSemanticScore = getSemanticSimilarityScore(
+        semanticSignal.productSimilarity,
+        100
+      );
+      const profileSemanticScore = getSemanticSimilarityScore(
+        semanticSignal.profileSimilarity,
+        100
+      );
+      const relevantProducts = getRelevantSupplierProducts({
+        categoryId: params.categoryId,
+        intentTokens: intent.intentTokens,
+        supplier,
+      });
+      const productRelevanceScore = getProductRelevanceScore({
+        categoryId: params.categoryId,
+        supplier,
+        productSimilarity: semanticSignal.productSimilarity,
+        exactProductPhrase: evidence.exactProductPhrase,
+        productOverlap: evidence.productOverlap,
+      });
+      const moqCapacityScore = getMoqCapacityScore({
+        quantity: params.quantity,
+        requestedUnit: params.requestedUnit,
+        relevantProducts,
+      });
+      const businessDescriptionScore = getBusinessDescriptionScore({
+        profileSimilarity: semanticSignal.profileSimilarity,
+        exactProfilePhrase: evidence.exactProfilePhrase,
+        profileOverlap: evidence.profileOverlap,
+      });
+      const locationScore = getLocationScore({
+        buyerLocation: params.buyerLocation,
+        deliveryLocation: params.deliveryLocation,
+        softLocationPhrase: intent.softLocationPhrase,
+        supplier,
+      });
+      const totalScore = clampMatchScore(
+        productRelevanceScore +
+          moqCapacityScore +
+          businessDescriptionScore +
+          locationScore
+      );
+
+      const passesIntentGate = passesRfqIntentRelevanceGate({
+        intent,
+        supplier,
+        categoryId: params.categoryId,
+        productSemanticScore,
+        profileSemanticScore,
+        evidence,
+      });
+
+      return {
+        supplierId: supplier.supplierId,
+        matchScore: passesIntentGate ? totalScore : 0,
+        matchReason: buildMatchReason({
+          productRelevanceScore,
+          moqCapacityScore,
+          businessDescriptionScore,
+          locationScore,
+          supplier,
+        }),
+        verifiedBadge: supplier.verifiedBadge,
+      };
+    })
+    .filter((row) => row.matchScore > 0);
+
+  return selectEligibleSupplierMatches(scoredMatches)
+    .map(({ supplierId, matchScore, matchReason }) => ({
+      supplierId,
+      matchScore,
+      matchReason,
+    }));
+}
+]]></pre>
+  </foreignObject>
+</svg>

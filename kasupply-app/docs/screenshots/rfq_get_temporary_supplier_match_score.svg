@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300">
+  <style>
+    .bg { fill: #fbfbfb; }
+    .code { font-family: 'Courier New', monospace; font-size:14px; fill:#1c1c1c; }
+    .title { font-family: Arial, sans-serif; font-size:12px; fill:#666; }
+  </style>
+  <rect class="bg" x="0" y="0" width="1200" height="300" rx="10"/>
+  <text x="14" y="20" class="title">lib/buyer/rfq-workflows.ts (lines 739-794) — getTemporarySupplierMatchScore</text>
+  <foreignObject x="14" y="36" width="1172" height="260">
+    <pre xmlns="http://www.w3.org/1999/xhtml" class="code"><![CDATA[function getTemporarySupplierMatchScore(params: {
+  categoryId: number;
+  intent: RfqMatchIntent;
+  quantity: number;
+  requestedUnit: string;
+  buyerLocation: Pick<BusinessProfileLocation, "city" | "province" | "region">;
+  deliveryLocation: string | null;
+  supplier: SupplierMatchCandidate;
+}) {
+  const evidence = getIntentMatchEvidence({
+    intentTokens: params.intent.intentTokens,
+    supplier: params.supplier,
+  });
+  const productRelevanceScore = getProductRelevanceScore({
+    categoryId: params.categoryId,
+    supplier: params.supplier,
+    productSimilarity: null,
+    exactProductPhrase: evidence.exactProductPhrase,
+    productOverlap: evidence.productOverlap,
+  });
+  const relevantProducts = getRelevantSupplierProducts({
+    categoryId: params.categoryId,
+    intentTokens: params.intent.intentTokens,
+    supplier: params.supplier,
+  });
+  const moqCapacityScore = getMoqCapacityScore({
+    quantity: params.quantity,
+    requestedUnit: params.requestedUnit,
+    relevantProducts,
+  });
+  const profileFitScore = getBusinessDescriptionScore({
+    profileSimilarity: null,
+    exactProfilePhrase: evidence.exactProfilePhrase,
+    profileOverlap: evidence.profileOverlap,
+  });
+  const locationScore = getLocationScore({
+    buyerLocation: params.buyerLocation,
+    deliveryLocation: params.deliveryLocation,
+    softLocationPhrase: params.intent.softLocationPhrase,
+    supplier: params.supplier,
+  });
+
+  return {
+    score: clampMatchScore(
+      productRelevanceScore + moqCapacityScore + profileFitScore + locationScore
+    ),
+    reason: buildMatchReason({
+      productRelevanceScore,
+      moqCapacityScore,
+      businessDescriptionScore: profileFitScore,
+      locationScore,
+      supplier: params.supplier,
+    }),
+  };
+}
+]]></pre>
+  </foreignObject>
+</svg>

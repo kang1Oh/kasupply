@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520">
+  <style>
+    .code { font-family: 'Courier New', monospace; font-size:13px; fill:#222; }
+    .bg { fill: #f7f7f7; }
+    .title { font-family: Arial, sans-serif; font-size:12px; fill:#666; }
+  </style>
+  <rect class="bg" x="0" y="0" width="1200" height="520" rx="6"/>
+  <text x="12" y="18" class="title">lib/verification/supplier-documents.ts - normalization & matching helpers</text>
+  <foreignObject x="12" y="28" width="1176" height="480">
+    <pre xmlns="http://www.w3.org/1999/xhtml" class="code"><![CDATA[function normalizeComparableText(value: unknown) {
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function normalizeStatusValue(value: unknown) {
+  const normalized = String(value ?? "").trim().toLowerCase();
+
+  if (normalized === "pass" || normalized === "fail" || normalized === "uncertain") {
+    return normalized;
+  }
+
+  return "uncertain";
+}
+
+function looselyMatchesText(left: unknown, right: unknown) {
+  const normalizedLeft = normalizeComparableText(left);
+  const normalizedRight = normalizeComparableText(right);
+
+  if (!normalizedLeft || !normalizedRight) {
+    return false;
+  }
+
+  return (
+    normalizedLeft === normalizedRight ||
+    normalizedLeft.includes(normalizedRight) ||
+    normalizedRight.includes(normalizedLeft)
+  );
+}
+
+function buildProfileAddressLabel(context: SupplierBusinessContext) {
+  return [
+    context.businessLocation,
+    context.city,
+    context.province,
+    context.region,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
+function resolvePresenceStatus(value: unknown) {
+  return normalizeComparableText(value).length > 0 ? "pass" : "fail";
+}
+
+function resolveMatchStatus(left: unknown, right: unknown) {
+  return looselyMatchesText(left, right) ? "pass" : "fail";
+}
+
+function resolveAddressStatus(address: unknown, context: SupplierBusinessContext) {
+  const profileAddress = buildProfileAddressLabel(context);
+
+  if (!normalizeComparableText(address) || !normalizeComparableText(profileAddress)) {
+    return "fail";
+  }
+
+  return looselyMatchesText(address, profileAddress) ? "pass" : "fail";
+}]]></pre>
+  </foreignObject>
+</svg>

@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360">
+  <style>
+    .bg { fill: #fbfbfb; }
+    .code { font-family: 'Courier New', monospace; font-size:14px; fill:#1c1c1c; }
+    .title { font-family: Arial, sans-serif; font-size:12px; fill:#666; }
+  </style>
+  <rect class="bg" x="0" y="0" width="1200" height="360" rx="10"/>
+  <text x="14" y="20" class="title">lib/buyer/rfq-workflows.ts (lines 795-861) — getSemanticSupplierSignals</text>
+  <foreignObject x="14" y="36" width="1172" height="320">
+    <pre xmlns="http://www.w3.org/1999/xhtml" class="code"><![CDATA[async function getSemanticSupplierSignals(params: {
+  categoryId: number;
+  query: string;
+}) {
+  const searchQuery = params.query.trim();
+
+  if (!searchQuery) {
+    return new Map<
+      number,
+      {
+        productSimilarity: number | null;
+        profileSimilarity: number | null;
+      }
+    >();
+  }
+
+  const [productMatches, profileMatches] = await Promise.all([
+    findSupplierSearchDocuments({
+      query: searchQuery,
+      matchCount: 120,
+      categoryId: params.categoryId,
+      sourceTypes: ["product"],
+    }),
+    findSupplierSearchDocuments({
+      query: searchQuery,
+      matchCount: 80,
+      sourceTypes: ["profile"],
+    }),
+  ]);
+
+  const signals = new Map<
+    number,
+    {
+      productSimilarity: number | null;
+      profileSimilarity: number | null;
+    }
+  >();
+
+  for (const match of productMatches) {
+    const current = signals.get(match.supplier_id) ?? {
+      productSimilarity: null,
+      profileSimilarity: null,
+    };
+
+    if (current.productSimilarity == null || match.similarity > current.productSimilarity) {
+      current.productSimilarity = match.similarity;
+    }
+
+    signals.set(match.supplier_id, current);
+  }
+
+  for (const match of profileMatches) {
+    const current = signals.get(match.supplier_id) ?? {
+      productSimilarity: null,
+      profileSimilarity: null,
+    };
+
+    if (current.profileSimilarity == null || match.similarity > current.profileSimilarity) {
+      current.profileSimilarity = match.similarity;
+    }
+
+    signals.set(match.supplier_id, current);
+  }
+
+  return signals;
+}
+]]></pre>
+  </foreignObject>
+</svg>

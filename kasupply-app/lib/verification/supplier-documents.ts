@@ -412,7 +412,6 @@ function resolveSupplierChecks(params: {
   checks.tamper_screen = checks.tamper_screen ?? "uncertain";
 
   const dtiBusinessName = params.dtiAnchor?.extractedFields.business_name;
-  const dtiScopeOrLocation = params.dtiAnchor?.extractedFields.scope_or_location;
 
   if (params.documentCode === "mayors_permit") {
     checks.field_business_name_present = resolvePresenceStatus(

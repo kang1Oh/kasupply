@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="260">
+  <style>
+    .code { font-family: 'Courier New', monospace; font-size:14px; fill:#222; }
+    .bg { fill: #f7f7f7; }
+    .title { font-family: Arial, sans-serif; font-size:12px; fill:#666; }
+  </style>
+  <rect class="bg" x="0" y="0" width="1200" height="260" rx="6"/>
+  <text x="12" y="18" class="title">lib/verification/processor.ts - approved DTI selection</text>
+  <foreignObject x="12" y="28" width="1176" height="220">
+    <pre xmlns="http://www.w3.org/1999/xhtml" class="code"><![CDATA[const approvedDtiDocument = ((profileDocuments as BusinessDocumentRow[] | null) ?? [])
+  .filter(
+    (row) =>
+      row.doc_id !== document.doc_id &&
+      row.status === "approved" &&
+      getDocumentVerificationBlueprint(readDocumentTypeName(row))?.code === "dti"
+  )
+  .sort((left, right) =>
+    String(right.verified_at ?? "").localeCompare(String(left.verified_at ?? ""))
+  )[0];
+]]></pre>
+  </foreignObject>
+</svg>

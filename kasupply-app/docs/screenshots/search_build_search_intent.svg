@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="260">
+  <style>
+    .bg { fill: #fbfbfb; }
+    .code { font-family: 'Courier New', monospace; font-size:14px; fill:#1c1c1c; }
+    .title { font-family: Arial, sans-serif; font-size:12px; fill:#666; }
+  </style>
+  <rect class="bg" x="0" y="0" width="1200" height="260" rx="10"/>
+  <text x="14" y="20" class="title">app/buyer/search/actions.ts (lines 241-279) — buildSearchIntent</text>
+  <foreignObject x="14" y="36" width="1172" height="210">
+    <pre xmlns="http://www.w3.org/1999/xhtml" class="code"><![CDATA[function buildSearchIntent(params: {
+  query: string;
+  cities: string[];
+  provinces: string[];
+  regions: string[];
+}): SearchIntent {
+  const detectedCity = findLocationPhraseMatch(params.query, params.cities);
+  const detectedProvince =
+    detectedCity == null ? findLocationPhraseMatch(params.query, params.provinces) : null;
+  const detectedRegion =
+    detectedCity == null && detectedProvince == null
+      ? findLocationPhraseMatch(params.query, params.regions)
+      : null;
+  const softLocationPhrase =
+    detectedCity == null && detectedProvince == null && detectedRegion == null
+      ? extractSoftLocationPhrase(params.query)
+      : null;
+
+  const locationTokens = tokenize(
+    [detectedCity, detectedProvince, detectedRegion, softLocationPhrase]
+      .filter(Boolean)
+      .join(" ")
+  );
+  const intentTokens = tokenize(params.query).filter(
+    (token) => !GENERIC_QUERY_TOKENS.has(token) && !locationTokens.includes(token)
+  );
+
+  return {
+    detectedCity,
+    detectedProvince,
+    detectedRegion,
+    locationTokens,
+    softLocationPhrase,
+    intentTokens,
+    intentQuery: intentTokens.join(" "),
+    hasSpecificIntent: intentTokens.length > 0,
+  };
+}
+]]></pre>
+  </foreignObject>
+</svg>

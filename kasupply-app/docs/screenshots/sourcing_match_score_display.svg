@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="120">
+  <style>
+    .bg { fill: #fbfbfb; }
+    .code { font-family: 'Courier New', monospace; font-size:14px; fill:#1c1c1c; }
+    .title { font-family: Arial, sans-serif; font-size:12px; fill:#666; }
+  </style>
+  <rect class="bg" x="0" y="0" width="1200" height="120" rx="10"/>
+  <text x="14" y="20" class="title">components/buyer-sourcing-request-detail-page.tsx (line 397) — Match Score display</text>
+  <foreignObject x="14" y="36" width="1172" height="80">
+    <pre xmlns="http://www.w3.org/1999/xhtml" class="code"><![CDATA[                        Match Score: {card.matchScore == null ? "-" : `${Math.round(card.matchScore)}%`}
+]]></pre>
+  </foreignObject>
+</svg>

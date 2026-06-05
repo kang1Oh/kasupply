@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="320">
+  <style>
+    .bg { fill: #fbfbfb; }
+    .code { font-family: 'Courier New', monospace; font-size:14px; fill:#1c1c1c; }
+    .title { font-family: Arial, sans-serif; font-size:12px; fill:#666; }
+  </style>
+  <rect class="bg" x="0" y="0" width="1200" height="320" rx="10"/>
+  <text x="14" y="20" class="title">app/buyer/search/actions.ts (lines 418-456) — passesIntentRelevanceGate</text>
+  <foreignObject x="14" y="36" width="1172" height="280">
+    <pre xmlns="http://www.w3.org/1999/xhtml" class="code"><![CDATA[function passesIntentRelevanceGate(params: {
+  intent: SearchIntent;
+  supplier: Pick<SupplierSearchItem, "businessName" | "about" | "searchableProducts">;
+  keywordScore: number;
+  productSemanticScore: number;
+  profileSemanticScore: number;
+}) {
+  if (!params.intent.hasSpecificIntent) {
+    return params.keywordScore > 0 || params.productSemanticScore >= 28 || params.profileSemanticScore >= 34;
+  }
+
+  const evidence = getIntentMatchEvidence({
+    intentTokens: params.intent.intentTokens,
+    supplier: params.supplier,
+  });
+
+  if (evidence.exactProductPhrase) {
+    return true;
+  }
+
+  if (evidence.productOverlap >= 0.34) {
+    return true;
+  }
+
+  if (params.productSemanticScore >= 56) {
+    return true;
+  }
+
+  if (params.profileSemanticScore >= 68 && evidence.profileOverlap >= 0.34) {
+    return true;
+  }
+
+  if (params.keywordScore >= 42) {
+    return true;
+  }
+
+  return false;
+}
+]]></pre>
+  </foreignObject>
+</svg>

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420">
+  <style>
+    .code { font-family: 'Courier New', monospace; font-size:14px; fill:#222; }
+    .bg { fill: #f7f7f7; }
+    .title { font-family: Arial, sans-serif; font-size:12px; fill:#666; }
+  </style>
+  <rect class="bg" x="0" y="0" width="1200" height="420" rx="6"/>
+  <text x="12" y="18" class="title">lib/verification/supplier-documents.ts (snippet)</text>
+  <foreignObject x="12" y="28" width="1176" height="380">
+    <pre xmlns="http://www.w3.org/1999/xhtml" class="code"><![CDATA[`Onboarding city: ${params.businessContext.city ?? ""}`,
+`Onboarding province: ${params.businessContext.province ?? ""}`,
+`Onboarding region: ${params.businessContext.region ?? ""}`,
+].join("\n");
+
+return [
+  `You are verifying a Philippine ${params.documentTypeLabel} for automated supplier onboarding.`,
+  "This flow is binary. Use pass only when the evidence is clear and reliable.",
+  "Use fail when the evidence clearly contradicts the requirement or a required detail is missing.",
+  "Use uncertain when the evidence is blurry, cropped, ambiguous, or unreadable.",
+  ...(params.testMode
+    ? [
+        "The uploaded file explicitly declares itself as a mock document for local testing.",
+        "In test mode, focus on content extraction and cross-document consistency only.",
+        "Ignore tamper-only concerns and do not fail the document solely for missing seals, logos, signatures, or other official-format cues.",
+      ]
+    : []),
+  "Extract the visible document fields conservatively.",
+  "Assess whether the document appears authentic, untampered, and consistent with the onboarding profile and approved DTI anchor.",]]></pre>
+  </foreignObject>
+</svg>

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="180">
+  <style>
+    .bg { fill: #fbfbfb; }
+    .code { font-family: 'Courier New', monospace; font-size:14px; fill:#1c1c1c; }
+    .title { font-family: Arial, sans-serif; font-size:12px; fill:#666; }
+  </style>
+  <rect class="bg" x="0" y="0" width="1200" height="180" rx="10"/>
+  <text x="14" y="20" class="title">lib/buyer/rfq-workflows.ts (lines 569-585) — getProductRelevanceScore</text>
+  <foreignObject x="14" y="36" width="1172" height="140">
+    <pre xmlns="http://www.w3.org/1999/xhtml" class="code"><![CDATA[function getProductRelevanceScore(params: {
+  categoryId: number;
+  supplier: SupplierMatchCandidate;
+  productSimilarity: number | null;
+  exactProductPhrase: boolean;
+  productOverlap: number;
+}) {
+  const categoryBoost = params.supplier.categoryIds.includes(params.categoryId) ? 8 : 0;
+  const semanticBoost = getSemanticSimilarityScore(params.productSimilarity, 22);
+  const keywordBoost = clampMatchScore(
+    (params.exactProductPhrase ? 5 : 0) + params.productOverlap * 7,
+    10
+  );
+
+  return clampMatchScore(categoryBoost + semanticBoost + keywordBoost, 40);
+}
+]]></pre>
+  </foreignObject>
+</svg>

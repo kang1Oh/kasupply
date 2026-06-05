@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="340">
+  <style>
+    .bg { fill: #fbfbfb; }
+    .code { font-family: 'Courier New', monospace; font-size:14px; fill:#1c1c1c; }
+    .title { font-family: Arial, sans-serif; font-size:12px; fill:#666; }
+  </style>
+  <rect class="bg" x="0" y="0" width="1200" height="340" rx="10"/>
+  <text x="14" y="20" class="title">app/buyer/search/actions.ts (lines 280-417) — getIntentAwareKeywordScore</text>
+  <foreignObject x="14" y="36" width="1172" height="300">
+    <pre xmlns="http://www.w3.org/1999/xhtml" class="code"><![CDATA[function getIntentAwareKeywordScore(params: {
+  query: string;
+  intentTokens: string[];
+  supplier: Pick<
+    SupplierSearchItem,
+    | "businessName"
+    | "about"
+    | "searchableProducts"
+  >;
+}) {
+  const normalizedQuery = normalizeText(params.query);
+  const queryTokens = params.intentTokens.length > 0 ? params.intentTokens : tokenize(params.query);
+
+  if (!normalizedQuery || queryTokens.length === 0) {
+    return 0;
+  }
+
+  const profileText = [
+    params.supplier.businessName,
+    params.supplier.about ?? "",
+  ].join(" ");
+
+  const productText = params.supplier.searchableProducts
+    .map((product) =>
+      [product.productName, product.categoryName, product.description ?? ""].join(" ")
+    )
+    .join(" ");
+
+  const fullText = `${profileText} ${productText}`.trim();
+  const fullTokens = tokenize(fullText);
+  const productTokens = tokenize(productText);
+  const profileTokens = tokenize(profileText);
+
+  const exactPhraseBoost =
+    params.intentTokens.length > 0 && normalizeText(fullText).includes(params.intentTokens.join(" "))
+      ? 28
+      : normalizeText(fullText).includes(normalizedQuery)
+        ? 10
+        : 0;
+  const productOverlapScore = getOverlapRatio(queryTokens, productTokens) * 55;
+  const profileOverlapScore = getOverlapRatio(queryTokens, profileTokens) * 18;
+  const fullOverlapScore = getOverlapRatio(queryTokens, fullTokens) * 12;
+
+  return clampScore(
+    exactPhraseBoost + productOverlapScore + profileOverlapScore + fullOverlapScore
+  );
+}
+]]></pre>
+  </foreignObject>
+</svg>

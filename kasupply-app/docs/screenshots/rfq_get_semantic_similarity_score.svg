@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="160">
+  <style>
+    .bg { fill: #fbfbfb; }
+    .code { font-family: 'Courier New', monospace; font-size:14px; fill:#1c1c1c; }
+    .title { font-family: Arial, sans-serif; font-size:12px; fill:#666; }
+  </style>
+  <rect class="bg" x="0" y="0" width="1200" height="160" rx="10"/>
+  <text x="14" y="20" class="title">lib/buyer/rfq-workflows.ts (lines 531-539) — getSemanticSimilarityScore</text>
+  <foreignObject x="14" y="36" width="1172" height="120">
+    <pre xmlns="http://www.w3.org/1999/xhtml" class="code"><![CDATA[function getSemanticSimilarityScore(similarity: number | null, maxScore: number) {
+  if (similarity == null || !Number.isFinite(similarity)) {
+    return 0;
+  }
+
+  const normalized = Math.max(0, Math.min(1, (similarity - 0.5) / 0.35));
+  return clampMatchScore(normalized * maxScore, maxScore);
+}
+]]></pre>
+  </foreignObject>
+</svg>
